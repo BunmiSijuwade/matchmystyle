@@ -26,6 +26,51 @@ interface ProductMatch {
   available: boolean;
 }
 
+// Extracted outside Analyzer to avoid React ref warnings
+interface ItemPillsProps {
+  results: DetectedItem[];
+  activeId: string;
+  onPillClick: (id: string) => void;
+}
+
+const ItemPills = ({ results, activeId, onPillClick }: ItemPillsProps) => (
+  <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
+    {results.map((item) => (
+      <button
+        key={item.id}
+        onClick={() => onPillClick(item.id)}
+        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+          activeId === item.id
+            ? "gradient-primary text-primary-foreground shadow-brand"
+            : "glass text-foreground hover:border-primary"
+        }`}
+      >
+        {item.category}
+      </button>
+    ))}
+  </div>
+);
+
+interface DetectedItem {
+  id: string;
+  category: string;
+  description: string;
+  color: string;
+  style: string;
+  estimatedPrice: string;
+  matches: ProductMatch[];
+}
+
+interface ProductMatch {
+  id: string;
+  name: string;
+  brand: string;
+  price: string;
+  retailer: string;
+  url: string;
+  available: boolean;
+}
+
 type Tab = "url" | "file";
 
 const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;
@@ -199,25 +244,6 @@ const Analyzer = () => {
     setOpenAccordionItem("");
   };
 
-  // Pill overlay shared between URL and file previews
-  const ItemPills = () =>
-    results ? (
-      <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
-        {results.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handlePillClick(item.id)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-              openAccordionItem === item.id
-                ? "gradient-primary text-primary-foreground shadow-brand"
-                : "glass text-foreground hover:border-primary"
-            }`}
-          >
-            {item.category}
-          </button>
-        ))}
-      </div>
-    ) : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -310,7 +336,7 @@ const Analyzer = () => {
                     >
                       <X className="w-4 h-4" />
                     </button>
-                    <ItemPills />
+                    <ItemPills results={results ?? []} activeId={openAccordionItem} onPillClick={handlePillClick} />
                   </div>
                 )}
               </>
@@ -352,7 +378,7 @@ const Analyzer = () => {
                     >
                       <X className="w-4 h-4" />
                     </button>
-                    <ItemPills />
+                    <ItemPills results={results ?? []} activeId={openAccordionItem} onPillClick={handlePillClick} />
                   </div>
                 )}
               </>
@@ -493,12 +519,14 @@ const Analyzer = () => {
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 <span className="font-semibold text-gradient text-sm">{match.price}</span>
                                 {match.available ? (
-                                  <button
-                                    onClick={() => window.open(match.url, "_blank", "noopener,noreferrer")}
+                                  <a
+                                    href={match.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                     className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center hover:shadow-glow transition-all"
                                   >
                                     <ExternalLink className="w-3.5 h-3.5 text-primary-foreground" />
-                                  </button>
+                                  </a>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">Out of stock</span>
                                 )}
