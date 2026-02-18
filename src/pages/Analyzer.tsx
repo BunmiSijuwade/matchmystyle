@@ -470,14 +470,12 @@ const Analyzer = () => {
                         <div className="flex items-center gap-3">
                           <span className="font-semibold text-gradient">{match.price}</span>
                           {match.available ? (
-                            <a
-                              href={match.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              onClick={() => window.open(match.url, '_blank', 'noopener,noreferrer')}
                               className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center hover:shadow-glow transition-all"
                             >
                               <ExternalLink className="w-3.5 h-3.5 text-primary-foreground" />
-                            </a>
+                            </button>
                           ) : (
                             <span className="text-xs text-muted-foreground">Out of stock</span>
                           )}
