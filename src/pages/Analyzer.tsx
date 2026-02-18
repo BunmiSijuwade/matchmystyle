@@ -1,7 +1,9 @@
 import { useState, useRef } from "react";
-import { Upload, Camera, Sparkles, ShoppingBag, ExternalLink, X, Loader2, AlertCircle } from "lucide-react";
+import { Upload, Camera, Sparkles, ShoppingBag, ExternalLink, X, Loader2, AlertCircle, Zap } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
+import { useToast } from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 interface DetectedItem {
   id: string;
@@ -23,65 +25,37 @@ interface ProductMatch {
   available: boolean;
 }
 
-// Mock data to demonstrate the UI experience
-const mockAnalysisResult: DetectedItem[] = [
-  {
-    id: "1",
-    category: "Blazer",
-    description: "Oversized structured blazer",
-    color: "Camel / Beige",
-    style: "Smart casual",
-    estimatedPrice: "$80–$200",
-    matches: [
-      { id: "1a", name: "Oversized Double-Breasted Blazer", brand: "Zara", price: "$89", retailer: "Zara", url: "#", available: true },
-      { id: "1b", name: "Classic Tailored Blazer", brand: "H&M", price: "$49", retailer: "H&M", url: "#", available: true },
-      { id: "1c", name: "Premium Wool Blazer", brand: "& Other Stories", price: "$175", retailer: "& Other Stories", url: "#", available: false },
-    ],
-  },
-  {
-    id: "2",
-    category: "Trousers",
-    description: "Wide-leg high-waisted trousers",
-    color: "Cream / Off-white",
-    style: "Elevated casual",
-    estimatedPrice: "$40–$120",
-    matches: [
-      { id: "2a", name: "Wide Leg Trousers", brand: "Mango", price: "$59", retailer: "Mango", url: "#", available: true },
-      { id: "2b", name: "High-Waist Palazzo Pants", brand: "ASOS", price: "$38", retailer: "ASOS", url: "#", available: true },
-    ],
-  },
-  {
-    id: "3",
-    category: "Heels",
-    description: "Strappy square-toe mule heels",
-    color: "Tan / Nude",
-    style: "Going out",
-    estimatedPrice: "$60–$250",
-    matches: [
-      { id: "3a", name: "Square Toe Strappy Mules", brand: "Steve Madden", price: "$89", retailer: "Nordstrom", url: "#", available: true },
-      { id: "3b", name: "Leather Mule Heels", brand: "Mango", price: "$79", retailer: "Mango", url: "#", available: true },
-    ],
-  },
-];
+const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;
 
-const categoryColors: Record<string, string> = {
-  Blazer: "hsl(271 76% 57%)",
-  Trousers: "hsl(330 80% 60%)",
-  Heels: "hsl(200 76% 57%)",
-};
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      // Strip the "data:<mime>;base64," prefix
+      const base64 = dataUrl.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 const Analyzer = () => {
   const [dragOver, setDragOver] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [results, setResults] = useState<DetectedItem[] | null>(null);
   const [selectedItem, setSelectedItem] = useState<DetectedItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
     const url = URL.createObjectURL(file);
     setImageUrl(url);
+    setUploadedFile(file);
     setResults(null);
     setSelectedItem(null);
   };
@@ -93,20 +67,83 @@ const Analyzer = () => {
     if (file) handleFile(file);
   };
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
+    if (!uploadedFile) return;
     setAnalyzing(true);
     setResults(null);
     setSelectedItem(null);
-    // Simulate API call to Claude AI
-    setTimeout(() => {
+
+    try {
+      const imageBase64 = await fileToBase64(uploadedFile);
+
+      const response = await fetch(ANALYZE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          imageBase64,
+          mimeType: uploadedFile.type,
+        }),
+      });
+
+      if (response.status === 429) {
+        toast({
+          title: "Rate limit reached",
+          description: "Too many requests. Please wait a moment and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (response.status === 402) {
+        toast({
+          title: "Usage limit reached",
+          description: "Please add credits in Settings → Workspace → Usage to continue.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        toast({
+          title: "Analysis failed",
+          description: err.message || "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const data = await response.json();
+      const items: DetectedItem[] = data.items;
+
+      if (!items || items.length === 0) {
+        toast({
+          title: "No items detected",
+          description: "The AI couldn't identify any clothing items. Try a clearer photo.",
+        });
+        return;
+      }
+
+      setResults(items);
+      setSelectedItem(items[0]);
+    } catch (err) {
+      console.error("Analyze error:", err);
+      toast({
+        title: "Connection error",
+        description: "Could not reach the AI service. Please check your connection and try again.",
+        variant: "destructive",
+      });
+    } finally {
       setAnalyzing(false);
-      setResults(mockAnalysisResult);
-      setSelectedItem(mockAnalysisResult[0]);
-    }, 2500);
+    }
   };
 
   const handleReset = () => {
     setImageUrl(null);
+    setUploadedFile(null);
     setResults(null);
     setSelectedItem(null);
   };
@@ -114,6 +151,7 @@ const Analyzer = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+      <Toaster />
       <div className="container mx-auto px-6 pt-28 pb-16">
         {/* Header */}
         <div className="mb-10 text-center">
@@ -197,7 +235,7 @@ const Analyzer = () => {
                 {analyzing ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Analyzing with Claude AI...
+                    Analyzing with AI...
                   </>
                 ) : (
                   <>
@@ -208,12 +246,11 @@ const Analyzer = () => {
               </GradientButton>
             )}
 
-            {/* API Note */}
+            {/* AI Active Note */}
             <div className="flex items-start gap-3 glass-light rounded-xl p-4 text-sm">
-              <AlertCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+              <Zap className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
               <p className="text-muted-foreground">
-                <strong className="text-foreground">Note:</strong> Full Claude AI integration requires connecting to Lovable Cloud. 
-                Currently showing a demo analysis. Enable Cloud to activate real AI outfit detection.
+                <strong className="text-foreground">Real AI Active:</strong> Powered by Google Gemini via Lovable Cloud. Upload any outfit photo for instant identification and shoppable matches.
               </p>
             </div>
           </div>
@@ -236,9 +273,9 @@ const Analyzer = () => {
                   <Sparkles className="w-8 h-8 text-primary-foreground" />
                 </div>
                 <h3 className="font-display text-xl font-semibold mb-2">AI is analyzing...</h3>
-                <p className="text-muted-foreground text-sm">Claude is identifying clothing items, colors, and styles</p>
+                <p className="text-muted-foreground text-sm">Gemini is identifying clothing items, colors, and styles</p>
                 <div className="mt-6 space-y-2">
-                  {["Detecting clothing items...", "Identifying brands & styles...", "Finding size matches..."].map((step, i) => (
+                  {["Detecting clothing items...", "Identifying brands & styles...", "Finding shopping matches..."].map((step, i) => (
                     <div key={step} className={`flex items-center gap-2 text-sm transition-opacity ${i === 0 ? "opacity-100 text-primary" : "opacity-40 text-muted-foreground"}`}>
                       <Loader2 className={`w-3 h-3 ${i === 0 ? "animate-spin" : ""}`} />
                       {step}
@@ -254,10 +291,7 @@ const Analyzer = () => {
                 <div className="glass rounded-2xl p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <div
-                        className="inline-block px-3 py-1 rounded-full text-xs font-medium text-primary-foreground mb-2"
-                        style={{ background: categoryColors[selectedItem.category] || "hsl(271 76% 57%)" }}
-                      >
+                      <div className="inline-block px-3 py-1 rounded-full text-xs font-medium text-primary-foreground mb-2 gradient-primary">
                         {selectedItem.category}
                       </div>
                       <h3 className="font-display text-xl font-semibold">{selectedItem.description}</h3>
@@ -278,7 +312,7 @@ const Analyzer = () => {
                   </div>
 
                   <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-widest mb-3">
-                    Matches in Your Size
+                    Shop Similar Items
                   </h4>
                   <div className="space-y-3">
                     {selectedItem.matches.map((match) => (
@@ -299,6 +333,8 @@ const Analyzer = () => {
                           {match.available ? (
                             <a
                               href={match.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
                               className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center hover:shadow-glow transition-all"
                             >
                               <ExternalLink className="w-3.5 h-3.5 text-primary-foreground" />
