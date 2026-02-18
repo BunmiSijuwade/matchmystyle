@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Upload, Camera, Sparkles, ShoppingBag, ExternalLink, X, Loader2, AlertCircle, Zap } from "lucide-react";
+import { Upload, Camera, Sparkles, ShoppingBag, ExternalLink, X, Loader2, AlertCircle, Zap, Link } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +25,8 @@ interface ProductMatch {
   available: boolean;
 }
 
+type Tab = "url" | "file";
+
 const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;
 
 function fileToBase64(file: File): Promise<string> {
@@ -32,7 +34,6 @@ function fileToBase64(file: File): Promise<string> {
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      // Strip the "data:<mime>;base64," prefix
       const base64 = dataUrl.split(",")[1];
       resolve(base64);
     };
@@ -41,20 +42,42 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+function isValidUrl(str: string) {
+  try {
+    const url = new URL(str);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 const Analyzer = () => {
+  const [activeTab, setActiveTab] = useState<Tab>("url");
   const [dragOver, setDragOver] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  // URL tab state
+  const [pastedUrl, setPastedUrl] = useState("");
+  const [urlPreviewError, setUrlPreviewError] = useState(false);
+
+  // File tab state
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+  // Shared state
   const [analyzing, setAnalyzing] = useState(false);
   const [results, setResults] = useState<DetectedItem[] | null>(null);
   const [selectedItem, setSelectedItem] = useState<DetectedItem | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const hasInput = activeTab === "url" ? isValidUrl(pastedUrl) : !!uploadedFile;
+  const previewSrc = activeTab === "url" ? (isValidUrl(pastedUrl) ? pastedUrl : null) : filePreviewUrl;
 
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
     const url = URL.createObjectURL(file);
-    setImageUrl(url);
+    setFilePreviewUrl(url);
     setUploadedFile(file);
     setResults(null);
     setSelectedItem(null);
@@ -67,14 +90,34 @@ const Analyzer = () => {
     if (file) handleFile(file);
   };
 
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPastedUrl(e.target.value);
+    setUrlPreviewError(false);
+    setResults(null);
+    setSelectedItem(null);
+  };
+
+  const handleTabSwitch = (tab: Tab) => {
+    setActiveTab(tab);
+    setResults(null);
+    setSelectedItem(null);
+  };
+
   const handleAnalyze = async () => {
-    if (!uploadedFile) return;
+    if (!hasInput) return;
     setAnalyzing(true);
     setResults(null);
     setSelectedItem(null);
 
     try {
-      const imageBase64 = await fileToBase64(uploadedFile);
+      let requestBody: Record<string, string>;
+
+      if (activeTab === "url") {
+        requestBody = { imageUrl: pastedUrl };
+      } else {
+        const imageBase64 = await fileToBase64(uploadedFile!);
+        requestBody = { imageBase64, mimeType: uploadedFile!.type };
+      }
 
       const response = await fetch(ANALYZE_URL, {
         method: "POST",
@@ -82,10 +125,7 @@ const Analyzer = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({
-          imageBase64,
-          mimeType: uploadedFile.type,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.status === 429) {
@@ -142,7 +182,9 @@ const Analyzer = () => {
   };
 
   const handleReset = () => {
-    setImageUrl(null);
+    setPastedUrl("");
+    setUrlPreviewError(false);
+    setFilePreviewUrl(null);
     setUploadedFile(null);
     setResults(null);
     setSelectedItem(null);
@@ -171,61 +213,158 @@ const Analyzer = () => {
         <div className="grid lg:grid-cols-2 gap-8 items-start">
           {/* Upload Column */}
           <div className="space-y-4">
-            {!imageUrl ? (
-              <div
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`glass rounded-2xl border-2 border-dashed p-16 text-center cursor-pointer transition-all duration-300 ${
-                  dragOver ? "border-primary shadow-brand bg-accent" : "border-border hover:border-primary hover:shadow-brand"
+
+            {/* Tab pill toggle */}
+            <div className="flex gap-1 p-1 glass rounded-xl w-fit">
+              <button
+                onClick={() => handleTabSwitch("url")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === "url"
+                    ? "gradient-primary text-primary-foreground shadow-brand"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-                />
-                <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center mx-auto mb-6 shadow-brand animate-pulse-glow">
-                  <Upload className="w-8 h-8 text-primary-foreground" />
-                </div>
-                <h3 className="font-display text-xl font-semibold mb-2">Drop your photo here</h3>
-                <p className="text-muted-foreground text-sm mb-4">Or click to browse files</p>
-                <p className="text-xs text-muted-foreground">Supports JPG, PNG, WEBP · Max 20MB</p>
-              </div>
-            ) : (
-              <div className="glass rounded-2xl overflow-hidden relative group">
-                <img src={imageUrl} alt="Uploaded outfit" className="w-full object-cover max-h-[500px]" />
-                <button
-                  onClick={handleReset}
-                  className="absolute top-3 right-3 w-8 h-8 rounded-full glass flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:border-destructive hover:text-destructive"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <Link className="w-3.5 h-3.5" />
+                Paste URL
+              </button>
+              <button
+                onClick={() => handleTabSwitch("file")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === "file"
+                    ? "gradient-primary text-primary-foreground shadow-brand"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                Upload File
+              </button>
+            </div>
 
-                {results && (
-                  <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
-                    {results.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => setSelectedItem(item)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                          selectedItem?.id === item.id
-                            ? "gradient-primary text-primary-foreground shadow-brand"
-                            : "glass text-foreground hover:border-primary"
-                        }`}
-                      >
-                        {item.category}
-                      </button>
-                    ))}
+            {/* URL Tab */}
+            {activeTab === "url" && (
+              <>
+                {!previewSrc ? (
+                  <div className="glass rounded-2xl p-8 space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Image URL</label>
+                      <input
+                        type="url"
+                        value={pastedUrl}
+                        onChange={handleUrlChange}
+                        placeholder="https://example.com/outfit.jpg"
+                        className="w-full h-11 rounded-xl border border-border bg-background px-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Paste a direct image URL from Instagram, TikTok, Pinterest, or any source
+                    </p>
+                  </div>
+                ) : (
+                  <div className="glass rounded-2xl overflow-hidden relative group">
+                    {!urlPreviewError ? (
+                      <img
+                        src={pastedUrl}
+                        alt="Outfit preview"
+                        className="w-full object-cover max-h-[500px]"
+                        onError={() => setUrlPreviewError(true)}
+                      />
+                    ) : (
+                      <div className="p-8 text-center">
+                        <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">Could not load image from this URL.</p>
+                        <p className="text-xs text-muted-foreground mt-1">Try a direct image link ending in .jpg, .png, or .webp</p>
+                      </div>
+                    )}
+                    <button
+                      onClick={handleReset}
+                      className="absolute top-3 right-3 w-8 h-8 rounded-full glass flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:border-destructive hover:text-destructive"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+
+                    {results && (
+                      <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
+                        {results.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => setSelectedItem(item)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                              selectedItem?.id === item.id
+                                ? "gradient-primary text-primary-foreground shadow-brand"
+                                : "glass text-foreground hover:border-primary"
+                            }`}
+                          >
+                            {item.category}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
+              </>
             )}
 
-            {imageUrl && !results && (
+            {/* File Tab */}
+            {activeTab === "file" && (
+              <>
+                {!filePreviewUrl ? (
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`glass rounded-2xl border-2 border-dashed p-16 text-center cursor-pointer transition-all duration-300 ${
+                      dragOver ? "border-primary shadow-brand bg-accent" : "border-border hover:border-primary hover:shadow-brand"
+                    }`}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+                    />
+                    <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center mx-auto mb-6 shadow-brand animate-pulse-glow">
+                      <Upload className="w-8 h-8 text-primary-foreground" />
+                    </div>
+                    <h3 className="font-display text-xl font-semibold mb-2">Drop your photo here</h3>
+                    <p className="text-muted-foreground text-sm mb-4">Or click to browse files</p>
+                    <p className="text-xs text-muted-foreground">Supports JPG, PNG, WEBP · Max 20MB</p>
+                  </div>
+                ) : (
+                  <div className="glass rounded-2xl overflow-hidden relative group">
+                    <img src={filePreviewUrl} alt="Uploaded outfit" className="w-full object-cover max-h-[500px]" />
+                    <button
+                      onClick={handleReset}
+                      className="absolute top-3 right-3 w-8 h-8 rounded-full glass flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:border-destructive hover:text-destructive"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+
+                    {results && (
+                      <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
+                        {results.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => setSelectedItem(item)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                              selectedItem?.id === item.id
+                                ? "gradient-primary text-primary-foreground shadow-brand"
+                                : "glass text-foreground hover:border-primary"
+                            }`}
+                          >
+                            {item.category}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Analyze button — shown when there's valid input and no results yet */}
+            {hasInput && !urlPreviewError && !results && (
               <GradientButton
                 onClick={handleAnalyze}
                 size="lg"
