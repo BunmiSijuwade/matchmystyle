@@ -265,7 +265,7 @@ const Analyzer = () => {
                       <img
                         src={pastedUrl}
                         alt="Outfit preview"
-                        className="w-full object-cover max-h-[500px]"
+                        className="w-full object-cover max-h-[360px]"
                         onError={() => setUrlPreviewError(true)}
                       />
                     ) : (
@@ -333,7 +333,7 @@ const Analyzer = () => {
                   </div>
                 ) : (
                   <div className="glass rounded-2xl overflow-hidden relative group">
-                    <img src={filePreviewUrl} alt="Uploaded outfit" className="w-full object-cover max-h-[500px]" />
+                    <img src={filePreviewUrl} alt="Uploaded outfit" className="w-full object-cover max-h-[360px]" />
                     <button
                       onClick={handleReset}
                       className="absolute top-3 right-3 w-8 h-8 rounded-full glass flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:border-destructive hover:text-destructive"
@@ -363,8 +363,8 @@ const Analyzer = () => {
               </>
             )}
 
-            {/* Analyze button — shown when there's valid input and no results yet */}
-            {hasInput && !urlPreviewError && !results && (
+            {/* Analyze button — always visible when there's valid input */}
+            {hasInput && !urlPreviewError && (
               <GradientButton
                 onClick={handleAnalyze}
                 size="lg"
@@ -379,7 +379,7 @@ const Analyzer = () => {
                 ) : (
                   <>
                     <Camera className="w-5 h-5 mr-2" />
-                    Analyze This Outfit
+                    {results ? "Analyze Again" : "Analyze This Outfit"}
                   </>
                 )}
               </GradientButton>
