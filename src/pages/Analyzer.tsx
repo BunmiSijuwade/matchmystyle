@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Upload, Camera, Sparkles, ShoppingBag, ExternalLink, X, Loader2, AlertCircle, Zap, Link } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
@@ -67,12 +67,21 @@ const Analyzer = () => {
   // Shared state
   const [analyzing, setAnalyzing] = useState(false);
   const [results, setResults] = useState<DetectedItem[] | null>(null);
+  const [openAccordionItem, setOpenAccordionItem] = useState<string>("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const accordionRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const hasInput = activeTab === "url" ? isValidUrl(pastedUrl) : !!uploadedFile;
   const previewSrc = activeTab === "url" ? (isValidUrl(pastedUrl) ? pastedUrl : null) : filePreviewUrl;
+
+  const handlePillClick = useCallback((itemId: string) => {
+    setOpenAccordionItem(itemId);
+    setTimeout(() => {
+      accordionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }, []);
 
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
@@ -80,6 +89,7 @@ const Analyzer = () => {
     setFilePreviewUrl(url);
     setUploadedFile(file);
     setResults(null);
+    setOpenAccordionItem("");
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -93,17 +103,20 @@ const Analyzer = () => {
     setPastedUrl(e.target.value);
     setUrlPreviewError(false);
     setResults(null);
+    setOpenAccordionItem("");
   };
 
   const handleTabSwitch = (tab: Tab) => {
     setActiveTab(tab);
     setResults(null);
+    setOpenAccordionItem("");
   };
 
   const handleAnalyze = async () => {
     if (!hasInput) return;
     setAnalyzing(true);
     setResults(null);
+    setOpenAccordionItem("");
 
     try {
       let requestBody: Record<string, string>;
@@ -164,6 +177,7 @@ const Analyzer = () => {
       }
 
       setResults(items);
+      setOpenAccordionItem("");
     } catch (err) {
       console.error("Analyze error:", err);
       toast({
@@ -182,7 +196,28 @@ const Analyzer = () => {
     setFilePreviewUrl(null);
     setUploadedFile(null);
     setResults(null);
+    setOpenAccordionItem("");
   };
+
+  // Pill overlay shared between URL and file previews
+  const ItemPills = () =>
+    results ? (
+      <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
+        {results.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => handlePillClick(item.id)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+              openAccordionItem === item.id
+                ? "gradient-primary text-primary-foreground shadow-brand"
+                : "glass text-foreground hover:border-primary"
+            }`}
+          >
+            {item.category}
+          </button>
+        ))}
+      </div>
+    ) : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -275,6 +310,7 @@ const Analyzer = () => {
                     >
                       <X className="w-4 h-4" />
                     </button>
+                    <ItemPills />
                   </div>
                 )}
               </>
@@ -316,6 +352,7 @@ const Analyzer = () => {
                     >
                       <X className="w-4 h-4" />
                     </button>
+                    <ItemPills />
                   </div>
                 )}
               </>
@@ -353,7 +390,7 @@ const Analyzer = () => {
           </div>
 
           {/* Results Column */}
-          <div className="space-y-4">
+          <div className="space-y-4" ref={accordionRef}>
             {!results && !analyzing && (
               <div className="glass rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
@@ -388,17 +425,25 @@ const Analyzer = () => {
                   <h3 className="font-display text-base font-semibold">
                     {results.length} Item{results.length !== 1 ? "s" : ""} Detected
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Click an item to see details and shop similar pieces</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Tap an item on the photo or click a title below to explore
+                  </p>
                 </div>
 
-                <Accordion type="single" collapsible defaultValue={results[0].id} className="px-2 py-2">
+                <Accordion
+                  type="single"
+                  collapsible
+                  value={openAccordionItem}
+                  onValueChange={setOpenAccordionItem}
+                  className="px-2 py-2"
+                >
                   {results.map((item) => (
                     <AccordionItem
                       key={item.id}
                       value={item.id}
                       className="border-0 rounded-xl mb-1 last:mb-0 data-[state=open]:glass-light"
                     >
-                      <AccordionTrigger className="px-4 py-3 rounded-xl hover:no-underline hover:bg-muted/50 [&[data-state=open]]:rounded-b-none transition-all group">
+                      <AccordionTrigger className="px-4 py-3 rounded-xl hover:no-underline hover:bg-muted/50 [&[data-state=open]]:rounded-b-none transition-all">
                         <div className="flex items-center gap-3 text-left">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
