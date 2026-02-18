@@ -51,26 +51,6 @@ const ItemPills = ({ results, activeId, onPillClick }: ItemPillsProps) => (
   </div>
 );
 
-interface DetectedItem {
-  id: string;
-  category: string;
-  description: string;
-  color: string;
-  style: string;
-  estimatedPrice: string;
-  matches: ProductMatch[];
-}
-
-interface ProductMatch {
-  id: string;
-  name: string;
-  brand: string;
-  price: string;
-  retailer: string;
-  url: string;
-  available: boolean;
-}
-
 type Tab = "url" | "file";
 
 const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;

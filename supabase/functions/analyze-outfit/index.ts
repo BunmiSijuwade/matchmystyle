@@ -198,10 +198,15 @@ serve(async (req) => {
       style: item.style,
       estimatedPrice: item.estimatedPrice,
       matches: item.matches.map((match: any, mIndex: number) => {
-        // Build a descriptive query: "brand name searchQuery buy"
-        const queryParts = [match.brand, match.searchQuery || match.name, "buy"].filter(Boolean);
-        const query = encodeURIComponent(queryParts.join(" "));
-        const url = `https://www.google.com/search?q=${query}`;
+        // Build a clean Google Search URL using only brand + name.
+        // Replace any + signs the AI may have included (they encode as %2B, not spaces).
+        const cleanQuery = [match.brand, match.name]
+          .filter(Boolean)
+          .join(" ")
+          .replace(/\+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        const url = `https://www.google.com/search?q=${encodeURIComponent(cleanQuery)}`;
         return {
           id: `${index + 1}${String.fromCharCode(97 + mIndex)}`,
           name: match.name,
