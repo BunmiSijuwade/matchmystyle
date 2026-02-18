@@ -12,11 +12,33 @@ serve(async (req) => {
   }
 
   try {
-    const { imageBase64, mimeType } = await req.json();
+    const body = await req.json();
+    const { imageUrl } = body;
+    let { imageBase64, mimeType } = body;
+
+    if (imageUrl) {
+      // Fetch the remote image and convert to base64 server-side
+      const imgResponse = await fetch(imageUrl);
+      if (!imgResponse.ok) {
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch image from URL" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const contentType = imgResponse.headers.get("content-type") || "image/jpeg";
+      mimeType = contentType.split(";")[0].trim();
+      const arrayBuffer = await imgResponse.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < uint8Array.length; i++) {
+        binary += String.fromCharCode(uint8Array[i]);
+      }
+      imageBase64 = btoa(binary);
+    }
 
     if (!imageBase64 || !mimeType) {
       return new Response(
-        JSON.stringify({ error: "imageBase64 and mimeType are required" }),
+        JSON.stringify({ error: "Either imageUrl or imageBase64+mimeType are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
