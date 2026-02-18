@@ -187,28 +187,9 @@ serve(async (req) => {
     const parsed = JSON.parse(toolCall.function.arguments);
     const items = parsed.items;
 
-    // Map to the DetectedItem shape expected by the frontend
-    const retailerSearchUrls: Record<string, string> = {
-      "ASOS": "https://www.asos.com/search/?q=",
-      "Zara": "https://www.zara.com/us/en/search?searchTerm=",
-      "H&M": "https://www2.hm.com/en_us/search-results.html?q=",
-      "Mango": "https://shop.mango.com/us/search?q=",
-      "& Other Stories": "https://www.stories.com/en_usd/search.html?q=",
-      "Nordstrom": "https://www.nordstrom.com/sr?origin=keywordsearch&keyword=",
-      "Steve Madden": "https://www.stevemadden.com/search?q=",
-      "Net-a-Porter": "https://www.net-a-porter.com/en-us/search?keywords=",
-      "Urban Outfitters": "https://www.urbanoutfitters.com/search?q=",
-      "Free People": "https://www.freepeople.com/search/?q=",
-      "Nike": "https://www.nike.com/search?q=",
-      "Adidas": "https://www.adidas.com/us/search?q=",
-      "Levi's": "https://www.levi.com/US/en_US/search?q=",
-      "Gap": "https://www.gap.com/browse/search.do?searchText=",
-      "Banana Republic": "https://bananarepublic.gap.com/browse/search.do?searchText=",
-      "Anthropologie": "https://www.anthropologie.com/search?q=",
-      "Revolve": "https://www.revolve.com/search?q=",
-      "Shopbop": "https://www.shopbop.com/search?terms=",
-    };
-
+    // Map to the DetectedItem shape expected by the frontend.
+    // We use plain Google Search URLs — they are universally reliable,
+    // never blocked, and always return results regardless of the query.
     const detectedItems = items.map((item: any, index: number) => ({
       id: String(index + 1),
       category: item.category,
@@ -217,20 +198,17 @@ serve(async (req) => {
       style: item.style,
       estimatedPrice: item.estimatedPrice,
       matches: item.matches.map((match: any, mIndex: number) => {
-        const baseUrl = retailerSearchUrls[match.retailer];
-        const query = encodeURIComponent(match.searchQuery || match.name);
-        // If we have a known retailer URL, use it directly.
-        // Otherwise fall back to a Google Shopping URL which works reliably in new tabs.
-        const searchUrl = baseUrl
-          ? baseUrl + query
-          : `https://www.google.com/search?tbm=shop&q=${encodeURIComponent((match.retailer ? match.retailer + " " : "") + (match.searchQuery || match.name))}`;
+        // Build a descriptive query: "brand name searchQuery buy"
+        const queryParts = [match.brand, match.searchQuery || match.name, "buy"].filter(Boolean);
+        const query = encodeURIComponent(queryParts.join(" "));
+        const url = `https://www.google.com/search?q=${query}`;
         return {
           id: `${index + 1}${String.fromCharCode(97 + mIndex)}`,
           name: match.name,
           brand: match.brand,
           price: match.price,
           retailer: match.retailer,
-          url: searchUrl,
+          url,
           available: true,
         };
       }),
