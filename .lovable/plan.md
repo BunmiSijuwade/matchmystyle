@@ -1,60 +1,55 @@
 
-## Restructure Results into an Accordion Layout
+## Fix Shopping Links — Two Problems to Solve
 
-### Current layout (what needs to change)
-Right now the results column shows:
-1. A "Selected Item Detail" card (one item at a time, chosen via pill buttons on the photo)
-2. Below it, an "All Detected Items" list that acts as a selector
+### Problem 1: Garbled Google Search URLs (the real blocker)
 
-This splits the information awkwardly — you have to pick an item from the bottom list to see its detail card above, and the "Shop Similar Items" is buried inside the detail card.
+The AI model returns `searchQuery` values with `+` signs already in them (e.g. `"oversized+camel+blazer+women"`). The current edge function code does this:
 
-### New layout (accordion)
-Replace the entire results column with a single full-width accordion below the upload zone. Each accordion item = one detected clothing item. The structure becomes:
-
-```text
-[ Accordion Item: Blazer — Oversized structured blazer ]   (collapsed)
-[ Accordion Item: Trousers — Wide-leg tailored trousers ]  (expanded)
-  ┌──────────────────────────────────────────────────────┐
-  │  Color  │  Style  │  Price Range                     │
-  ├──────────────────────────────────────────────────────┤
-  │  Shop Similar Items                                  │
-  │  ┌──────────────────────────────────────────────┐   │
-  │  │  Product name · Brand · Retailer  $XX  [→]   │   │
-  │  └──────────────────────────────────────────────┘   │
-  │  ┌──────────────────────────────────────────────┐   │
-  │  │  ...                                         │   │
-  │  └──────────────────────────────────────────────┘   │
-  └──────────────────────────────────────────────────────┘
-[ Accordion Item: Sneakers ]                             (collapsed)
+```
+queryParts.join(" ")         →  "Nanushka oversized+taupe+check+shirt buy"
+encodeURIComponent(above)   →  "Nanushka%20oversized%2Btaupe%2Bcheck%2Bshirt%20buy"
 ```
 
-- First item opens automatically when results arrive
-- Clicking another item opens it (and optionally closes the current one — single-open mode)
-- The photo upload zone stays as-is on the left (desktop) / top (mobile)
+Google receives a URL like:
+```
+?q=Nanushka%20oversized%2Btaupe%2Bcheck%2Bshirt%20buy
+```
 
-### Layout change: from 2-column grid to stacked
+Google interprets `%2B` as a **literal** `+` character, not a space. So the actual query sent to Google's search engine is:
+```
+Nanushka oversized+taupe+check+shirt buy
+```
 
-On the results side, remove the side-by-side `lg:grid-cols-2` restriction. Instead, after analysis the results accordion spans the full available width below (or beside) the upload card. On desktop, keep the two-column grid — upload left, accordion right. On mobile, they stack naturally.
+Google may or may not understand it, but results are often poor or "not found."
 
-### Technical details
+**The fix:** Strip `+` signs from `searchQuery` (replace with spaces) before joining and encoding. Also simplify the query to just `brand + name` — clear, minimal, always findable.
 
-**Component changes — `src/pages/Analyzer.tsx` only:**
+```typescript
+// Clean the searchQuery — replace + with space
+const cleanQuery = [match.brand, match.name]
+  .filter(Boolean)
+  .join(" ")
+  .replace(/\+/g, " ")           // remove any + signs from AI output
+  .replace(/\s+/g, " ")          // collapse multiple spaces
+  .trim();
 
-1. Remove `selectedItem` state — no longer needed (each accordion section is self-contained)
-2. Remove `setSelectedItem` calls
-3. Remove the pill buttons overlay on the photo (no longer needed as item selectors)
-4. Replace the entire results `div` (lines 427–512) with an accordion built from the existing Radix `Accordion` component already in the project (`src/components/ui/accordion.tsx`)
-5. Each `AccordionItem` contains:
-   - **Trigger**: category name + description + match count badge
-   - **Content**: 3-col metadata grid (Color / Style / Price Range) + "Shop Similar Items" list
+const url = `https://www.google.com/search?q=${encodeURIComponent(cleanQuery)}`;
+```
 
-**State cleanup:**
-- `selectedItem` and `setSelectedItem` removed entirely
-- All other state (`results`, `analyzing`, `activeTab`, etc.) stays the same
+### Problem 2: Duplicate interface declarations in Analyzer.tsx
 
-**No changes to:**
-- Edge function
-- Upload/URL tab logic
-- `handleAnalyze` function
-- Error handling / toast messages
-- Navbar or any other file
+`DetectedItem` and `ProductMatch` are declared twice (lines 9–27 and again at lines 54–72). This causes React ref warnings in the console. The duplicate block should be removed.
+
+### Changes
+
+**File 1: `supabase/functions/analyze-outfit/index.ts`**
+- Lines 200–204: Replace the URL-building logic to clean `+` signs before encoding, and use `brand + name` only (simpler = more reliable Google results).
+
+**File 2: `src/pages/Analyzer.tsx`**
+- Lines 54–72: Remove the duplicate `DetectedItem` and `ProductMatch` interface declarations that were accidentally left in.
+
+### Why this will fix it
+
+Google Search URLs work correctly when `q=` contains only `%20`-encoded spaces between words. A clean query like `?q=Nanushka+Oversized+Checked+Shirt` or `?q=Nanushka%20Oversized%20Checked%20Shirt` will always return relevant results. The current mixed encoding (`%20` spaces + `%2B` literal plus signs) is what's causing searches to fail.
+
+No changes to the UI, accordion, or link opening mechanism — the `<a target="_blank">` approach is already correct.
