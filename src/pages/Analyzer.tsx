@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, Camera, Sparkles, ShoppingBag, ExternalLink, X, Loader2, AlertCircle, Zap, Link } from "lucide-react";
+import { Upload, Camera, Sparkles, ShoppingBag, X, Loader2, AlertCircle, Zap, Link } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,7 @@ interface DetectedItem {
   color: string;
   style: string;
   estimatedPrice: string;
+  searchQuery: string;
   matches: ProductMatch[];
 }
 
@@ -22,8 +23,17 @@ interface ProductMatch {
   brand: string;
   price: string;
   retailer: string;
-  url: string;
   available: boolean;
+}
+
+function buildRetailerUrls(searchQuery: string) {
+  const size = localStorage.getItem("userSize") ?? "";
+  const q = encodeURIComponent([searchQuery, size].filter(Boolean).join(" ").trim());
+  return {
+    asos: `https://www.asos.com/search/?q=${q}`,
+    zara: `https://www.zara.com/us/en/search?searchTerm=${q}`,
+    nordstrom: `https://www.nordstrom.com/sr?keyword=${q}`,
+  };
 }
 
 // Extracted outside Analyzer to avoid React ref warnings
@@ -482,38 +492,38 @@ const Analyzer = () => {
                         <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-widest mb-3">
                           Shop Similar Items
                         </h4>
-                        <div className="space-y-2">
+                        {/* Informational product name list */}
+                        <div className="space-y-1 mb-4">
                           {item.matches.map((match) => (
-                            <div
-                              key={match.id}
-                              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                                match.available
-                                  ? "border-border hover:border-primary bg-background/50"
-                                  : "border-border bg-muted/20 opacity-60"
-                              }`}
-                            >
-                              <div className="min-w-0 flex-1 mr-3">
-                                <p className="font-medium text-sm truncate">{match.name}</p>
-                                <p className="text-xs text-muted-foreground">{match.brand} · {match.retailer}</p>
-                              </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                <span className="font-semibold text-gradient text-sm">{match.price}</span>
-                                {match.available ? (
-                                  <a
-                                    href={match.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center hover:shadow-glow transition-all"
-                                  >
-                                    <ExternalLink className="w-3.5 h-3.5 text-primary-foreground" />
-                                  </a>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">Out of stock</span>
-                                )}
-                              </div>
+                            <div key={match.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/40">
+                              <span className="text-sm font-medium truncate mr-2">{match.name}</span>
+                              <span className="text-xs text-muted-foreground flex-shrink-0">{match.brand} · {match.price}</span>
                             </div>
                           ))}
                         </div>
+                        {/* 3 retailer buttons */}
+                        {(() => {
+                          const urls = buildRetailerUrls(item.searchQuery);
+                          return (
+                            <div className="flex gap-2">
+                              {[
+                                { label: "Shop ASOS", href: urls.asos },
+                                { label: "Shop Zara", href: urls.zara },
+                                { label: "Shop Nordstrom", href: urls.nordstrom },
+                              ].map(({ label, href }) => (
+                                <a
+                                  key={label}
+                                  href={href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex-1 text-center text-xs font-semibold py-2.5 px-2 rounded-xl glass border border-border hover:border-primary hover:text-primary transition-all duration-200"
+                                >
+                                  {label}
+                                </a>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </AccordionContent>
                     </AccordionItem>
                   ))}
