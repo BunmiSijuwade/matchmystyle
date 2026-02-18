@@ -199,6 +199,14 @@ serve(async (req) => {
       "Net-a-Porter": "https://www.net-a-porter.com/en-us/search?keywords=",
       "Urban Outfitters": "https://www.urbanoutfitters.com/search?q=",
       "Free People": "https://www.freepeople.com/search/?q=",
+      "Nike": "https://www.nike.com/search?q=",
+      "Adidas": "https://www.adidas.com/us/search?q=",
+      "Levi's": "https://www.levi.com/US/en_US/search?q=",
+      "Gap": "https://www.gap.com/browse/search.do?searchText=",
+      "Banana Republic": "https://bananarepublic.gap.com/browse/search.do?searchText=",
+      "Anthropologie": "https://www.anthropologie.com/search?q=",
+      "Revolve": "https://www.revolve.com/search?q=",
+      "Shopbop": "https://www.shopbop.com/search?terms=",
     };
 
     const detectedItems = items.map((item: any, index: number) => ({
@@ -209,8 +217,13 @@ serve(async (req) => {
       style: item.style,
       estimatedPrice: item.estimatedPrice,
       matches: item.matches.map((match: any, mIndex: number) => {
-        const baseUrl = retailerSearchUrls[match.retailer] || `https://www.google.com/search?q=`;
-        const searchUrl = baseUrl + encodeURIComponent(match.searchQuery || match.name);
+        const baseUrl = retailerSearchUrls[match.retailer];
+        const query = encodeURIComponent(match.searchQuery || match.name);
+        // If we have a known retailer URL, use it directly.
+        // Otherwise fall back to a Google Shopping URL which works reliably in new tabs.
+        const searchUrl = baseUrl
+          ? baseUrl + query
+          : `https://www.google.com/search?tbm=shop&q=${encodeURIComponent((match.retailer ? match.retailer + " " : "") + (match.searchQuery || match.name))}`;
         return {
           id: `${index + 1}${String.fromCharCode(97 + mIndex)}`,
           name: match.name,
