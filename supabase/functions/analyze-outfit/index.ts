@@ -6,6 +6,35 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const productShape = {
+  type: "object",
+  properties: {
+    name:        { type: "string", description: "Product description e.g. Oversized Linen Blazer" },
+    brand:       { type: "string", description: "Realistic brand name e.g. H&M" },
+    price:       { type: "string", description: "Estimated price e.g. $34.99" },
+    retailer:    { type: "string", description: "Retailer name e.g. H&M" },
+    searchQuery: { type: "string", description: "Plain-text search phrase e.g. oversized linen blazer women" },
+  },
+  required: ["name", "brand", "price", "retailer", "searchQuery"],
+};
+
+function mapMatches(arr: any[], itemIndex: number, prefix: string) {
+  return (arr ?? []).map((match: any, mIndex: number) => ({
+    id: `${itemIndex + 1}-${prefix}-${mIndex}`,
+    name: match.name,
+    brand: match.brand,
+    price: match.price,
+    retailer: match.retailer,
+    searchQuery: [match.brand, match.name]
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
+    available: true,
+  }));
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -17,7 +46,6 @@ serve(async (req) => {
     let { imageBase64, mimeType } = body;
 
     if (imageUrl) {
-      // Fetch the remote image and convert to base64 server-side
       const imgResponse = await fetch(imageUrl);
       if (!imgResponse.ok) {
         return new Response(
@@ -51,7 +79,12 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are a fashion expert AI. Analyze the clothing in the image and identify every visible clothing item or accessory. For each item return: category, description, color, style, estimatedPrice, and 3 product match suggestions with realistic brand names, prices, and retailer names. Use the suggest_outfit_items tool to return structured output.`;
+    const systemPrompt = `You are a fashion expert AI. Analyze the clothing in the image and identify every visible clothing item or accessory. For each item return: category, description, color, style, estimatedPrice, searchKeywords. Then generate 4 groups of shopping suggestions:
+- bestMatch: the single most visually similar product to the detected item (any price tier, most important field)
+- budget: exactly 2 products realistically priced under $50 (e.g. SHEIN, H&M, ASOS own-brand, Boohoo, Missguided)
+- midRange: exactly 2 products realistically priced $50–$150 (e.g. Zara, Mango, & Other Stories, Topshop, ASOS Premium)
+- luxury: exactly 2 products realistically priced over $150 (e.g. Theory, Toteme, Reformation, Sandro, IRO)
+Use realistic brand names that actually sell in each price range. Use the suggest_outfit_items tool to return structured output.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -62,18 +95,13 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          {
-            role: "system",
-            content: systemPrompt,
-          },
+          { role: "system", content: systemPrompt },
           {
             role: "user",
             content: [
               {
                 type: "image_url",
-                image_url: {
-                  url: `data:${mimeType};base64,${imageBase64}`,
-                },
+                image_url: { url: `data:${mimeType};base64,${imageBase64}` },
               },
               {
                 type: "text",
@@ -87,7 +115,7 @@ serve(async (req) => {
             type: "function",
             function: {
               name: "suggest_outfit_items",
-              description: "Return a structured list of detected clothing items and accessories from the image.",
+              description: "Return a structured list of detected clothing items with tiered product suggestions.",
               parameters: {
                 type: "object",
                 properties: {
@@ -96,48 +124,39 @@ serve(async (req) => {
                     items: {
                       type: "object",
                       properties: {
-                        category: {
-                          type: "string",
-                          description: "Clothing category e.g. Blazer, Trousers, Sneakers, Dress, Bag",
+                        category:      { type: "string", description: "Clothing category e.g. Blazer, Trousers, Sneakers" },
+                        description:   { type: "string", description: "Brief descriptive label e.g. Oversized structured blazer" },
+                        color:         { type: "string", description: "Main color(s) e.g. Camel / Beige" },
+                        style:         { type: "string", description: "Style occasion e.g. Smart casual, Streetwear" },
+                        estimatedPrice:{ type: "string", description: "Estimated retail price range e.g. $80–$200" },
+                        searchKeywords:{ type: "string", description: "Comma-separated keywords e.g. oversized camel blazer women" },
+                        bestMatch: {
+                          ...productShape,
+                          description: "Single most visually similar product, any price tier",
                         },
-                        description: {
-                          type: "string",
-                          description: "Brief descriptive label e.g. Oversized structured blazer",
-                        },
-                        color: {
-                          type: "string",
-                          description: "Main color(s) of the item e.g. Camel / Beige",
-                        },
-                        style: {
-                          type: "string",
-                          description: "Style occasion e.g. Smart casual, Streetwear, Going out",
-                        },
-                        estimatedPrice: {
-                          type: "string",
-                          description: "Estimated retail price range e.g. $80–$200",
-                        },
-                        searchKeywords: {
-                          type: "string",
-                          description: "Comma-separated search keywords for finding similar items e.g. oversized camel blazer women",
-                        },
-                        matches: {
+                        budget: {
                           type: "array",
-                          items: {
-                            type: "object",
-                            properties: {
-                              name: { type: "string", description: "Product name" },
-                              brand: { type: "string", description: "Brand name" },
-                              price: { type: "string", description: "Price e.g. $89" },
-                              retailer: { type: "string", description: "Retailer name e.g. ASOS, Zara" },
-                              searchQuery: { type: "string", description: "URL-encoded search query for the retailer e.g. oversized+camel+blazer" },
-                            },
-                            required: ["name", "brand", "price", "retailer", "searchQuery"],
-                          },
-                          minItems: 1,
-                          maxItems: 3,
+                          description: "2 products priced under $50",
+                          items: productShape,
+                          minItems: 2,
+                          maxItems: 2,
+                        },
+                        midRange: {
+                          type: "array",
+                          description: "2 products priced $50–$150",
+                          items: productShape,
+                          minItems: 2,
+                          maxItems: 2,
+                        },
+                        luxury: {
+                          type: "array",
+                          description: "2 products priced over $150",
+                          items: productShape,
+                          minItems: 2,
+                          maxItems: 2,
                         },
                       },
-                      required: ["category", "description", "color", "style", "estimatedPrice", "searchKeywords", "matches"],
+                      required: ["category", "description", "color", "style", "estimatedPrice", "searchKeywords", "bestMatch", "budget", "midRange", "luxury"],
                     },
                   },
                 },
@@ -174,7 +193,6 @@ serve(async (req) => {
 
     const aiResult = await response.json();
 
-    // Parse the tool call response
     const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function?.name !== "suggest_outfit_items") {
       console.error("Unexpected AI response structure:", JSON.stringify(aiResult));
@@ -187,10 +205,7 @@ serve(async (req) => {
     const parsed = JSON.parse(toolCall.function.arguments);
     const items = parsed.items;
 
-    // Map to the DetectedItem shape expected by the frontend.
-    // The frontend builds the 3 retailer search URLs itself from searchQuery.
     const detectedItems = items.map((item: any, index: number) => {
-      // Build a clean per-item search query from description, color, and searchKeywords.
       const rawQuery = [item.description, item.color, item.searchKeywords]
         .filter(Boolean)
         .join(" ")
@@ -206,14 +221,12 @@ serve(async (req) => {
         style: item.style,
         estimatedPrice: item.estimatedPrice,
         searchQuery: rawQuery,
-        matches: item.matches.map((match: any, mIndex: number) => ({
-          id: `${index + 1}${String.fromCharCode(97 + mIndex)}`,
-          name: match.name,
-          brand: match.brand,
-          price: match.price,
-          retailer: match.retailer,
-          available: true,
-        })),
+        bestMatch: item.bestMatch
+          ? mapMatches([item.bestMatch], index, "best")[0]
+          : null,
+        budget:   mapMatches(item.budget,   index, "budget"),
+        midRange: mapMatches(item.midRange,  index, "mid"),
+        luxury:   mapMatches(item.luxury,    index, "luxury"),
       };
     });
 

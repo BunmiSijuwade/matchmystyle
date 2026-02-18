@@ -6,6 +6,16 @@ import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
+interface ProductMatch {
+  id: string;
+  name: string;
+  brand: string;
+  price: string;
+  retailer: string;
+  searchQuery: string;
+  available: boolean;
+}
+
 interface DetectedItem {
   id: string;
   category: string;
@@ -14,26 +24,20 @@ interface DetectedItem {
   style: string;
   estimatedPrice: string;
   searchQuery: string;
-  matches: ProductMatch[];
+  bestMatch: ProductMatch | null;
+  budget: ProductMatch[];
+  midRange: ProductMatch[];
+  luxury: ProductMatch[];
 }
 
-interface ProductMatch {
-  id: string;
-  name: string;
-  brand: string;
-  price: string;
-  retailer: string;
-  available: boolean;
-}
-
-function buildRetailerUrls(searchQuery: string) {
-  const size = localStorage.getItem("userSize") ?? "";
-  const q = encodeURIComponent([searchQuery, size].filter(Boolean).join(" ").trim());
-  return {
-    asos: `https://www.asos.com/search/?q=${q}`,
-    zara: `https://www.zara.com/us/en/search?searchTerm=${q}`,
-    nordstrom: `https://www.nordstrom.com/sr?keyword=${q}`,
-  };
+function buildMatchUrl(match: ProductMatch): string {
+  const q = encodeURIComponent(
+    (match.searchQuery || `${match.brand} ${match.name}`)
+      .replace(/\+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+  return `https://www.asos.com/search/?q=${q}`;
 }
 
 // Extracted outside Analyzer to avoid React ref warnings
@@ -61,7 +65,28 @@ const ItemPills = ({ results, activeId, onPillClick }: ItemPillsProps) => (
   </div>
 );
 
+const ProductRow = ({ match }: { match: ProductMatch }) => (
+  <a
+    href={buildMatchUrl(match)}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="flex items-center justify-between p-3 rounded-xl border border-border hover:border-primary bg-background/50 transition-all group"
+  >
+    <div className="min-w-0 flex-1 mr-3">
+      <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{match.name}</p>
+      <p className="text-xs text-muted-foreground">{match.brand} · {match.retailer}</p>
+    </div>
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <span className="font-semibold text-gradient text-sm">{match.price}</span>
+      <span className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center group-hover:shadow-glow transition-all">
+        <ExternalLink className="w-3.5 h-3.5 text-primary-foreground" />
+      </span>
+    </div>
+  </a>
+);
+
 type Tab = "url" | "file";
+
 
 const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;
 
@@ -465,7 +490,7 @@ const Analyzer = () => {
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-xs font-semibold uppercase tracking-widest text-primary">{item.category}</span>
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                                {item.matches.filter(m => m.available).length} matches
+                                {[item.bestMatch, ...(item.budget ?? []), ...(item.midRange ?? []), ...(item.luxury ?? [])].filter(Boolean).length} matches
                               </span>
                             </div>
                             <p className="text-sm font-medium text-foreground truncate">{item.description}</p>
@@ -488,40 +513,64 @@ const Analyzer = () => {
                           ))}
                         </div>
 
-                        {/* Shop Similar Items */}
-                        <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-widest mb-3">
-                          Shop Similar Items
-                        </h4>
-                        <div className="space-y-2">
-                          {item.matches.map((match) => {
-                            const q = encodeURIComponent(
-                              `${match.brand} ${match.name}`.replace(/\+/g, " ").replace(/\s+/g, " ").trim()
-                            );
-                            const href = `https://www.asos.com/search/?q=${q}`;
-                            return (
-                              <div
-                                key={match.id}
-                                className="flex items-center justify-between p-3 rounded-xl border border-border hover:border-primary bg-background/50 transition-all"
-                              >
-                                <div className="min-w-0 flex-1 mr-3">
-                                  <p className="font-medium text-sm truncate">{match.name}</p>
-                                  <p className="text-xs text-muted-foreground">{match.brand} · {match.retailer}</p>
-                                </div>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  <span className="font-semibold text-gradient text-sm">{match.price}</span>
-                                  <a
-                                    href={href}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center hover:shadow-glow transition-all"
-                                  >
-                                    <ExternalLink className="w-3.5 h-3.5 text-primary-foreground" />
-                                  </a>
-                                </div>
-                              </div>
-                            );
-                          })}
+                        {/* AI disclaimer */}
+                        <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-muted border border-border">
+                          <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                          <p className="text-xs text-muted-foreground font-medium">
+                            AI suggestions — prices are estimates. Click any item to search on ASOS.
+                          </p>
                         </div>
+
+                        {/* Tiered product sections */}
+                        <div className="space-y-4">
+                          {/* Best Match */}
+                          {item.bestMatch && (
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Best Match</span>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground">★</span>
+                              </div>
+                              <ProductRow match={item.bestMatch} />
+                            </div>
+                          )}
+
+                          {/* Budget */}
+                          {item.budget?.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                                Budget <span className="normal-case font-normal">· Under $50</span>
+                              </p>
+                              <div className="space-y-2">
+                                {item.budget.map((match) => <ProductRow key={match.id} match={match} />)}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Mid-Range */}
+                          {item.midRange?.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                                Mid-Range <span className="normal-case font-normal">· $50–$150</span>
+                              </p>
+                              <div className="space-y-2">
+                                {item.midRange.map((match) => <ProductRow key={match.id} match={match} />)}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Luxury */}
+                          {item.luxury?.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                                Luxury <span className="normal-case font-normal">· $150+</span>
+                              </p>
+                              <div className="space-y-2">
+                                {item.luxury.map((match) => <ProductRow key={match.id} match={match} />)}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
                       </AccordionContent>
                     </AccordionItem>
                   ))}
