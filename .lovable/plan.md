@@ -1,68 +1,60 @@
 
-## What's Already Done vs. What Needs Building
+## Restructure Results into an Accordion Layout
 
-### Already in place (no changes needed)
-- `supabase/functions/analyze-outfit/index.ts` — fully implemented with `google/gemini-3-flash-preview`, tool-calling schema, CORS headers, and 429/402 error handling
-- `src/pages/Analyzer.tsx` — file upload path already calls the real edge function and parses `DetectedItem[]` correctly
+### Current layout (what needs to change)
+Right now the results column shows:
+1. A "Selected Item Detail" card (one item at a time, chosen via pill buttons on the photo)
+2. Below it, an "All Detected Items" list that acts as a selector
 
-### Two things that need fixing
+This splits the information awkwardly — you have to pick an item from the bottom list to see its detail card above, and the "Shop Similar Items" is buried inside the detail card.
 
----
+### New layout (accordion)
+Replace the entire results column with a single full-width accordion below the upload zone. Each accordion item = one detected clothing item. The structure becomes:
 
-## 1. `supabase/config.toml` — Register the function
-
-Add the function entry so it's recognized and deployed with JWT verification disabled:
-
-```toml
-project_id = "dqxrhzlbtwrrxnwdaybh"
-
-[functions.analyze-outfit]
-verify_jwt = false
+```text
+[ Accordion Item: Blazer — Oversized structured blazer ]   (collapsed)
+[ Accordion Item: Trousers — Wide-leg tailored trousers ]  (expanded)
+  ┌──────────────────────────────────────────────────────┐
+  │  Color  │  Style  │  Price Range                     │
+  ├──────────────────────────────────────────────────────┤
+  │  Shop Similar Items                                  │
+  │  ┌──────────────────────────────────────────────┐   │
+  │  │  Product name · Brand · Retailer  $XX  [→]   │   │
+  │  └──────────────────────────────────────────────┘   │
+  │  ┌──────────────────────────────────────────────┐   │
+  │  │  ...                                         │   │
+  │  └──────────────────────────────────────────────┘   │
+  └──────────────────────────────────────────────────────┘
+[ Accordion Item: Sneakers ]                             (collapsed)
 ```
 
----
+- First item opens automatically when results arrive
+- Clicking another item opens it (and optionally closes the current one — single-open mode)
+- The photo upload zone stays as-is on the left (desktop) / top (mobile)
 
-## 2. `supabase/functions/analyze-outfit/index.ts` — Add URL support
+### Layout change: from 2-column grid to stacked
 
-The edge function currently only accepts `imageBase64` + `mimeType`. It needs to also handle `imageUrl` (a direct image URL from Instagram/TikTok screenshots etc.) by fetching the remote image server-side and converting it to base64 internally. The input contract becomes:
+On the results side, remove the side-by-side `lg:grid-cols-2` restriction. Instead, after analysis the results accordion spans the full available width below (or beside) the upload card. On desktop, keep the two-column grid — upload left, accordion right. On mobile, they stack naturally.
 
-- **File upload path**: client sends `{ imageBase64, mimeType }`
-- **URL path**: client sends `{ imageUrl }` — edge function fetches the URL, reads the bytes, base64-encodes them, detects the MIME type from the Content-Type header, then proceeds identically to the file path
+### Technical details
 
-No changes to the AI call or response parsing — same path after the image is in base64 form.
+**Component changes — `src/pages/Analyzer.tsx` only:**
 
----
+1. Remove `selectedItem` state — no longer needed (each accordion section is self-contained)
+2. Remove `setSelectedItem` calls
+3. Remove the pill buttons overlay on the photo (no longer needed as item selectors)
+4. Replace the entire results `div` (lines 427–512) with an accordion built from the existing Radix `Accordion` component already in the project (`src/components/ui/accordion.tsx`)
+5. Each `AccordionItem` contains:
+   - **Trigger**: category name + description + match count badge
+   - **Content**: 3-col metadata grid (Color / Style / Price Range) + "Shop Similar Items" list
 
-## 3. `src/pages/Analyzer.tsx` — Add two-tab interface
+**State cleanup:**
+- `selectedItem` and `setSelectedItem` removed entirely
+- All other state (`results`, `analyzing`, `activeTab`, etc.) stays the same
 
-Replace the current single upload zone with a tab switcher using two tabs:
-
-**Tab 1 — "Paste URL"**
-- A text input where users paste an image URL (from Instagram, TikTok, or any direct image link)
-- A preview of the URL image (rendered in an `<img>` tag once a valid URL is pasted)
-- Sends `{ imageUrl }` to the edge function
-
-**Tab 2 — "Upload File"**
-- Identical to the current drag-and-drop file upload zone (no changes to that logic)
-- Sends `{ imageBase64, mimeType }` to the edge function
-
-**Shared behavior:**
-- Both tabs share the same Analyze button, results column, and all existing state (`results`, `selectedItem`, `analyzing`)
-- Reset (X button) clears both tabs' state
-- `handleAnalyze` branches on whether there's a `uploadedFile` or a `pastedUrl` and sends the appropriate payload
-- The results display, item selection, and shopping links remain completely unchanged
-
-### Tab UI approach
-Use simple custom tab buttons (styled with the existing `glass` / `gradient-primary` classes) — no need for Radix Tabs. Two buttons side by side as a pill toggle above the upload zone.
-
----
-
-## File Change Summary
-
-| File | Change |
-|---|---|
-| `supabase/config.toml` | Add `[functions.analyze-outfit]` with `verify_jwt = false` |
-| `supabase/functions/analyze-outfit/index.ts` | Add `imageUrl` fetch-and-convert path before the AI call |
-| `src/pages/Analyzer.tsx` | Add tab state + URL input tab alongside existing file upload tab |
-
-No new dependencies, no database changes, no auth changes.
+**No changes to:**
+- Edge function
+- Upload/URL tab logic
+- `handleAnalyze` function
+- Error handling / toast messages
+- Navbar or any other file
