@@ -1,35 +1,82 @@
 
-## Replace Shop Links with 3 Retailer Buttons
+## AI-Generated Tiered Product Suggestions
 
-### What changes and where
+### Overview
 
-Two files need editing — the edge function and the frontend page.
-
----
-
-### 1. Edge function: `supabase/functions/analyze-outfit/index.ts`
-
-**Current behavior:** The edge function generates a single Google Search URL per match and returns `url` on each match object.
-
-**New behavior:** Instead of generating one URL, the edge function will generate a `searchQuery` string per item — a clean, human-readable phrase built from the item's `description`, `color`, and `searchKeywords` fields. The frontend will then build the three retailer URLs itself from this query string.
-
-**What changes (lines 193–219):**
-- Strip the URL-building logic entirely.
-- Instead, produce a clean `searchQuery` per match by combining `item.description`, `item.color`, and `item.searchKeywords` (stripping any `+` signs from AI output, collapsing whitespace).
-- Return `searchQuery` on each match instead of `url`.
-
-The returned match shape becomes:
-```
-{ id, name, brand, price, retailer, searchQuery, available: true }
-```
+The AI tool schema in the edge function will be redesigned to return four categorized match groups per detected item instead of a flat `matches` array. The frontend will render them in labeled sections with a clear "AI Suggestions" disclaimer.
 
 ---
 
-### 2. Frontend: `src/pages/Analyzer.tsx`
+### File 1: `supabase/functions/analyze-outfit/index.ts`
 
-**A. Update `ProductMatch` interface (lines 19–27)**
+**System prompt update (line 54)**
 
-Remove `url: string`, add `searchQuery: string`:
+Change from asking for "3 product match suggestions" to asking for tiered suggestions:
+
+```
+You are a fashion expert AI. For each detected item, identify: category, description, color, style, estimatedPrice, searchKeywords. Then generate 4 groups of shopping suggestions:
+- bestMatch: the single most visually similar product (any price tier)
+- budget: 2 products realistically priced under $50 (e.g. SHEIN, H&M, ASOS own-brand, Boohoo, Missguided)
+- midRange: 2 products realistically priced $50–$150 (e.g. Zara, Mango, & Other Stories, Topshop, ASOS premium)
+- luxury: 2 products realistically priced over $150 (e.g. Theory, Toteme, Reformation, Sandro, IRO)
+Use realistic brand names that actually sell in each price range.
+```
+
+**Updated AI tool schema (lines 85–148)**
+
+Replace the `matches` array field with four fields per item:
+
+```
+bestMatch: { name, brand, price, retailer, searchQuery }   // single object
+budget:    [{ name, brand, price, retailer, searchQuery }, ...]  // 2 items
+midRange:  [{ name, brand, price, retailer, searchQuery }, ...]  // 2 items
+luxury:    [{ name, brand, price, retailer, searchQuery }, ...]  // 2 items
+```
+
+Each product object has:
+- `name` — product description (e.g. "Oversized Blazer")
+- `brand` — realistic brand (e.g. "H&M")
+- `price` — estimated price (e.g. "$34.99")
+- `retailer` — retailer name (e.g. "H&M")
+- `searchQuery` — plain-text search phrase for that item
+
+**Updated mapping (lines 192–218)**
+
+Replace the flat `matches.map()` with mapping each of the four groups:
+
+```typescript
+function mapMatches(arr: any[], itemIndex: number, prefix: string) {
+  return (arr ?? []).map((match: any, mIndex: number) => ({
+    id: `${itemIndex + 1}-${prefix}-${mIndex}`,
+    name: match.name,
+    brand: match.brand,
+    price: match.price,
+    retailer: match.retailer,
+    searchQuery: [match.brand, match.name]
+      .filter(Boolean).join(" ")
+      .replace(/\+/g, " ").replace(/\s+/g, " ").trim(),
+    available: true,
+  }));
+}
+
+// Per item:
+{
+  id, category, description, color, style, estimatedPrice, searchQuery,
+  bestMatch: mapMatches([item.bestMatch], index, "best")[0] ?? null,
+  budget:    mapMatches(item.budget,    index, "budget"),
+  midRange:  mapMatches(item.midRange,  index, "mid"),
+  luxury:    mapMatches(item.luxury,    index, "luxury"),
+}
+```
+
+---
+
+### File 2: `src/pages/Analyzer.tsx`
+
+**A. Updated interfaces (lines 9–27)**
+
+`ProductMatch` gets a `searchQuery` field (already there but not wired for tiers). `DetectedItem` drops `matches: ProductMatch[]` and gains four typed fields:
+
 ```typescript
 interface ProductMatch {
   id: string;
@@ -37,66 +84,96 @@ interface ProductMatch {
   brand: string;
   price: string;
   retailer: string;
-  searchQuery: string;   // replaces url
+  searchQuery: string;
   available: boolean;
 }
-```
 
-**B. Add a size-aware retailer URL builder (new helper function)**
-
-Read the user's saved size from `localStorage` (key: `"userSize"`, fallback: `""`), append it to the search query, then build the three URLs:
-
-```typescript
-function buildRetailerUrls(searchQuery: string) {
-  const size = localStorage.getItem("userSize") ?? "";
-  const q = [searchQuery, size].filter(Boolean).join(" ").trim();
-  const encoded = encodeURIComponent(q);
-  return {
-    asos: `https://www.asos.com/search/?q=${encoded}`,
-    zara: `https://www.zara.com/us/en/search?searchTerm=${encoded}`,
-    nordstrom: `https://www.nordstrom.com/sr?keyword=${encoded}`,
-  };
+interface DetectedItem {
+  id: string;
+  category: string;
+  description: string;
+  color: string;
+  style: string;
+  estimatedPrice: string;
+  searchQuery: string;
+  bestMatch: ProductMatch | null;
+  budget: ProductMatch[];
+  midRange: ProductMatch[];
+  luxury: ProductMatch[];
 }
 ```
 
-**C. Replace the "Shop Similar Items" list (lines 481–516)**
+**B. Remove `buildRetailerUrls` (lines 29–37)** — replaced by a simple per-match URL builder.
 
-Remove the current per-match card rows (name, brand, retailer, price, icon button). Replace with a single section per accordion item that shows **3 buttons side by side** — one per retailer — derived from the item's `searchKeywords` / `description`.
+**C. Add `buildMatchUrl` helper**
 
-Because the search query should describe the item (not individual product matches), the query will be built once per `item` using `item.searchKeywords` (already returned by the AI in `searchKeywords` field on the item, not the match). The matches list currently holds brand/name suggestions — those will be shown as a simple text list above the buttons.
-
-New layout inside `AccordionContent`, replacing lines 481–516:
-
-```text
-Shop Similar Items   (heading)
-
-┌──────────────────────────────────────────────────┐
-│  Product name · Brand                            │  ← kept as informational list
-│  Product name · Brand                            │
-│  Product name · Brand                            │
-└──────────────────────────────────────────────────┘
-
-[ Shop ASOS ]  [ Shop Zara ]  [ Shop Nordstrom ]   ← 3 anchor buttons side by side
+```typescript
+function buildMatchUrl(match: ProductMatch): string {
+  const q = encodeURIComponent(match.searchQuery || `${match.brand} ${match.name}`);
+  return `https://www.asos.com/search/?q=${q}`;
+}
 ```
 
-The three buttons are `<a>` tags with `target="_blank"` and `rel="noopener noreferrer"`. They use the `glass` or `gradient-primary` styling consistent with the rest of the page. Each opens in a new tab — no `window.open()`, no popup blocker issues.
+**D. Fix match count badge (line 468)**
 
-**D. Remove `ExternalLink` icon import** — no longer used.
+Change from `item.matches.filter(...).length` to total across all tiers:
+
+```typescript
+{[item.bestMatch, ...(item.budget ?? []), ...(item.midRange ?? []), ...(item.luxury ?? [])].filter(Boolean).length} matches
+```
+
+**E. Replace accordion content (lines 491–524)**
+
+Remove the old `item.matches.map()` block. Replace with four labeled sections:
+
+```
+━━ AI SUGGESTIONS — prices are estimates ━━   (disclaimer banner)
+
+BEST MATCH
+  └─ [product row — ExternalLink button → ASOS search]
+
+BUDGET  ·  Under $50
+  └─ [product row]
+  └─ [product row]
+
+MID-RANGE  ·  $50–$150
+  └─ [product row]
+  └─ [product row]
+
+LUXURY  ·  $150+
+  └─ [product row]
+  └─ [product row]
+```
+
+Each product row keeps the existing card style:
+```
+┌────────────────────────────────────────────┐
+│  Product name                   $price  [↗] │
+│  Brand · Retailer                            │
+└────────────────────────────────────────────┘
+```
+
+- Empty tiers (AI returned nothing) are hidden — no empty states needed
+- The disclaimer banner uses a soft amber/muted style to clearly indicate AI estimates
+- Section headings use the existing `text-xs font-semibold uppercase tracking-widest text-muted-foreground` style
+- "Best Match" gets a small colored badge to make it stand out
 
 ---
 
-### What does NOT change
-- Upload/URL tab logic
-- Pill buttons on the image
-- Accordion open/close behavior
-- Pill click → scroll behavior
+### What stays the same
+- Upload / URL tab logic, drag-and-drop, file handling
+- Image preview, reset button, pill overlays
+- Pill → scroll behavior (`handlePillClick`)
 - `handleAnalyze`, error handling, toasts
-- Navbar, any other file
-- Edge function AI prompt and tool schema (the AI still returns `matches` with `searchQuery` per match — we just stop converting those into Google URLs)
+- Accordion open/close, `openAccordionItem` state
+- Metadata grid (Color / Style / Price Range)
+- Navbar and all other files
+- `ExternalLink` icon (still used per product row)
 
 ---
 
 ### Technical notes
-- `localStorage.getItem("userSize")` returns `null` if unset; the `??` operator gives an empty string, so the query still works without a size.
-- All three retailer search URLs accept plain URL-encoded query strings — no special auth, no API key, no CORS — they open as regular browser navigations.
-- Since the query is built per item (from `item.searchKeywords`), all 3 buttons reflect the full item context (color, description, style) rather than a single product name.
+- The AI tool uses `required` constraints to ensure all four groups are always returned. If an item genuinely has no luxury equivalent, the AI will still attempt to fill the field — we defensively handle an empty array on both sides.
+- `buildMatchUrl` falls back to `brand + name` if `searchQuery` is empty, so no broken links.
+- The `bestMatch` field is a single object (not an array) in the schema — mapped to `ProductMatch | null` on the frontend with a null check before rendering.
+- No database changes needed — this is purely a prompt + schema + UI update.
