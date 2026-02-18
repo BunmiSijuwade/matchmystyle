@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface DetectedItem {
   id: string;
@@ -66,7 +67,6 @@ const Analyzer = () => {
   // Shared state
   const [analyzing, setAnalyzing] = useState(false);
   const [results, setResults] = useState<DetectedItem[] | null>(null);
-  const [selectedItem, setSelectedItem] = useState<DetectedItem | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -80,7 +80,6 @@ const Analyzer = () => {
     setFilePreviewUrl(url);
     setUploadedFile(file);
     setResults(null);
-    setSelectedItem(null);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -94,20 +93,17 @@ const Analyzer = () => {
     setPastedUrl(e.target.value);
     setUrlPreviewError(false);
     setResults(null);
-    setSelectedItem(null);
   };
 
   const handleTabSwitch = (tab: Tab) => {
     setActiveTab(tab);
     setResults(null);
-    setSelectedItem(null);
   };
 
   const handleAnalyze = async () => {
     if (!hasInput) return;
     setAnalyzing(true);
     setResults(null);
-    setSelectedItem(null);
 
     try {
       let requestBody: Record<string, string>;
@@ -168,7 +164,6 @@ const Analyzer = () => {
       }
 
       setResults(items);
-      setSelectedItem(items[0]);
     } catch (err) {
       console.error("Analyze error:", err);
       toast({
@@ -187,7 +182,6 @@ const Analyzer = () => {
     setFilePreviewUrl(null);
     setUploadedFile(null);
     setResults(null);
-    setSelectedItem(null);
   };
 
   return (
@@ -281,24 +275,6 @@ const Analyzer = () => {
                     >
                       <X className="w-4 h-4" />
                     </button>
-
-                    {results && (
-                      <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
-                        {results.map((item) => (
-                          <button
-                            key={item.id}
-                            onClick={() => setSelectedItem(item)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                              selectedItem?.id === item.id
-                                ? "gradient-primary text-primary-foreground shadow-brand"
-                                : "glass text-foreground hover:border-primary"
-                            }`}
-                          >
-                            {item.category}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 )}
               </>
@@ -340,30 +316,12 @@ const Analyzer = () => {
                     >
                       <X className="w-4 h-4" />
                     </button>
-
-                    {results && (
-                      <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
-                        {results.map((item) => (
-                          <button
-                            key={item.id}
-                            onClick={() => setSelectedItem(item)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                              selectedItem?.id === item.id
-                                ? "gradient-primary text-primary-foreground shadow-brand"
-                                : "glass text-foreground hover:border-primary"
-                            }`}
-                          >
-                            {item.category}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 )}
               </>
             )}
 
-            {/* Analyze button — always visible when there's valid input */}
+            {/* Analyze button */}
             {hasInput && !urlPreviewError && (
               <GradientButton
                 onClick={handleAnalyze}
@@ -424,91 +382,89 @@ const Analyzer = () => {
               </div>
             )}
 
-            {results && selectedItem && (
-              <div className="space-y-4">
-                {/* Selected Item Detail */}
-                <div className="glass rounded-2xl p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <div className="inline-block px-3 py-1 rounded-full text-xs font-medium text-primary-foreground mb-2 gradient-primary">
-                        {selectedItem.category}
-                      </div>
-                      <h3 className="font-display text-xl font-semibold">{selectedItem.description}</h3>
-                    </div>
-                  </div>
+            {results && results.length > 0 && (
+              <div className="glass rounded-2xl overflow-hidden">
+                <div className="px-6 pt-5 pb-3 border-b border-border">
+                  <h3 className="font-display text-base font-semibold">
+                    {results.length} Item{results.length !== 1 ? "s" : ""} Detected
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Click an item to see details and shop similar pieces</p>
+                </div>
 
-                  <div className="grid grid-cols-3 gap-3 mb-6">
-                    {[
-                      { label: "Color", value: selectedItem.color },
-                      { label: "Style", value: selectedItem.style },
-                      { label: "Price Range", value: selectedItem.estimatedPrice },
-                    ].map(({ label, value }) => (
-                      <div key={label} className="bg-muted rounded-xl p-3">
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
-                        <p className="text-sm font-medium">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-widest mb-3">
-                    Shop Similar Items
-                  </h4>
-                  <div className="space-y-3">
-                    {selectedItem.matches.map((match) => (
-                      <div
-                        key={match.id}
-                        className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-                          match.available
-                            ? "border-border hover:border-primary bg-muted/50"
-                            : "border-border bg-muted/20 opacity-60"
-                        }`}
-                      >
-                        <div>
-                          <p className="font-medium text-sm">{match.name}</p>
-                          <p className="text-xs text-muted-foreground">{match.brand} · {match.retailer}</p>
+                <Accordion type="single" collapsible defaultValue={results[0].id} className="px-2 py-2">
+                  {results.map((item) => (
+                    <AccordionItem
+                      key={item.id}
+                      value={item.id}
+                      className="border-0 rounded-xl mb-1 last:mb-0 data-[state=open]:glass-light"
+                    >
+                      <AccordionTrigger className="px-4 py-3 rounded-xl hover:no-underline hover:bg-muted/50 [&[data-state=open]]:rounded-b-none transition-all group">
+                        <div className="flex items-center gap-3 text-left">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-semibold uppercase tracking-widest text-primary">{item.category}</span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                                {item.matches.filter(m => m.available).length} matches
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium text-foreground truncate">{item.description}</p>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-semibold text-gradient">{match.price}</span>
-                          {match.available ? (
-                            <button
-                              onClick={() => window.open(match.url, '_blank', 'noopener,noreferrer')}
-                              className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center hover:shadow-glow transition-all"
+                      </AccordionTrigger>
+
+                      <AccordionContent className="px-4 pb-4 pt-0">
+                        {/* Metadata grid */}
+                        <div className="grid grid-cols-3 gap-2 mb-4 mt-3">
+                          {[
+                            { label: "Color", value: item.color },
+                            { label: "Style", value: item.style },
+                            { label: "Price Range", value: item.estimatedPrice },
+                          ].map(({ label, value }) => (
+                            <div key={label} className="bg-muted rounded-xl p-3">
+                              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+                              <p className="text-sm font-medium">{value}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Shop Similar Items */}
+                        <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-widest mb-3">
+                          Shop Similar Items
+                        </h4>
+                        <div className="space-y-2">
+                          {item.matches.map((match) => (
+                            <div
+                              key={match.id}
+                              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                                match.available
+                                  ? "border-border hover:border-primary bg-background/50"
+                                  : "border-border bg-muted/20 opacity-60"
+                              }`}
                             >
-                              <ExternalLink className="w-3.5 h-3.5 text-primary-foreground" />
-                            </button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">Out of stock</span>
-                          )}
+                              <div className="min-w-0 flex-1 mr-3">
+                                <p className="font-medium text-sm truncate">{match.name}</p>
+                                <p className="text-xs text-muted-foreground">{match.brand} · {match.retailer}</p>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className="font-semibold text-gradient text-sm">{match.price}</span>
+                                {match.available ? (
+                                  <button
+                                    onClick={() => window.open(match.url, "_blank", "noopener,noreferrer")}
+                                    className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center hover:shadow-glow transition-all"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5 text-primary-foreground" />
+                                  </button>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">Out of stock</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* All Detected Items */}
-                <div className="glass rounded-2xl p-4">
-                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-widest mb-3 px-2">
-                    All Detected Items ({results.length})
-                  </h4>
-                  <div className="space-y-1">
-                    {results.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => setSelectedItem(item)}
-                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all ${
-                          selectedItem?.id === item.id
-                            ? "gradient-primary text-primary-foreground"
-                            : "hover:bg-muted text-foreground"
-                        }`}
-                      >
-                        <span className="font-medium text-sm">{item.category} — {item.description}</span>
-                        <span className={`text-xs ${selectedItem?.id === item.id ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                          {item.matches.filter(m => m.available).length} matches
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
               </div>
             )}
           </div>
