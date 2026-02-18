@@ -188,36 +188,34 @@ serve(async (req) => {
     const items = parsed.items;
 
     // Map to the DetectedItem shape expected by the frontend.
-    // We use plain Google Search URLs — they are universally reliable,
-    // never blocked, and always return results regardless of the query.
-    const detectedItems = items.map((item: any, index: number) => ({
-      id: String(index + 1),
-      category: item.category,
-      description: item.description,
-      color: item.color,
-      style: item.style,
-      estimatedPrice: item.estimatedPrice,
-      matches: item.matches.map((match: any, mIndex: number) => {
-        // Build a clean Google Search URL using only brand + name.
-        // Replace any + signs the AI may have included (they encode as %2B, not spaces).
-        const cleanQuery = [match.brand, match.name]
-          .filter(Boolean)
-          .join(" ")
-          .replace(/\+/g, " ")
-          .replace(/\s+/g, " ")
-          .trim();
-        const url = `https://www.google.com/search?q=${encodeURIComponent(cleanQuery)}`;
-        return {
+    // The frontend builds the 3 retailer search URLs itself from searchQuery.
+    const detectedItems = items.map((item: any, index: number) => {
+      // Build a clean per-item search query from description, color, and searchKeywords.
+      const rawQuery = [item.description, item.color, item.searchKeywords]
+        .filter(Boolean)
+        .join(" ")
+        .replace(/\+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      return {
+        id: String(index + 1),
+        category: item.category,
+        description: item.description,
+        color: item.color,
+        style: item.style,
+        estimatedPrice: item.estimatedPrice,
+        searchQuery: rawQuery,
+        matches: item.matches.map((match: any, mIndex: number) => ({
           id: `${index + 1}${String.fromCharCode(97 + mIndex)}`,
           name: match.name,
           brand: match.brand,
           price: match.price,
           retailer: match.retailer,
-          url,
           available: true,
-        };
-      }),
-    }));
+        })),
+      };
+    });
 
     return new Response(
       JSON.stringify({ items: detectedItems }),
