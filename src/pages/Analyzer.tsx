@@ -30,6 +30,35 @@ interface DetectedItem {
   luxury: ProductMatch[];
 }
 
+const RETAILER_SEARCH_URLS: Record<string, (q: string) => string> = {
+  "asos":            (q) => `https://www.asos.com/search/?q=${q}`,
+  "h&m":             (q) => `https://www2.hm.com/en_us/search-results.html?q=${q}`,
+  "zara":            (q) => `https://www.zara.com/us/en/search?searchTerm=${q}`,
+  "mango":           (q) => `https://shop.mango.com/us/women/search?q=${q}`,
+  "& other stories": (q) => `https://www.stories.com/en_usd/search?q=${q}`,
+  "other stories":   (q) => `https://www.stories.com/en_usd/search?q=${q}`,
+  "toteme":          (q) => `https://toteme-studio.com/search?q=${q}`,
+  "net-a-porter":    (q) => `https://www.net-a-porter.com/en-us/shop/search?q=${q}`,
+  "farfetch":        (q) => `https://www.farfetch.com/shopping/women/search/items.aspx?q=${q}`,
+  "nordstrom":       (q) => `https://www.nordstrom.com/sr?keyword=${q}`,
+  "bershka":         (q) => `https://www.bershka.com/us/search?term=${q}`,
+  "pull&bear":       (q) => `https://www.pullandbear.com/us/search?term=${q}`,
+  "massimo dutti":   (q) => `https://www.massimodutti.com/us/search?searchTerm=${q}`,
+  "reformation":     (q) => `https://www.thereformation.com/search?q=${q}`,
+  "shopbop":         (q) => `https://www.shopbop.com/search?q=${q}`,
+  "ssense":          (q) => `https://www.ssense.com/en-us/women/search?q=${q}`,
+  "sandro":          (q) => `https://us.sandro-paris.com/en/search/?q=${q}`,
+  "iro":             (q) => `https://us.iroparis.com/search?q=${q}`,
+  "theory":          (q) => `https://www.theory.com/search?q=${q}`,
+  "topshop":         (q) => `https://www.asos.com/topshop/cat/?q=${q}`,
+  "missguided":      (q) => `https://www.asos.com/search/?q=${q}&brand=Missguided`,
+  "boohoo":          (q) => `https://www.boohoo.com/search?q=${q}`,
+  "shein":           (q) => `https://www.shein.com/Search.html?q=${q}`,
+  "amazon":          (q) => `https://www.amazon.com/s?k=${q}`,
+  "charles & keith": (q) => `https://www.charleskeith.com/us/search?q=${q}`,
+  "nanushka":        (q) => `https://www.nanushka.com/search?query=${q}`,
+};
+
 function buildMatchUrl(match: ProductMatch): string {
   const q = encodeURIComponent(
     (match.searchQuery || `${match.brand} ${match.name}`)
@@ -37,6 +66,14 @@ function buildMatchUrl(match: ProductMatch): string {
       .replace(/\s+/g, " ")
       .trim()
   );
+  const retailerKey = (match.retailer || "").toLowerCase().trim();
+  const builder = RETAILER_SEARCH_URLS[retailerKey];
+  if (builder) return builder(q);
+  // Fallback: try matching by brand if retailer isn't in the map
+  const brandKey = (match.brand || "").toLowerCase().trim();
+  const brandBuilder = RETAILER_SEARCH_URLS[brandKey];
+  if (brandBuilder) return brandBuilder(q);
+  // Final fallback: ASOS
   return `https://www.asos.com/search/?q=${q}`;
 }
 
