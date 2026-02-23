@@ -12,6 +12,23 @@ import { getSizeRecommendation, type UserMeasurements, type SizeRecommendation }
 
 const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;
 
+const VINTAGE_PLATFORMS = [
+  { name: "Poshmark",             url: (q: string) => `https://poshmark.com/search?query=${q}` },
+  { name: "Depop",                url: (q: string) => `https://www.depop.com/search/?q=${q}` },
+  { name: "ThredUp",              url: (q: string) => `https://www.thredup.com/products?search_text=${q}` },
+  { name: "Vestiaire Collective", url: (q: string) => `https://www.vestiairecollective.com/search/?q=${q}` },
+];
+
+function pickVintagePlatform(index: number) {
+  return VINTAGE_PLATFORMS[index % VINTAGE_PLATFORMS.length];
+}
+
+function discountPrice(price: string): string {
+  const num = parseFloat(price.replace(/[^0-9.]/g, ""));
+  if (isNaN(num)) return price;
+  return `$${Math.round(num * 0.55)}`;
+}
+
 const RETAILER_SEARCH_URLS: Record<string, (q: string) => string> = {
   "asos":            (q) => `https://www.asos.com/search/?q=${q}`,
   "h&m":             (q) => `https://www2.hm.com/en_us/search-results.html?q=${q}`,
@@ -59,23 +76,51 @@ const RETAILER_SEARCH_URLS: Record<string, (q: string) => string> = {
   "urban outfitters":(q) => `https://www.urbanoutfitters.com/search?q=${q}`,
   "anthropologie":   (q) => `https://www.anthropologie.com/search?q=${q}`,
   "revolve":         (q) => `https://www.revolve.com/r/search.jsp?query=${q}`,
+  "saks fifth avenue": (q) => `https://www.saksfifthavenue.com/search?q=${q}`,
+  "saks":            (q) => `https://www.saksfifthavenue.com/search?q=${q}`,
+  "neiman marcus":   (q) => `https://www.neimanmarcus.com/search?q=${q}`,
+  "bloomingdale's":  (q) => `https://www.bloomingdales.com/shop/search?keyword=${q}`,
+  "bloomingdales":   (q) => `https://www.bloomingdales.com/shop/search?keyword=${q}`,
+  "new balance":     (q) => `https://www.newbalance.com/search?q=${q}`,
+  "onitsuka tiger":  (q) => `https://www.onitsukatiger.com/us/en-us/search?q=${q}`,
+  "golden goose":    (q) => `https://www.goldengoose.com/us/en/search?q=${q}`,
+  "loewe":           (q) => `https://www.loewe.com/eur/en/search?q=${q}`,
+  "warby parker":    (q) => `https://www.warbyparker.com/eyeglasses?q=${q}`,
+  "ray-ban":         (q) => `https://www.ray-ban.com/usa/search?q=${q}`,
+  "quay":            (q) => `https://www.quayaustralia.com/search?q=${q}`,
+  "quay australia":  (q) => `https://www.quayaustralia.com/search?q=${q}`,
+  "zenni":           (q) => `https://www.zennioptical.com/b/search?q=${q}`,
+  "zenni optical":   (q) => `https://www.zennioptical.com/b/search?q=${q}`,
+  "rag & bone":      (q) => `https://www.rag-bone.com/search?q=${q}`,
+  "old navy":        (q) => `https://oldnavy.gap.com/browse/search.do?searchText=${q}`,
+  "isabel marant":   (q) => `https://www.isabelmarant.com/us/search?q=${q}`,
+  "studio nicholson":(q) => `https://www.studionicholson.com/search?q=${q}`,
+  "the frankie shop":(q) => `https://thefrankieshop.com/search?q=${q}`,
+  "frankie shop":    (q) => `https://thefrankieshop.com/search?q=${q}`,
+  "tom ford":        (q) => `https://www.tomford.com/search?q=${q}`,
+  "gucci":           (q) => `https://www.gucci.com/us/en/search?searchString=${q}`,
+  "prada":           (q) => `https://www.prada.com/us/en/search.html?query=${q}`,
+  "matches":         (q) => `https://www.matchesfashion.com/us/search?q=${q}`,
+  "matchesfashion":  (q) => `https://www.matchesfashion.com/us/search?q=${q}`,
+  "lenscrafters":    (q) => `https://www.lenscrafters.com/search?q=${q}`,
+  "sojos":           (q) => `https://www.amazon.com/s?k=SOJOS+${q}`,
 };
 
-const VINTAGE_PLATFORMS = [
-  { name: "Poshmark",             url: (q: string) => `https://poshmark.com/search?query=${q}` },
-  { name: "Depop",                url: (q: string) => `https://www.depop.com/search/?q=${q}` },
-  { name: "ThredUp",              url: (q: string) => `https://www.thredup.com/products?search_text=${q}` },
-  { name: "Vestiaire Collective", url: (q: string) => `https://www.vestiairecollective.com/search/?q=${q}` },
-];
-
-function pickVintagePlatform(index: number) {
-  return VINTAGE_PLATFORMS[index % VINTAGE_PLATFORMS.length];
-}
-
-function discountPrice(price: string): string {
-  const num = parseFloat(price.replace(/[^0-9.]/g, ""));
-  if (isNaN(num)) return price;
-  return `$${Math.round(num * 0.55)}`;
+// Fuzzy match: the AI often appends random suffixes to brand/retailer names
+// e.g. "Loewe Flow", "Net-A-Porter Pax", "Warby Parker Line"
+// This finds the longest map key that is contained within the input string.
+function fuzzyMatchRetailer(input: string): ((q: string) => string) | undefined {
+  const lower = input.toLowerCase().trim();
+  // Try exact match first
+  if (RETAILER_SEARCH_URLS[lower]) return RETAILER_SEARCH_URLS[lower];
+  // Find the longest key that the input starts with or contains
+  let bestMatch: string | null = null;
+  for (const key of Object.keys(RETAILER_SEARCH_URLS)) {
+    if (lower.includes(key) && (!bestMatch || key.length > bestMatch.length)) {
+      bestMatch = key;
+    }
+  }
+  return bestMatch ? RETAILER_SEARCH_URLS[bestMatch] : undefined;
 }
 
 function buildMatchUrl(match: ProductMatch, mode: "new" | "vintage", vintageIndex = 0): string {
@@ -83,16 +128,13 @@ function buildMatchUrl(match: ProductMatch, mode: "new" | "vintage", vintageInde
     (match.searchQuery || `${match.brand} ${match.name}`).replace(/\+/g, " ").replace(/\s+/g, " ").trim()
   );
   if (mode === "vintage") return pickVintagePlatform(vintageIndex).url(q);
-  const retailerKey = (match.retailer || "").toLowerCase().trim();
-  const builder = RETAILER_SEARCH_URLS[retailerKey];
-  if (builder) return builder(q);
-  const brandKey = (match.brand || "").toLowerCase().trim();
-  const brandBuilder = RETAILER_SEARCH_URLS[brandKey];
+  // Try retailer (fuzzy)
+  const retailerBuilder = fuzzyMatchRetailer(match.retailer || "");
+  if (retailerBuilder) return retailerBuilder(q);
+  // Try brand (fuzzy)
+  const brandBuilder = fuzzyMatchRetailer(match.brand || "");
   if (brandBuilder) return brandBuilder(q);
-  const brandSlug = (match.brand || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  if (brandSlug) {
-    return `https://www.${brandSlug}.com/search?q=${q}`;
-  }
+  // Fallback to Nordstrom
   return `https://www.nordstrom.com/sr?keyword=${q}`;
 }
 
