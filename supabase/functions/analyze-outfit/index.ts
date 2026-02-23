@@ -19,19 +19,26 @@ const productShape = {
   required: ["name", "brand", "price", "retailer", "searchQuery"],
 };
 
+function sanitizeText(text: string): string {
+  if (!text) return text;
+  return text.replace(/[^\x20-\x7E]/g, "").replace(/\s+/g, " ").trim();
+}
+
 function mapMatches(arr: any[], itemIndex: number, prefix: string) {
   return (arr ?? []).map((match: any, mIndex: number) => ({
     id: `${itemIndex + 1}-${prefix}-${mIndex}`,
-    name: match.name,
-    brand: match.brand,
+    name: sanitizeText(match.name),
+    brand: sanitizeText(match.brand),
     price: match.price,
-    retailer: match.retailer,
-    searchQuery: [match.brand, match.name]
-      .filter(Boolean)
-      .join(" ")
-      .replace(/\+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim(),
+    retailer: sanitizeText(match.retailer),
+    searchQuery: sanitizeText(
+      [match.brand, match.name]
+        .filter(Boolean)
+        .join(" ")
+        .replace(/\+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+    ),
     available: true,
     ...(match.sizeNote ? { sizeNote: match.sizeNote } : {}),
   }));
@@ -86,7 +93,8 @@ serve(async (req) => {
 - budget: exactly 2 products realistically priced under $50 (e.g. SHEIN, H&M, ASOS own-brand, Boohoo, Missguided)
 - midRange: exactly 2 products realistically priced $50–$150 (e.g. Zara, Mango, & Other Stories, Topshop, ASOS Premium)
 - luxury: exactly 2 products realistically priced over $150 (e.g. Theory, Toteme, Reformation, Sandro, IRO)
-Use realistic brand names that actually sell in each price range. Use the suggest_outfit_items tool to return structured output.`;
+Use realistic brand names that actually sell in each price range. Use the suggest_outfit_items tool to return structured output.
+All output must be in English only. Do not use Chinese, Japanese, Korean, or any non-Latin characters in any field.`;
 
     // Append profile-based personalization if available
     if (profile && typeof profile === "object") {
@@ -238,12 +246,12 @@ Use realistic brand names that actually sell in each price range. Use the sugges
 
       return {
         id: String(index + 1),
-        category: item.category,
-        description: item.description,
-        color: item.color,
-        style: item.style,
+        category: sanitizeText(item.category),
+        description: sanitizeText(item.description),
+        color: sanitizeText(item.color),
+        style: sanitizeText(item.style),
         estimatedPrice: item.estimatedPrice,
-        searchQuery: rawQuery,
+        searchQuery: sanitizeText(rawQuery),
         bestMatch: item.bestMatch
           ? mapMatches([item.bestMatch], index, "best")[0]
           : null,
