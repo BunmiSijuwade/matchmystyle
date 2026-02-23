@@ -60,21 +60,24 @@ const RETAILER_SEARCH_URLS: Record<string, (q: string) => string> = {
   "nanushka":        (q) => `https://www.nanushka.com/search?query=${q}`,
 };
 
-function buildMatchUrl(match: ProductMatch): string {
+function buildMatchUrl(match: ProductMatch, mode: "new" | "vintage" = "new"): string {
   const q = encodeURIComponent(
     (match.searchQuery || `${match.brand} ${match.name}`)
       .replace(/\+/g, " ")
       .replace(/\s+/g, " ")
       .trim()
   );
+
+  if (mode === "vintage") {
+    return `https://www.ebay.com/sch/i.html?_nkw=${q}&LH_PrefLoc=1`;
+  }
+
   const retailerKey = (match.retailer || "").toLowerCase().trim();
   const builder = RETAILER_SEARCH_URLS[retailerKey];
   if (builder) return builder(q);
-  // Fallback: try matching by brand if retailer isn't in the map
   const brandKey = (match.brand || "").toLowerCase().trim();
   const brandBuilder = RETAILER_SEARCH_URLS[brandKey];
   if (brandBuilder) return brandBuilder(q);
-  // Final fallback: ASOS
   return `https://www.asos.com/search/?q=${q}`;
 }
 
@@ -103,16 +106,18 @@ const ItemPills = ({ results, activeId, onPillClick }: ItemPillsProps) => (
   </div>
 );
 
-const ProductRow = ({ match }: { match: ProductMatch }) => (
+const ProductRow = ({ match, shopMode = "new" }: { match: ProductMatch; shopMode?: "new" | "vintage" }) => (
   <a
-    href={buildMatchUrl(match)}
+    href={buildMatchUrl(match, shopMode)}
     target="_blank"
     rel="noopener noreferrer"
     className="flex items-center justify-between p-3 rounded-xl border border-border hover:border-primary bg-background/50 transition-all group"
   >
     <div className="min-w-0 flex-1 mr-3">
       <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{match.name}</p>
-      <p className="text-xs text-muted-foreground">{match.brand} · {match.retailer}</p>
+      <p className="text-xs text-muted-foreground">
+        {shopMode === "vintage" ? `Search "${match.brand} ${match.name}" on eBay` : `${match.brand} · ${match.retailer}`}
+      </p>
     </div>
     <div className="flex items-center gap-2 flex-shrink-0">
       <span className="font-semibold text-gradient text-sm">{match.price}</span>
@@ -157,6 +162,7 @@ const Analyzer = () => {
   });
   const hasProfile = !!localStorage.getItem("matchmystyle_profile");
   const [dragOver, setDragOver] = useState(false);
+  const [shopMode, setShopMode] = useState<"new" | "vintage">("new");
 
   // URL tab state
   const [pastedUrl, setPastedUrl] = useState("");
@@ -533,14 +539,34 @@ const Analyzer = () => {
             )}
 
             {results && results.length > 0 && (
-              <div className="glass rounded-2xl overflow-hidden">
-                <div className="px-6 pt-5 pb-3 border-b border-border">
-                  <h3 className="font-display text-base font-semibold">
+              <div className="space-y-5">
+                {/* Results header + toggle */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <h3 className="font-display text-2xl font-bold">
                     {results.length} Item{results.length !== 1 ? "s" : ""} Detected
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Tap an item on the photo or click a title below to explore
-                  </p>
+                  <div className="flex p-1 rounded-full bg-muted w-fit">
+                    <button
+                      onClick={() => setShopMode("new")}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all min-h-[40px] ${
+                        shopMode === "new"
+                          ? "gradient-primary text-primary-foreground shadow-brand"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      🛍️ Shop New
+                    </button>
+                    <button
+                      onClick={() => setShopMode("vintage")}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all min-h-[40px] ${
+                        shopMode === "vintage"
+                          ? "gradient-primary text-primary-foreground shadow-brand"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      ♻️ Shop Vintage
+                    </button>
+                  </div>
                 </div>
 
                 <Accordion
@@ -548,7 +574,7 @@ const Analyzer = () => {
                   collapsible
                   value={openAccordionItem}
                   onValueChange={setOpenAccordionItem}
-                  className="px-2 py-2"
+                  className="glass rounded-2xl px-2 py-2"
                 >
                   {results.map((item) => (
                     <AccordionItem
@@ -602,7 +628,7 @@ const Analyzer = () => {
                                 <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Best Match</span>
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground">★</span>
                               </div>
-                              <ProductRow match={item.bestMatch} />
+                              <ProductRow match={item.bestMatch} shopMode={shopMode} />
                             </div>
                           )}
 
@@ -613,7 +639,7 @@ const Analyzer = () => {
                                 Budget <span className="normal-case font-normal">· Under $50</span>
                               </p>
                               <div className="space-y-2">
-                                {item.budget.map((match) => <ProductRow key={match.id} match={match} />)}
+                                {item.budget.map((match) => <ProductRow key={match.id} match={match} shopMode={shopMode} />)}
                               </div>
                             </div>
                           )}
@@ -625,7 +651,7 @@ const Analyzer = () => {
                                 Mid-Range <span className="normal-case font-normal">· $50–$150</span>
                               </p>
                               <div className="space-y-2">
-                                {item.midRange.map((match) => <ProductRow key={match.id} match={match} />)}
+                                {item.midRange.map((match) => <ProductRow key={match.id} match={match} shopMode={shopMode} />)}
                               </div>
                             </div>
                           )}
@@ -637,7 +663,7 @@ const Analyzer = () => {
                                 Luxury <span className="normal-case font-normal">· $150+</span>
                               </p>
                               <div className="space-y-2">
-                                {item.luxury.map((match) => <ProductRow key={match.id} match={match} />)}
+                                {item.luxury.map((match) => <ProductRow key={match.id} match={match} shopMode={shopMode} />)}
                               </div>
                             </div>
                           )}
