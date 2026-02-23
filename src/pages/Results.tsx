@@ -39,6 +39,26 @@ const RETAILER_SEARCH_URLS: Record<string, (q: string) => string> = {
   "amazon":          (q) => `https://www.amazon.com/s?k=${q}`,
   "charles & keith": (q) => `https://www.charleskeith.com/us/search?q=${q}`,
   "nanushka":        (q) => `https://www.nanushka.com/search?query=${q}`,
+  "cos":             (q) => `https://www.cos.com/en_usd/search.html?q=${q}`,
+  "arket":           (q) => `https://www.arket.com/en/search?q=${q}`,
+  "reiss":           (q) => `https://www.reiss.com/us/search?q=${q}`,
+  "allsaints":       (q) => `https://www.allsaints.com/search?q=${q}`,
+  "all saints":      (q) => `https://www.allsaints.com/search?q=${q}`,
+  "acne studios":    (q) => `https://www.acnestudios.com/us/en/search?q=${q}`,
+  "levi's":          (q) => `https://www.levi.com/US/en_US/search?q=${q}`,
+  "levis":           (q) => `https://www.levi.com/US/en_US/search?q=${q}`,
+  "nike":            (q) => `https://www.nike.com/w?q=${q}`,
+  "adidas":          (q) => `https://www.adidas.com/us/search?q=${q}`,
+  "uniqlo":          (q) => `https://www.uniqlo.com/us/en/search?q=${q}`,
+  "everlane":        (q) => `https://www.everlane.com/search?q=${q}`,
+  "abercrombie":     (q) => `https://www.abercrombie.com/shop/us/search?searchTerm=${q}`,
+  "abercrombie & fitch": (q) => `https://www.abercrombie.com/shop/us/search?searchTerm=${q}`,
+  "lululemon":       (q) => `https://shop.lululemon.com/search?Ntt=${q}`,
+  "free people":     (q) => `https://www.freepeople.com/search/?q=${q}`,
+  "gap":             (q) => `https://www.gap.com/browse/search.do?searchText=${q}`,
+  "urban outfitters":(q) => `https://www.urbanoutfitters.com/search?q=${q}`,
+  "anthropologie":   (q) => `https://www.anthropologie.com/search?q=${q}`,
+  "revolve":         (q) => `https://www.revolve.com/r/search.jsp?query=${q}`,
 };
 
 const VINTAGE_PLATFORMS = [
@@ -69,7 +89,11 @@ function buildMatchUrl(match: ProductMatch, mode: "new" | "vintage", vintageInde
   const brandKey = (match.brand || "").toLowerCase().trim();
   const brandBuilder = RETAILER_SEARCH_URLS[brandKey];
   if (brandBuilder) return brandBuilder(q);
-  return `https://www.asos.com/search/?q=${q}`;
+  const brandSlug = (match.brand || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (brandSlug) {
+    return `https://www.${brandSlug}.com/search?q=${q}`;
+  }
+  return `https://www.nordstrom.com/sr?keyword=${q}`;
 }
 
 const CONFIDENCE_COLORS: Record<string, string> = {
