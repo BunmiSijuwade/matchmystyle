@@ -20,7 +20,7 @@ const Index = () => {
             className="w-full h-full object-cover object-top sm:object-center opacity-50 sm:opacity-40"
           />
           <div className="absolute inset-0 bg-gradient-hero" />
-          <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 60% 50%, hsl(271 76% 57% / 0.15) 0%, transparent 70%)" }} />
+          <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 60% 50%, hsl(292 84% 61% / 0.15) 0%, transparent 70%)" }} />
         </div>
 
       {/* Hero content */}
@@ -62,7 +62,7 @@ const Index = () => {
             <div className="flex items-center gap-6 mt-10 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <div className="flex -space-x-2">
-                  {["#a855f7", "#ec4899", "#7c3aed"].map((c, i) => (
+                  {["#d946ef", "#9333ea", "#d946ef"].map((c, i) => (
                     <div key={i} className="w-7 h-7 rounded-full border-2 border-background" style={{ background: c }} />
                   ))}
                 </div>
@@ -124,7 +124,7 @@ const Index = () => {
       <section className="py-24">
         <div className="container mx-auto px-6">
           <div className="glass-light rounded-3xl p-12 text-center relative overflow-hidden">
-            <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 50%, hsl(271 76% 57% / 0.15) 0%, transparent 70%)" }} />
+            <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 50%, hsl(292 84% 61% / 0.15) 0%, transparent 70%)" }} />
             <Heart className="w-10 h-10 mx-auto mb-6 text-secondary animate-pulse" />
             <h2 className="font-display text-4xl md:text-5xl font-bold mb-4 relative z-10">
               Start Matching{" "}

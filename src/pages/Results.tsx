@@ -81,7 +81,7 @@ const ProductRow = ({ match, shopMode, vintageIndex = 0 }: { match: ProductMatch
         <div className="flex items-center gap-1.5">
           <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{match.name}</p>
           {isVintage && (
-            <Badge className="bg-[hsl(142,71%,45%)]/10 text-[hsl(142,71%,35%)] border-[hsl(142,71%,45%)]/20 text-[10px] px-1.5 py-0 flex-shrink-0">
+            <Badge className="bg-[hsl(142,71%,45%)]/10 text-[hsl(142,71%,45%)] border-[hsl(142,71%,45%)]/30 text-[10px] px-1.5 py-0 flex-shrink-0">
               Vintage
             </Badge>
           )}
@@ -169,10 +169,10 @@ const Results = () => {
           {shopMode === "vintage" && (
             <div
               className="flex items-center gap-3 rounded-xl px-4 py-3 border"
-              style={{ background: "rgba(34, 197, 94, 0.08)", borderColor: "rgba(34, 197, 94, 0.25)" }}
+              style={{ background: "rgba(34, 197, 94, 0.1)", borderColor: "rgba(34, 197, 94, 0.3)" }}
             >
-              <Leaf className="w-5 h-5 flex-shrink-0" style={{ color: "hsl(142, 71%, 35%)" }} />
-              <p className="text-sm font-medium" style={{ color: "hsl(142, 71%, 30%)" }}>
+              <Leaf className="w-5 h-5 flex-shrink-0" style={{ color: "#22c55e" }} />
+              <p className="text-sm font-medium" style={{ color: "#22c55e" }}>
                 🌱 Shopping sustainably with pre-loved fashion
               </p>
             </div>
