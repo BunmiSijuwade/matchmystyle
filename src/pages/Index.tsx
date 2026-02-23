@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Star } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import GradientButton from "@/components/GradientButton";
 import Navbar from "@/components/Navbar";
 import TestimonialCarousel from "@/components/TestimonialCarousel";
@@ -57,22 +57,6 @@ const Index = () => {
               </button>
             </div>
 
-            <div className="flex items-center gap-6 mt-10 text-[11px] text-muted-foreground tracking-[0.5px]">
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-2">
-                  {["hsl(28,24%,44%)", "hsl(24,15%,54%)", "hsl(28,24%,44%)"].map((c, i) => (
-                    <div key={i} className="w-7 h-7 rounded-full border-2 border-background" style={{ background: c }} />
-                  ))}
-                </div>
-                <span>12k+ outfits matched</span>
-              </div>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-primary text-primary" />
-                ))}
-                <span className="ml-1">4.9/5</span>
-              </div>
-            </div>
           </div>
         </div>
 
