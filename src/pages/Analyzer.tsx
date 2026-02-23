@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { Camera, ShoppingBag, X, Loader2, AlertCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { useAnalysis, type DetectedItem } from "@/contexts/AnalysisContext";
 import { Switch } from "@/components/ui/switch";
+import PasteTipStrip from "@/components/PasteTipStrip";
 
 type Tab = "url" | "file";
 
@@ -60,6 +61,27 @@ const Analyzer = () => {
   const hasProfile = !!profileData;
   const [useProfile, setUseProfile] = useState(hasProfile);
   const [dragOver, setDragOver] = useState(false);
+
+  // Clipboard paste support
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    if (!e.clipboardData) return;
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        const file = items[i].getAsFile();
+        if (file) {
+          setActiveTab("file");
+          handleFile(file);
+        }
+        return;
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [handlePaste]);
 
   const [pastedUrl, setPastedUrl] = useState("");
   const [urlPreviewError, setUrlPreviewError] = useState(false);
@@ -306,6 +328,10 @@ const Analyzer = () => {
                     <h3 className="text-sm font-medium mb-1 text-foreground">Drop your photo here</h3>
                     <p className="text-muted-foreground text-xs mb-3">or click to browse files</p>
                     <p className="text-[11px] text-muted-foreground">JPG, PNG, WEBP · Max 20MB</p>
+                    {/* Paste hint – hidden on mobile */}
+                    <span className="hidden md:inline-flex items-center gap-1 mt-3 bg-card border border-border rounded-full px-2.5 py-1 text-[10px] text-primary">
+                      ⌘V · Ctrl+V to paste an image
+                    </span>
                   </div>
                 ) : (
                   <div className="bg-card border border-border rounded-2xl overflow-hidden relative">
@@ -326,6 +352,9 @@ const Analyzer = () => {
                 )}
               </>
             )}
+
+            {/* Paste tip strip – desktop only */}
+            {activeTab === "file" && <PasteTipStrip />}
 
             {/* Profile toggle */}
             {hasProfile && (
