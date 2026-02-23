@@ -2,26 +2,24 @@ import { useState } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-const LS_KEY = "mms_paste_tip_dismissed";
+const STORAGE_KEY = "mms_paste_tip_dismissed";
 
 const steps = [
   { icon: "🔍", title: "Find it", desc: "Search on Google Lens or open on Instagram" },
   { icon: "📋", title: "Copy it", desc: "Right-click → Copy Image" },
-  { icon: "✨", title: "Paste here", desc: "Click above & press Ctrl+V" },
+  { icon: "✨", title: "Paste here", desc: "Click the zone above & press Ctrl+V" },
 ];
 
 const platforms = ["Google Lens", "Instagram", "Pinterest", "TikTok", "Any browser"];
 
 const PasteTipStrip = () => {
-  const [open, setOpen] = useState(() => {
-    return localStorage.getItem(LS_KEY) !== "true";
-  });
+  const [open, setOpen] = useState(() => localStorage.getItem(STORAGE_KEY) !== "true");
 
-  const handleToggle = (isOpen: boolean) => {
-    setOpen(isOpen);
-    if (!isOpen) {
-      localStorage.setItem(LS_KEY, "true");
-    }
+  const handleToggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (!next) localStorage.setItem(STORAGE_KEY, "true");
+    else localStorage.removeItem(STORAGE_KEY);
   };
 
   return (
@@ -64,10 +62,7 @@ const PasteTipStrip = () => {
               {/* Platform pills */}
               <div className="flex flex-wrap justify-center gap-1.5">
                 {platforms.map((p) => (
-                  <span
-                    key={p}
-                    className="bg-muted rounded-[10px] px-2 py-0.5 text-[9px] text-muted-foreground"
-                  >
+                  <span key={p} className="bg-muted rounded-[10px] px-2 py-0.5 text-[9px] text-muted-foreground">
                     {p}
                   </span>
                 ))}
