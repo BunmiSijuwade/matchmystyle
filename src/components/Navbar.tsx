@@ -13,10 +13,10 @@ const Navbar = () => {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
-      <div className="container mx-auto flex items-center justify-between h-16 px-6">
-        <Link to="/" className="flex items-center gap-2">
+      <div className="container mx-auto flex items-center justify-between h-16 px-4 sm:px-6">
+        <Link to="/" className="flex items-center gap-2 min-h-[44px]">
           <Sparkles className="w-5 h-5 text-gradient" style={{ color: "hsl(271 76% 57%)" }} />
-          <span className="font-display text-xl font-semibold text-gradient">MatchMyStyle</span>
+          <span className="font-display text-lg sm:text-xl font-semibold text-gradient">MatchMyStyle</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
@@ -24,7 +24,7 @@ const Navbar = () => {
             <Link
               key={link.href}
               to={link.href}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
+              className={`text-sm font-medium transition-colors duration-300 ease-out hover:text-primary min-h-[44px] inline-flex items-center ${
                 location.pathname === link.href ? "text-primary" : "text-muted-foreground"
               }`}
             >

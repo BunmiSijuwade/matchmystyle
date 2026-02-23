@@ -12,13 +12,13 @@ const GradientButton = forwardRef<HTMLButtonElement, GradientButtonProps>(
       <button
         ref={ref}
         className={cn(
-          "relative inline-flex items-center justify-center font-medium transition-all duration-300 rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:pointer-events-none",
+          "relative inline-flex items-center justify-center font-medium transition-all duration-300 ease-out rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:pointer-events-none",
           variant === "primary" && "gradient-primary text-primary-foreground shadow-brand hover:scale-105 hover:shadow-glow animate-pulse-glow",
           variant === "outline" && "border border-primary text-primary hover:bg-accent hover:text-accent-foreground hover:scale-105",
           variant === "ghost" && "text-foreground hover:text-primary hover:bg-accent",
-          size === "sm" && "text-sm px-4 py-2",
-          size === "md" && "text-base px-6 py-3",
-          size === "lg" && "text-lg px-8 py-4",
+          size === "sm" && "text-sm px-4 py-2 min-h-[44px]",
+          size === "md" && "text-base px-6 py-3 min-h-[44px]",
+          size === "lg" && "text-lg px-8 py-4 min-h-[48px]",
           className
         )}
         {...props}
