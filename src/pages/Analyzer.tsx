@@ -54,7 +54,8 @@ const Analyzer = () => {
 
   // Shared state
   const [analyzing, setAnalyzing] = useState(false);
-
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [analyzeStep, setAnalyzeStep] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -87,6 +88,12 @@ const Analyzer = () => {
   const handleAnalyze = async () => {
     if (!hasInput) return;
     setAnalyzing(true);
+    setAnalyzeError(null);
+    setAnalyzeStep(0);
+
+    // Animate steps
+    const stepTimer1 = setTimeout(() => setAnalyzeStep(1), 2500);
+    const stepTimer2 = setTimeout(() => setAnalyzeStep(2), 5500);
 
     try {
       let requestBody: Record<string, string>;
@@ -108,18 +115,23 @@ const Analyzer = () => {
       });
 
       if (response.status === 429) {
+        setAnalyzeError("Rate limit reached. Please wait a moment and try again.");
         toast({ title: "Rate limit reached", description: "Too many requests. Please wait a moment and try again.", variant: "destructive" });
         return;
       }
 
       if (response.status === 402) {
+        setAnalyzeError("Usage limit reached. Please add credits to continue.");
         toast({ title: "Usage limit reached", description: "Please add credits in Settings → Workspace → Usage to continue.", variant: "destructive" });
         return;
       }
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        toast({ title: "Analysis failed", description: err.message || "Something went wrong. Please try again.", variant: "destructive" });
+        const msg = err.message || "Something went wrong. Please try again.";
+        console.error("Analysis failed:", response.status, err);
+        setAnalyzeError(msg);
+        toast({ title: "Analysis failed", description: msg, variant: "destructive" });
         return;
       }
 
@@ -137,8 +149,11 @@ const Analyzer = () => {
       navigate("/results");
     } catch (err) {
       console.error("Analyze error:", err);
+      setAnalyzeError("Couldn't analyze image. Please try again.");
       toast({ title: "Connection error", description: "Could not reach the AI service. Please check your connection and try again.", variant: "destructive" });
     } finally {
+      clearTimeout(stepTimer1);
+      clearTimeout(stepTimer2);
       setAnalyzing(false);
     }
   };
@@ -294,24 +309,37 @@ const Analyzer = () => {
 
             {/* Analyze button */}
             {hasInput && !urlPreviewError && (
-              <GradientButton
-                onClick={handleAnalyze}
-                size="lg"
-                className="w-full"
-                disabled={analyzing}
-              >
-                {analyzing ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Analyzing with AI...
-                  </>
-                ) : (
-                  <>
-                    <Camera className="w-5 h-5 mr-2" />
-                    Analyze This Outfit
-                  </>
+              <div className="space-y-3">
+                <GradientButton
+                  onClick={handleAnalyze}
+                  size="lg"
+                  className="w-full"
+                  disabled={analyzing}
+                >
+                  {analyzing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="w-5 h-5 mr-2" />
+                      Analyze This Outfit
+                    </>
+                  )}
+                </GradientButton>
+                {analyzing && (
+                  <p className="text-center text-sm text-muted-foreground animate-pulse">
+                    AI is identifying items in your photo...
+                  </p>
                 )}
-              </GradientButton>
+                {analyzeError && !analyzing && (
+                  <div className="flex items-center gap-2 justify-center text-sm text-destructive">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{analyzeError}</span>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Profile suggestion */}
@@ -365,9 +393,23 @@ const Analyzer = () => {
               <p className="text-muted-foreground text-sm">Gemini is identifying clothing items, colors, and styles</p>
               <div className="mt-6 space-y-2">
                 {["Detecting clothing items...", "Identifying brands & styles...", "Finding shopping matches..."].map((step, i) => (
-                  <div key={step} className={`flex items-center gap-2 text-sm transition-opacity ${i === 0 ? "opacity-100 text-primary" : "opacity-40 text-muted-foreground"}`}>
-                    <Loader2 className={`w-3 h-3 ${i === 0 ? "animate-spin" : ""}`} />
+                  <div key={step} className={`flex items-center gap-2 text-sm transition-all duration-500 ${i <= analyzeStep ? "opacity-100 text-primary" : "opacity-30 text-muted-foreground"}`}>
+                    <Loader2 className={`w-3 h-3 ${i === analyzeStep ? "animate-spin" : ""}`} />
                     {step}
+                    {i < analyzeStep && <span className="text-xs">✓</span>}
+                  </div>
+                ))}
+              </div>
+
+              {/* Skeleton preview cards */}
+              <div className="mt-8 space-y-3">
+                {[1, 2, 3].map((n) => (
+                  <div key={n} className="rounded-xl border border-border p-4 animate-pulse">
+                    <div className="flex items-center gap-3">
+                      <div className="h-3 w-20 bg-muted rounded-full" />
+                      <div className="h-3 w-12 bg-muted rounded-full" />
+                    </div>
+                    <div className="h-3 w-40 bg-muted rounded-full mt-2" />
                   </div>
                 ))}
               </div>
