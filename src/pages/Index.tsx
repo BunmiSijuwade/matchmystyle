@@ -40,49 +40,52 @@ const Index = () => {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
+      <section className="relative min-h-[100svh] flex items-center overflow-hidden pt-16">
         {/* Background image */}
         <div className="absolute inset-0 z-0">
           <img
             src={heroBg}
             alt="Fashion hero"
-            className="w-full h-full object-cover object-center opacity-40"
+            className="w-full h-full object-cover object-top sm:object-center opacity-50 sm:opacity-40"
           />
           <div className="absolute inset-0 bg-gradient-hero" />
           <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 60% 50%, hsl(271 76% 57% / 0.15) 0%, transparent 70%)" }} />
         </div>
 
-        {/* Hero content */}
-        <div className="container mx-auto px-6 relative z-10">
+      {/* Hero content */}
+        <div className="container mx-auto px-5 sm:px-6 relative z-10">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 glass-light rounded-full px-4 py-2 mb-6 text-sm font-medium text-primary">
               <Zap className="w-4 h-4" />
-              <span>Powered by Claude AI</span>
+              <span>Powered by AI</span>
             </div>
 
-            <h1 className="font-display text-5xl md:text-7xl font-bold leading-tight mb-6">
+            <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-bold leading-tight mb-6">
               Wear the Looks
               <br />
               <span className="text-gradient italic">You Obsess Over</span>
             </h1>
 
-            <p className="text-lg md:text-xl text-muted-foreground max-w-xl mb-8 leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-xl mb-8 leading-relaxed">
               Upload any influencer outfit. Our AI identifies every item and finds them in{" "}
               <strong className="text-foreground">your exact size</strong> — from luxury to budget dupes.
             </p>
 
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <Link to="/analyzer">
-                <GradientButton size="lg" className="group">
-                  Analyze an Outfit
+                <GradientButton size="lg" className="group min-h-[44px] w-full sm:w-auto">
+                  Find My Style
                   <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
                 </GradientButton>
               </Link>
-              <Link to="/profile">
-                <GradientButton variant="outline" size="lg">
-                  Set My Measurements
-                </GradientButton>
-              </Link>
+              <button
+                onClick={() => {
+                  document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="inline-flex items-center justify-center min-h-[44px] rounded-full border border-primary text-primary hover:bg-accent hover:text-accent-foreground hover:scale-105 transition-all duration-300 text-lg px-8 py-4"
+              >
+                See How It Works
+              </button>
             </div>
 
             <div className="flex items-center gap-6 mt-10 text-sm text-muted-foreground">
@@ -146,7 +149,7 @@ const Index = () => {
       </section>
 
       {/* Steps Section */}
-      <section className="py-24 bg-muted/30">
+      <section id="how-it-works" className="py-24 bg-muted/30 scroll-mt-16">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="font-display text-4xl md:text-5xl font-bold">
