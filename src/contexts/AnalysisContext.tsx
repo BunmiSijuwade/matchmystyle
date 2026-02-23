@@ -25,14 +25,21 @@ export interface DetectedItem {
   luxury: ProductMatch[];
 }
 
+export interface ImagePayload {
+  imageUrl?: string;
+  imageBase64?: string;
+  mimeType?: string;
+}
+
 interface AnalysisState {
   items: DetectedItem[] | null;
   imageUrl: string | null;
   analysisId: string | null;
+  imagePayload: ImagePayload | null;
 }
 
 interface AnalysisContextType extends AnalysisState {
-  setAnalysis: (items: DetectedItem[], imageUrl: string | null) => void;
+  setAnalysis: (items: DetectedItem[], imageUrl: string | null, imagePayload?: ImagePayload | null) => void;
   clearAnalysis: () => void;
 }
 
@@ -43,15 +50,16 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     items: null,
     imageUrl: null,
     analysisId: null,
+    imagePayload: null,
   });
 
-  const setAnalysis = useCallback((items: DetectedItem[], imageUrl: string | null) => {
+  const setAnalysis = useCallback((items: DetectedItem[], imageUrl: string | null, imagePayload?: ImagePayload | null) => {
     const analysisId = Date.now().toString(36);
-    setState({ items, imageUrl, analysisId });
+    setState({ items, imageUrl, analysisId, imagePayload: imagePayload ?? null });
   }, []);
 
   const clearAnalysis = useCallback(() => {
-    setState({ items: null, imageUrl: null, analysisId: null });
+    setState({ items: null, imageUrl: null, analysisId: null, imagePayload: null });
   }, []);
 
   return (
