@@ -2,3 +2,6 @@ project_id = "dqxrhzlbtwrrxnwdaybh"
 
 [functions.analyze-outfit]
 verify_jwt = false
+
+[functions.product-search]
+verify_jwt = false

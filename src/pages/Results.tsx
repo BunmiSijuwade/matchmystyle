@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ExternalLink, ArrowLeft, Leaf, Loader2 } from "lucide-react";
+import { ExternalLink, ArrowLeft, Leaf, Loader2, Search } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { Toaster } from "@/components/ui/toaster";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalysis, type DetectedItem, type ProductMatch } from "@/contexts/AnalysisContext";
 import { getSizeRecommendation, type UserMeasurements, type SizeRecommendation } from "@/services/sizingService";
+import { useProductSearch } from "@/hooks/useProductSearch";
 
 const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;
 
@@ -124,6 +125,15 @@ const ProductRow = ({ match, shopMode, vintageIndex = 0, sizeRec }: { match: Pro
   );
 };
 
+// Per-item product results cache
+interface ItemProducts {
+  matches: ProductMatch[];
+  sizeRecs: Map<string, SizeRecommendation>;
+  loading: boolean;
+  error: string | null;
+  fetched: boolean;
+}
+
 const Results = () => {
   const navigate = useNavigate();
   const { items, imageUrl, imagePayload, setAnalysis } = useAnalysis();
@@ -131,9 +141,12 @@ const Results = () => {
   const [shopMode, setShopMode] = useState<"new" | "vintage">("new");
   const [openAccordionItem, setOpenAccordionItem] = useState<string>("");
   const [reanalyzing, setReanalyzing] = useState(false);
-
-  // Original items (without profile) for reverting
   const [originalItems, setOriginalItems] = useState<DetectedItem[] | null>(null);
+
+  // Real product search
+  const { searchProducts } = useProductSearch();
+  const [itemProducts, setItemProducts] = useState<Record<string, ItemProducts>>({});
+  const fetchingRef = useRef<Set<string>>(new Set());
 
   // Profile data
   const profileRaw = localStorage.getItem("matchmystyle_profile");
@@ -165,29 +178,55 @@ const Results = () => {
     return { bust, waist, hips };
   }, [profileData, useProfile]);
 
-  // Build a map of match id -> SizeRecommendation for all current items
-  const sizeRecMap = useMemo(() => {
-    const map = new Map<string, SizeRecommendation>();
-    if (!userMeasurements || !items) return map;
-    for (const item of items) {
-      const allMatches = [item.bestMatch, ...(item.budget ?? []), ...(item.midRange ?? []), ...(item.luxury ?? [])].filter(Boolean) as ProductMatch[];
-      for (const match of allMatches) {
-        const rec = getSizeRecommendation(
-          `${match.brand} ${match.name}`,
-          item.description,
-          userMeasurements
-        );
-        if (rec) map.set(match.id, rec);
-      }
-    }
-    return map;
-  }, [userMeasurements, items]);
-
   useEffect(() => {
     if (!items || items.length === 0) {
       navigate("/analyzer", { replace: true });
     }
   }, [items, navigate]);
+
+  // Fetch real products when an accordion item opens
+  useEffect(() => {
+    if (!openAccordionItem || !items) return;
+    const item = items.find((i) => i.id === openAccordionItem);
+    if (!item) return;
+
+    // Already fetched or currently fetching
+    if (itemProducts[item.id]?.fetched || fetchingRef.current.has(item.id)) return;
+
+    fetchingRef.current.add(item.id);
+    setItemProducts((prev) => ({
+      ...prev,
+      [item.id]: { matches: [], sizeRecs: new Map(), loading: true, error: null, fetched: false },
+    }));
+
+    const query = item.searchQuery || `${item.color} ${item.description}`;
+    searchProducts(query, item.description, userMeasurements).then((result) => {
+      setItemProducts((prev) => ({
+        ...prev,
+        [item.id]: {
+          matches: result.matches,
+          sizeRecs: result.sizeRecs,
+          loading: false,
+          error: null,
+          fetched: true,
+        },
+      }));
+      fetchingRef.current.delete(item.id);
+    }).catch((err) => {
+      setItemProducts((prev) => ({
+        ...prev,
+        [item.id]: { matches: [], sizeRecs: new Map(), loading: false, error: err.message, fetched: true },
+      }));
+      fetchingRef.current.delete(item.id);
+    });
+  }, [openAccordionItem, items, searchProducts, userMeasurements, itemProducts]);
+
+  // Re-fetch all open item products when measurements toggle changes
+  useEffect(() => {
+    // Clear cached results so they re-fetch with new measurements
+    setItemProducts({});
+    fetchingRef.current.clear();
+  }, [useProfile]);
 
   const reanalyze = useCallback(async (withProfile: boolean) => {
     if (!imagePayload) {
@@ -224,7 +263,6 @@ const Results = () => {
         throw new Error("No items detected");
       }
 
-      // Save original items on first toggle-on so we can revert
       if (withProfile && !originalItems) {
         setOriginalItems(items);
       }
@@ -239,7 +277,7 @@ const Results = () => {
     } catch (err: any) {
       console.error("Re-analysis error:", err);
       toast({ title: "Re-analysis failed", description: err.message || "Please try again.", variant: "destructive" });
-      setUseProfile(!withProfile); // revert toggle
+      setUseProfile(!withProfile);
     } finally {
       setReanalyzing(false);
     }
@@ -248,7 +286,6 @@ const Results = () => {
   const handleToggleProfile = useCallback((checked: boolean) => {
     setUseProfile(checked);
     if (!checked && originalItems) {
-      // Revert to cached original results without API call
       setAnalysis(originalItems, imageUrl, imagePayload);
       toast({ title: "Matches updated", description: "Reverted to standard sizing" });
       return;
@@ -359,99 +396,107 @@ const Results = () => {
               onValueChange={setOpenAccordionItem}
               className="bg-card border border-border rounded-2xl px-2 py-2 overflow-hidden"
             >
-              {items.map((item) => (
-                <AccordionItem
-                  key={item.id}
-                  value={item.id}
-                  className="border-0 rounded-xl mb-1 last:mb-0 data-[state=open]:bg-muted/50"
-                >
-                  <AccordionTrigger className="px-3 sm:px-4 py-3 rounded-xl hover:no-underline hover:bg-muted/50 [&[data-state=open]]:rounded-b-none transition-all duration-300 ease-out min-h-[52px]">
-                    <div className="flex items-center gap-3 text-left">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{item.category}</span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
-                            {[item.bestMatch, ...(item.budget ?? []), ...(item.midRange ?? []), ...(item.luxury ?? [])].filter(Boolean).length} matches
-                          </span>
+              {items.map((item) => {
+                const productData = itemProducts[item.id];
+                const realMatches = productData?.matches ?? [];
+                const realSizeRecs = productData?.sizeRecs ?? new Map<string, SizeRecommendation>();
+                const isSearching = productData?.loading ?? false;
+                const searchError = productData?.error;
+                const hasRealResults = productData?.fetched && realMatches.length > 0;
+
+                // Fall back to AI matches if no real results yet
+                const aiMatches = [item.bestMatch, ...(item.budget ?? []), ...(item.midRange ?? []), ...(item.luxury ?? [])].filter(Boolean) as ProductMatch[];
+                const displayMatches = hasRealResults ? realMatches : aiMatches;
+                const matchCount = productData?.fetched ? realMatches.length : aiMatches.length;
+
+                return (
+                  <AccordionItem
+                    key={item.id}
+                    value={item.id}
+                    className="border-0 rounded-xl mb-1 last:mb-0 data-[state=open]:bg-muted/50"
+                  >
+                    <AccordionTrigger className="px-3 sm:px-4 py-3 rounded-xl hover:no-underline hover:bg-muted/50 [&[data-state=open]]:rounded-b-none transition-all duration-300 ease-out min-h-[52px]">
+                      <div className="flex items-center gap-3 text-left">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{item.category}</span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
+                              {matchCount} matches
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium text-foreground truncate">{item.description}</p>
                         </div>
-                        <p className="text-sm font-medium text-foreground truncate">{item.description}</p>
                       </div>
-                    </div>
-                  </AccordionTrigger>
+                    </AccordionTrigger>
 
-                  <AccordionContent className="px-3 sm:px-4 pb-4 pt-0">
-                    {/* Metadata grid */}
-                    <div className="grid grid-cols-3 gap-2 mb-4 mt-3">
-                      {[
-                        { label: "Color", value: item.color },
-                        { label: "Style", value: item.style },
-                        { label: "Price Range", value: item.estimatedPrice },
-                      ].map(({ label, value }) => (
-                        <div key={label} className="bg-muted rounded-xl p-3">
-                          <p className="text-[9px] text-muted-foreground uppercase tracking-[1px] mb-1">{label}</p>
-                          <p className="text-sm font-medium">{value}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* AI disclaimer */}
-                    <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-muted border border-border">
-                      <span className="text-primary text-xs flex-shrink-0">✨</span>
-                      <p className="text-[10px] text-muted-foreground font-medium">
-                        {shopMode === "vintage"
-                          ? "AI suggestions — prices are estimates for pre-loved items. Click to search on vintage platforms."
-                          : "AI suggestions — prices are estimates. Click any item to search on retailers."}
-                      </p>
-                    </div>
-
-                    {/* Tiered product sections */}
-                    <div className="space-y-4">
-                      {item.bestMatch && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground">Best Match</span>
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary text-primary-foreground">★</span>
+                    <AccordionContent className="px-3 sm:px-4 pb-4 pt-0">
+                      {/* Metadata grid */}
+                      <div className="grid grid-cols-3 gap-2 mb-4 mt-3">
+                        {[
+                          { label: "Color", value: item.color },
+                          { label: "Style", value: item.style },
+                          { label: "Price Range", value: item.estimatedPrice },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="bg-muted rounded-xl p-3">
+                            <p className="text-[9px] text-muted-foreground uppercase tracking-[1px] mb-1">{label}</p>
+                            <p className="text-sm font-medium">{value}</p>
                           </div>
-                          <ProductRow match={item.bestMatch} shopMode={shopMode} vintageIndex={0} sizeRec={sizeRecMap.get(item.bestMatch.id)} />
+                        ))}
+                      </div>
+
+                      {/* Disclaimer */}
+                      <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-muted border border-border">
+                        <span className="text-primary text-xs flex-shrink-0">{hasRealResults ? "🔍" : "✨"}</span>
+                        <p className="text-[10px] text-muted-foreground font-medium">
+                          {shopMode === "vintage"
+                            ? "Prices are estimates for pre-loved items. Click to search on vintage platforms."
+                            : hasRealResults
+                              ? "Real product results from retailers. Click any item to view."
+                              : "AI suggestions — prices are estimates. Click any item to search on retailers."}
+                        </p>
+                      </div>
+
+                      {/* Loading state */}
+                      {isSearching && (
+                        <div className="flex items-center justify-center gap-2 py-8">
+                          <Search className="w-4 h-4 animate-pulse text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground">Finding real products…</p>
                         </div>
                       )}
 
-                      {item.budget?.length > 0 && (
-                        <div>
-                          <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
-                            Budget <span className="normal-case font-normal">· Under $50</span>
-                          </p>
-                          <div className="space-y-2">
-                            {item.budget.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 1} sizeRec={sizeRecMap.get(match.id)} />)}
-                          </div>
+                      {/* Error state */}
+                      {searchError && !isSearching && (
+                        <div className="text-center py-6">
+                          <p className="text-sm text-muted-foreground mb-1">Couldn't fetch products</p>
+                          <p className="text-xs text-muted-foreground">{searchError}</p>
                         </div>
                       )}
 
-                      {item.midRange?.length > 0 && (
-                        <div>
-                          <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
-                            Mid-Range <span className="normal-case font-normal">· $50–$150</span>
-                          </p>
-                          <div className="space-y-2">
-                            {item.midRange.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 3} sizeRec={sizeRecMap.get(match.id)} />)}
-                          </div>
+                      {/* Product list */}
+                      {!isSearching && displayMatches.length > 0 && (
+                        <div className="space-y-2">
+                          {displayMatches.map((match, i) => (
+                            <ProductRow
+                              key={match.id}
+                              match={match}
+                              shopMode={shopMode}
+                              vintageIndex={i}
+                              sizeRec={realSizeRecs.get(match.id) || undefined}
+                            />
+                          ))}
                         </div>
                       )}
 
-                      {item.luxury?.length > 0 && (
-                        <div>
-                          <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
-                            Luxury <span className="normal-case font-normal">· $150+</span>
-                          </p>
-                          <div className="space-y-2">
-                            {item.luxury.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 5} sizeRec={sizeRecMap.get(match.id)} />)}
-                          </div>
+                      {/* No results */}
+                      {!isSearching && productData?.fetched && realMatches.length === 0 && !searchError && (
+                        <div className="text-center py-6">
+                          <p className="text-sm text-muted-foreground">No products found for this item</p>
                         </div>
                       )}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
             </Accordion>
           </div>
         </div>
