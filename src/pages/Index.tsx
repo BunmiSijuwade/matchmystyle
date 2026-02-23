@@ -3,7 +3,7 @@ import { ArrowRight, Star } from "lucide-react";
 import GradientButton from "@/components/GradientButton";
 import Navbar from "@/components/Navbar";
 import TestimonialCarousel from "@/components/TestimonialCarousel";
-import heroBg from "@/assets/hero-bg.jpg";
+
 
 const Index = () => {
   return (
@@ -15,7 +15,7 @@ const Index = () => {
         {/* Background image */}
         <div className="absolute inset-0 z-0">
           <img
-            src={heroBg}
+            src="https://plus.unsplash.com/premium_vector-1724355762918-775a14a5c3d5?fm=jpg&q=80&w=2000&auto=format&fit=crop"
             alt="Fashion hero"
             className="w-full h-full object-cover object-top sm:object-center opacity-30 sm:opacity-20"
           />
