@@ -1,54 +1,44 @@
 
 
-# Add "Use My Profile" Toggle to Analyzer Page
+# Multi-Select Clothing Sizes on Profile Page
 
 ## Overview
-Add a visible toggle switch on the Analyzer page that lets users choose whether their saved profile measurements are included in the analysis. When enabled, the AI personalizes results with size notes and preferred currency. When disabled (or no profile exists), standard results are returned.
+Change the clothing size selector from single-select to multi-select, so users can pick multiple sizes (e.g. "M" and "L", or "12" and "14") that represent their range.
 
-## What Changes
+## Changes
 
-### Analyzer Page (`src/pages/Analyzer.tsx`)
+### 1. Profile Page (`src/pages/Profile.tsx`)
 
-- Add a new state variable `useProfile` (default: `true` if a profile exists, `false` otherwise)
-- Show a toggle row between the upload area and the Analyze button -- only visible when a profile is saved in localStorage
-- The toggle row displays: a label like "Use my measurements", a small Switch component, and a subtle description (e.g. "Size M, 165cm" summarizing the saved data)
-- In `handleAnalyze`, only attach `requestBody.profile` when `useProfile` is `true` (instead of always attaching it)
-- If no profile is saved, the toggle is hidden entirely and behavior is unchanged
+**Type change:**
+- Change `size: string` to `size: string[]` in the `Measurements` interface
+- Update the default value from `""` to `[]`
 
-### Visual Design
+**Button behavior:**
+- Clicking a size toggles it in/out of the array (instead of replacing)
+- Active state checks `measurements.size.includes(size)` instead of `===`
 
-The toggle row sits inside the existing `max-w-2xl` content area, styled consistently with the existing UI:
+**Update function:**
+- Add a dedicated `toggleSize` handler that adds/removes from the array
 
-```text
-+--------------------------------------------------+
-|  [Upload / URL tabs]                              |
-|  [Image preview area]                             |
-|                                                   |
-|  +----------------------------------------------+ |
-|  | Use my measurements              [  toggle ] | |
-|  | Size M · 165cm · EUR                         | |
-|  +----------------------------------------------+ |
-|                                                   |
-|  [ Analyze This Outfit ]                          |
-+--------------------------------------------------+
-```
+### 2. Analyzer Page (`src/pages/Analyzer.tsx`)
 
-- Uses the existing `Switch` component from `@/components/ui/switch`
-- Rounded card with `bg-muted border border-border rounded-xl p-4`
-- Label in `text-sm font-medium`, summary in `text-xs text-muted-foreground`
+**Summary display:**
+- Update the summary builder (line 53) to handle `size` as an array: join with "/" (e.g. "Size M/L" or "Size 12/14")
 
-## What Stays the Same
+### 3. Edge Function (`supabase/functions/analyze-outfit/index.ts`)
 
-- Results page -- no changes
-- Edge function -- no changes
-- Profile page -- no changes
-- localStorage structure -- no changes
-- All existing fallback behavior for users without a profile
+**Profile parsing:**
+- Update the size check (line ~97) to handle both string and array formats
+- If array, join with "/" for the prompt text (e.g. "Size M/L")
 
-## Technical Details
+### What Stays the Same
+- localStorage key and overall structure unchanged
+- All other profile fields remain single-value
+- Results page -- no changes needed
+- Backward compatible: old saved profiles with `size` as a string will still work (treated as a single selection)
 
-- Import `Switch` from `@/components/ui/switch`
-- Read profile once on mount to build a short summary string (e.g. "Size M, 165cm, EUR")
-- The `useProfile` state defaults to `true` when a profile with data exists, giving returning users automatic personalization
-- Only one file modified: `src/pages/Analyzer.tsx`
+### Technical Notes
+- The size buttons already have the right visual style; only the toggle logic and active-state check change
+- Edge function handles both `string` and `string[]` for `size` so old profiles don't break
+- Three files modified total
 
