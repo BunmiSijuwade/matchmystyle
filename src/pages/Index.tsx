@@ -102,14 +102,73 @@ const Index = () => {
 
           <div className="grid grid-cols-3 gap-3 sm:gap-8 max-w-2xl mx-auto">
             {[
-              { emoji: "📸", title: "Upload", desc: "Share the look" },
-              { emoji: "🤖", title: "AI Analyzes", desc: "Identifies items" },
-              { emoji: "🛍️", title: "Shop", desc: "In your size" },
+              {
+                title: "Upload",
+                desc: "Share the look",
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <rect x="5" y="16" width="14" height="4" rx="1" fill="#8B7355" opacity="0.4" />
+                    <path d="M12 14V4M12 4L8 8M12 4L16 8" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ),
+              },
+              {
+                title: "AI Analyzes",
+                desc: "Identifies items",
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="9" stroke="#8B7355" strokeWidth="2" opacity="0.4" />
+                    <circle cx="12" cy="12" r="3" fill="#1A1A1A" />
+                    <line x1="12" y1="1" x2="12" y2="5" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="12" y1="19" x2="12" y2="23" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                ),
+              },
+              {
+                title: "Shop",
+                desc: "In your size",
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M6 6H4L2 16H20L18 6H16M6 6L8 2H16L18 6M6 6H18" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+                    <circle cx="9" cy="20" r="2" fill="#1A1A1A" />
+                    <circle cx="17" cy="20" r="2" fill="#1A1A1A" />
+                  </svg>
+                ),
+              },
             ].map((step) => (
-              <div key={step.title} className="text-center">
-                <div className="text-3xl sm:text-4xl mb-2 sm:mb-3">{step.emoji}</div>
-                <h3 className="text-sm sm:text-lg font-medium mb-1 tracking-[-0.3px]">{step.title}</h3>
-                <p className="text-muted-foreground text-xs sm:text-sm">{step.desc}</p>
+              <div key={step.title} className="text-center flex flex-col items-center">
+                <div
+                  className="w-[50px] h-[50px] rounded-full flex items-center justify-center mb-3"
+                  style={{
+                    background: "linear-gradient(135deg, #F5EDE4, #E8DFD5)",
+                    border: "1px solid #D4C4B8",
+                  }}
+                >
+                  {step.icon}
+                </div>
+                <h3
+                  className="mb-1"
+                  style={{
+                    fontFamily: "Manrope, sans-serif",
+                    fontSize: "10px",
+                    fontWeight: 500,
+                    textTransform: "uppercase",
+                    letterSpacing: "1px",
+                    color: "#1A1A1A",
+                  }}
+                >
+                  {step.title}
+                </h3>
+                <p
+                  style={{
+                    fontFamily: "Manrope, sans-serif",
+                    fontSize: "10px",
+                    fontWeight: 300,
+                    color: "#999",
+                  }}
+                >
+                  {step.desc}
+                </p>
               </div>
             ))}
           </div>
