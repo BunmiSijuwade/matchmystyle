@@ -53,18 +53,26 @@ function discountPrice(price: string): string {
   return `$${Math.round(num * 0.55)}`;
 }
 
+function findRetailerBuilder(name: string) {
+  const key = name.toLowerCase().trim();
+  // Exact match first
+  if (RETAILER_SEARCH_URLS[key]) return RETAILER_SEARCH_URLS[key];
+  // Fuzzy: check if any retailer key is contained in the name or vice versa
+  for (const [retailerKey, builder] of Object.entries(RETAILER_SEARCH_URLS)) {
+    if (key.includes(retailerKey) || retailerKey.includes(key)) return builder;
+  }
+  return null;
+}
+
 function buildMatchUrl(match: ProductMatch, mode: "new" | "vintage", vintageIndex = 0): string {
   const q = encodeURIComponent(
     (match.searchQuery || `${match.brand} ${match.name}`).replace(/\+/g, " ").replace(/\s+/g, " ").trim()
   );
   if (mode === "vintage") return pickVintagePlatform(vintageIndex).url(q);
-  const retailerKey = (match.retailer || "").toLowerCase().trim();
-  const builder = RETAILER_SEARCH_URLS[retailerKey];
+  // Try retailer first, then brand
+  const builder = findRetailerBuilder(match.retailer || "") || findRetailerBuilder(match.brand || "");
   if (builder) return builder(q);
-  const brandKey = (match.brand || "").toLowerCase().trim();
-  const brandBuilder = RETAILER_SEARCH_URLS[brandKey];
-  if (brandBuilder) return brandBuilder(q);
-  return `https://www.asos.com/search/?q=${q}`;
+  return `https://www.google.com/search?q=${q}`;
 }
 
 const ProductRow = ({ match, shopMode, vintageIndex = 0 }: { match: ProductMatch; shopMode: "new" | "vintage"; vintageIndex?: number }) => {
