@@ -1,83 +1,54 @@
 
 
-# Connect Profile Measurements to Results
+# Add "Use My Profile" Toggle to Analyzer Page
 
 ## Overview
-Wire the saved profile data into the analysis pipeline so users with measurements get personalized sizing advice and currency-matched prices. Users without a profile get the same results they do today -- no degradation.
+Add a visible toggle switch on the Analyzer page that lets users choose whether their saved profile measurements are included in the analysis. When enabled, the AI personalizes results with size notes and preferred currency. When disabled (or no profile exists), standard results are returned.
 
-## How It Works
+## What Changes
+
+### Analyzer Page (`src/pages/Analyzer.tsx`)
+
+- Add a new state variable `useProfile` (default: `true` if a profile exists, `false` otherwise)
+- Show a toggle row between the upload area and the Analyze button -- only visible when a profile is saved in localStorage
+- The toggle row displays: a label like "Use my measurements", a small Switch component, and a subtle description (e.g. "Size M, 165cm" summarizing the saved data)
+- In `handleAnalyze`, only attach `requestBody.profile` when `useProfile` is `true` (instead of always attaching it)
+- If no profile is saved, the toggle is hidden entirely and behavior is unchanged
+
+### Visual Design
+
+The toggle row sits inside the existing `max-w-2xl` content area, styled consistently with the existing UI:
 
 ```text
-+------------------+       +-------------------+       +------------------+
-|  Analyzer Page   | ----> |  Edge Function    | ----> |  Results Page    |
-|                  |       |                   |       |                  |
-| Read localStorage|       | If profile exists:|       | Show sizeNote    |
-| "matchmystyle_   |       |  - Add to prompt  |       | under each match |
-|  profile"        |       |  - AI returns     |       |                  |
-|                  |       |    sizeNote per    |       | Show prices in   |
-| Include in POST  |       |    product        |       | preferred        |
-| body if present  |       |  - Prices in user |       | currency         |
-|                  |       |    currency       |       |                  |
-| No profile?      |       | No profile?       |       | No sizeNote?     |
-| Send nothing     |       |  Standard prompt  |       | Show nothing     |
-+------------------+       +-------------------+       +------------------+
++--------------------------------------------------+
+|  [Upload / URL tabs]                              |
+|  [Image preview area]                             |
+|                                                   |
+|  +----------------------------------------------+ |
+|  | Use my measurements              [  toggle ] | |
+|  | Size M · 165cm · EUR                         | |
+|  +----------------------------------------------+ |
+|                                                   |
+|  [ Analyze This Outfit ]                          |
++--------------------------------------------------+
 ```
 
-## Changes
-
-### 1. Analyzer Page (`src/pages/Analyzer.tsx`)
-
-In `handleAnalyze`, before sending the request:
-- Read `matchmystyle_profile` from localStorage
-- If it exists and has data, add a `profile` field to the request body
-- If it does not exist, send the request exactly as today (no `profile` field)
-
-### 2. Edge Function (`supabase/functions/analyze-outfit/index.ts`)
-
-- Extract optional `profile` from the request body
-- If `profile` is present and has measurements, append a paragraph to the system prompt:
-  ```
-  The user's measurements: Size M, Height 165cm, Bust 88cm, Waist 70cm, Hips 96cm, Shoe EU 38.
-  Preferred currency: EUR.
-  For each product, include a "sizeNote" with sizing advice (e.g. "Order size M", "Runs small - try L").
-  Use the preferred currency for all prices.
-  ```
-  Only include fields the user actually filled in (skip empty strings).
-- Add `sizeNote` (optional string) to each product in the tool schema
-- If no profile is sent, the prompt stays exactly as it is now
-
-### 3. Types (`src/contexts/AnalysisContext.tsx`)
-
-- Add `sizeNote?: string` to the `ProductMatch` interface
-
-### 4. Results Page (`src/pages/Results.tsx`)
-
-- For each product match that has a `sizeNote`, display it as small muted text beneath the product name (e.g. "Order size M" or "Runs small -- size up")
-- If `sizeNote` is undefined or empty, show nothing -- no empty state, no placeholder
+- Uses the existing `Switch` component from `@/components/ui/switch`
+- Rounded card with `bg-muted border border-border rounded-xl p-4`
+- Label in `text-sm font-medium`, summary in `text-xs text-muted-foreground`
 
 ## What Stays the Same
 
-- Profile page -- no changes needed
-- localStorage structure -- no migration
-- Upload/URL tabs, drag-and-drop, file handling
-- Image preview, reset, error handling
-- All existing results functionality for users without a profile
-- No database changes required
-- No new dependencies
+- Results page -- no changes
+- Edge function -- no changes
+- Profile page -- no changes
+- localStorage structure -- no changes
+- All existing fallback behavior for users without a profile
 
-## Graceful Fallback Summary
+## Technical Details
 
-| Scenario | Behavior |
-|---|---|
-| No profile saved | Standard results, USD prices, no size notes |
-| Profile saved but all fields empty | Same as no profile (skipped) |
-| Profile saved with some fields | AI uses available fields, skips empty ones |
-| Profile saved with all fields | Full personalization: size notes + currency |
-
-## Technical Notes
-
-- The `sizeNote` field is optional in the tool schema, so the AI can omit it when it has no sizing advice
-- Currency preference only affects the AI's price estimates (these are already approximate)
-- The `mapMatches` helper in the edge function will pass through `sizeNote` from the AI response
-- Backward compatible: old cached results without `sizeNote` render fine (undefined is simply not shown)
+- Import `Switch` from `@/components/ui/switch`
+- Read profile once on mount to build a short summary string (e.g. "Size M, 165cm, EUR")
+- The `useProfile` state defaults to `true` when a profile with data exists, giving returning users automatic personalization
+- Only one file modified: `src/pages/Analyzer.tsx`
 
