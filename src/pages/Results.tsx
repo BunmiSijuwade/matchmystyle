@@ -124,16 +124,26 @@ function fuzzyMatchRetailer(input: string): ((q: string) => string) | undefined 
 }
 
 function buildMatchUrl(match: ProductMatch, mode: "new" | "vintage", vintageIndex = 0): string {
-  const q = encodeURIComponent(
-    (match.searchQuery || `${match.brand} ${match.name}`).replace(/\+/g, " ").replace(/\s+/g, " ").trim()
-  );
+  const rawQuery = (match.searchQuery || `${match.brand} ${match.name}`).replace(/\+/g, " ").replace(/\s+/g, " ").trim();
+  const q = encodeURIComponent(rawQuery);
   if (mode === "vintage") return pickVintagePlatform(vintageIndex).url(q);
+
+  // Helper: strip brand name from query when going to the brand's own site
+  const stripBrand = (query: string, brand: string) => {
+    if (!brand) return query;
+    const re = new RegExp(`\\b${brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, "gi");
+    return query.replace(re, "").replace(/\s+/g, " ").trim();
+  };
+
   // Try retailer (fuzzy)
   const retailerBuilder = fuzzyMatchRetailer(match.retailer || "");
   if (retailerBuilder) return retailerBuilder(q);
-  // Try brand (fuzzy)
+  // Try brand (fuzzy) — strip brand from query since we're on their site
   const brandBuilder = fuzzyMatchRetailer(match.brand || "");
-  if (brandBuilder) return brandBuilder(q);
+  if (brandBuilder) {
+    const cleanQ = encodeURIComponent(stripBrand(rawQuery, match.brand || ""));
+    return brandBuilder(cleanQ);
+  }
   // Fallback to Nordstrom
   return `https://www.nordstrom.com/sr?keyword=${q}`;
 }
