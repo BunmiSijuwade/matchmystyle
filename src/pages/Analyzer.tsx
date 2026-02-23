@@ -63,13 +63,6 @@ const Analyzer = () => {
   const [useProfile, setUseProfile] = useState(hasProfile);
   const [dragOver, setDragOver] = useState(false);
 
-  // Clipboard paste support via extracted hook
-  const onImagePasted = useCallback((file: File) => {
-    setActiveTab("file");
-    handleFile(file);
-  }, []);
-  useClipboardPaste({ onImagePasted });
-
   const [pastedUrl, setPastedUrl] = useState("");
   const [urlPreviewError, setUrlPreviewError] = useState(false);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
@@ -78,6 +71,13 @@ const Analyzer = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [analyzeStep, setAnalyzeStep] = useState(0);
+
+  // Clipboard paste support via extracted hook
+  const onImagePasted = useCallback((file: File) => {
+    setActiveTab("file");
+    handleFile(file);
+  }, []);
+  useClipboardPaste({ onImagePasted, isEnabled: !analyzing });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
