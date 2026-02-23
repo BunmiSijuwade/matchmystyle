@@ -108,14 +108,16 @@ const Analyzer = () => {
     const stepTimer2 = setTimeout(() => setAnalyzeStep(2), 5500);
 
     try {
-      let requestBody: Record<string, unknown>;
+      let imagePayload: { imageUrl?: string; imageBase64?: string; mimeType?: string };
 
       if (activeTab === "url") {
-        requestBody = { imageUrl: pastedUrl };
+        imagePayload = { imageUrl: pastedUrl };
       } else {
         const imageBase64 = await fileToBase64(uploadedFile!);
-        requestBody = { imageBase64, mimeType: uploadedFile!.type };
+        imagePayload = { imageBase64, mimeType: uploadedFile!.type };
       }
+
+      const requestBody: Record<string, unknown> = { ...imagePayload };
 
       // Attach profile measurements if toggle is on
       if (useProfile && profileData) {
@@ -160,8 +162,8 @@ const Analyzer = () => {
         return;
       }
 
-      const imageUrl = activeTab === "url" ? pastedUrl : filePreviewUrl;
-      setAnalysis(items, imageUrl);
+      const displayUrl = activeTab === "url" ? pastedUrl : filePreviewUrl;
+      setAnalysis(items, displayUrl, imagePayload);
       navigate("/results");
     } catch (err) {
       console.error("Analyze error:", err);

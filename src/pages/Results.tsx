@@ -1,11 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ExternalLink, ArrowLeft, Leaf } from "lucide-react";
+import { ExternalLink, ArrowLeft, Leaf, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { Toaster } from "@/components/ui/toaster";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { useAnalysis, type ProductMatch } from "@/contexts/AnalysisContext";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import { useAnalysis, type DetectedItem, type ProductMatch } from "@/contexts/AnalysisContext";
+
+const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;
 
 const RETAILER_SEARCH_URLS: Record<string, (q: string) => string> = {
   "asos":            (q) => `https://www.asos.com/search/?q=${q}`,
@@ -105,15 +109,106 @@ const ProductRow = ({ match, shopMode, vintageIndex = 0 }: { match: ProductMatch
 
 const Results = () => {
   const navigate = useNavigate();
-  const { items, imageUrl } = useAnalysis();
+  const { items, imageUrl, imagePayload, setAnalysis } = useAnalysis();
+  const { toast } = useToast();
   const [shopMode, setShopMode] = useState<"new" | "vintage">("new");
   const [openAccordionItem, setOpenAccordionItem] = useState<string>("");
+  const [reanalyzing, setReanalyzing] = useState(false);
+
+  // Original items (without profile) for reverting
+  const [originalItems, setOriginalItems] = useState<DetectedItem[] | null>(null);
+
+  // Profile data
+  const profileRaw = localStorage.getItem("matchmystyle_profile");
+  const profileData = useMemo(() => {
+    try {
+      if (!profileRaw) return null;
+      const p = JSON.parse(profileRaw);
+      const hasData = Object.values(p).some((v) => typeof v === "string" && (v as string).trim() !== "");
+      if (!hasData) return null;
+      const parts: string[] = [];
+      const sizeVal = Array.isArray(p.size) ? p.size.join("/") : p.size;
+      if (sizeVal) parts.push(`Size ${sizeVal}`);
+      if (p.height) parts.push(`${p.height}cm`);
+      if (p.currency) parts.push(p.currency);
+      return { profile: p, summary: parts.join(" · ") };
+    } catch { return null; }
+  }, [profileRaw]);
+  const hasProfile = !!profileData;
+  const [useProfile, setUseProfile] = useState(false);
 
   useEffect(() => {
     if (!items || items.length === 0) {
       navigate("/analyzer", { replace: true });
     }
   }, [items, navigate]);
+
+  const reanalyze = useCallback(async (withProfile: boolean) => {
+    if (!imagePayload) {
+      toast({ title: "Cannot re-analyze", description: "Image data is not available. Please analyze again from the upload page.", variant: "destructive" });
+      setUseProfile(false);
+      return;
+    }
+
+    setReanalyzing(true);
+    try {
+      const requestBody: Record<string, unknown> = { ...imagePayload };
+      if (withProfile && profileData) {
+        requestBody.profile = profileData.profile;
+      }
+
+      const response = await fetch(ANALYZE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || "Re-analysis failed");
+      }
+
+      const data = await response.json();
+      const newItems: DetectedItem[] = data.items;
+
+      if (!newItems || newItems.length === 0) {
+        throw new Error("No items detected");
+      }
+
+      // Save original items on first toggle-on so we can revert
+      if (withProfile && !originalItems) {
+        setOriginalItems(items);
+      }
+
+      setAnalysis(newItems, imageUrl, imagePayload);
+      toast({
+        title: withProfile ? "Matches personalized" : "Matches updated",
+        description: withProfile
+          ? "Results updated with your measurements"
+          : "Reverted to standard sizing",
+      });
+    } catch (err: any) {
+      console.error("Re-analysis error:", err);
+      toast({ title: "Re-analysis failed", description: err.message || "Please try again.", variant: "destructive" });
+      setUseProfile(!withProfile); // revert toggle
+    } finally {
+      setReanalyzing(false);
+    }
+  }, [imagePayload, profileData, items, originalItems, imageUrl, setAnalysis, toast]);
+
+  const handleToggleProfile = useCallback((checked: boolean) => {
+    setUseProfile(checked);
+    if (!checked && originalItems) {
+      // Revert to cached original results without API call
+      setAnalysis(originalItems, imageUrl, imagePayload);
+      toast({ title: "Matches updated", description: "Reverted to standard sizing" });
+      return;
+    }
+    reanalyze(checked);
+  }, [originalItems, imageUrl, imagePayload, setAnalysis, toast, reanalyze]);
 
   if (!items || items.length === 0) return null;
 
@@ -136,6 +231,29 @@ const Results = () => {
           {imageUrl && (
             <div className="bg-card border border-border rounded-2xl overflow-hidden">
               <img src={imageUrl} alt="Analyzed outfit" className="w-full object-cover max-h-[250px] sm:max-h-[300px]" />
+            </div>
+          )}
+
+          {/* Profile toggle */}
+          {hasProfile && imagePayload && (
+            <div className="flex items-center justify-between gap-4 bg-muted border border-border rounded-xl p-4">
+              <div className="space-y-0.5">
+                <label htmlFor="results-use-profile" className="text-sm font-medium cursor-pointer">
+                  Use my measurements
+                </label>
+                {profileData.summary && (
+                  <p className="text-xs text-muted-foreground">{profileData.summary}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {reanalyzing && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                <Switch
+                  id="results-use-profile"
+                  checked={useProfile}
+                  onCheckedChange={handleToggleProfile}
+                  disabled={reanalyzing}
+                />
+              </div>
             </div>
           )}
 
@@ -178,108 +296,118 @@ const Results = () => {
             </div>
           )}
 
-          {/* Accordion */}
-          <Accordion
-            type="single"
-            collapsible
-            value={openAccordionItem}
-            onValueChange={setOpenAccordionItem}
-            className="bg-card border border-border rounded-2xl px-2 py-2 overflow-hidden"
-          >
-            {items.map((item) => (
-              <AccordionItem
-                key={item.id}
-                value={item.id}
-                className="border-0 rounded-xl mb-1 last:mb-0 data-[state=open]:bg-muted/50"
-              >
-                <AccordionTrigger className="px-3 sm:px-4 py-3 rounded-xl hover:no-underline hover:bg-muted/50 [&[data-state=open]]:rounded-b-none transition-all duration-300 ease-out min-h-[52px]">
-                  <div className="flex items-center gap-3 text-left">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{item.category}</span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
-                          {[item.bestMatch, ...(item.budget ?? []), ...(item.midRange ?? []), ...(item.luxury ?? [])].filter(Boolean).length} matches
-                        </span>
+          {/* Accordion with loading overlay */}
+          <div className="relative">
+            {reanalyzing && (
+              <div className="absolute inset-0 bg-background/60 backdrop-blur-sm z-10 rounded-2xl flex items-center justify-center">
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Updating matches…
+                </div>
+              </div>
+            )}
+            <Accordion
+              type="single"
+              collapsible
+              value={openAccordionItem}
+              onValueChange={setOpenAccordionItem}
+              className="bg-card border border-border rounded-2xl px-2 py-2 overflow-hidden"
+            >
+              {items.map((item) => (
+                <AccordionItem
+                  key={item.id}
+                  value={item.id}
+                  className="border-0 rounded-xl mb-1 last:mb-0 data-[state=open]:bg-muted/50"
+                >
+                  <AccordionTrigger className="px-3 sm:px-4 py-3 rounded-xl hover:no-underline hover:bg-muted/50 [&[data-state=open]]:rounded-b-none transition-all duration-300 ease-out min-h-[52px]">
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{item.category}</span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
+                            {[item.bestMatch, ...(item.budget ?? []), ...(item.midRange ?? []), ...(item.luxury ?? [])].filter(Boolean).length} matches
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium text-foreground truncate">{item.description}</p>
                       </div>
-                      <p className="text-sm font-medium text-foreground truncate">{item.description}</p>
                     </div>
-                  </div>
-                </AccordionTrigger>
+                  </AccordionTrigger>
 
-                <AccordionContent className="px-3 sm:px-4 pb-4 pt-0">
-                  {/* Metadata grid */}
-                  <div className="grid grid-cols-3 gap-2 mb-4 mt-3">
-                    {[
-                      { label: "Color", value: item.color },
-                      { label: "Style", value: item.style },
-                      { label: "Price Range", value: item.estimatedPrice },
-                    ].map(({ label, value }) => (
-                      <div key={label} className="bg-muted rounded-xl p-3">
-                        <p className="text-[9px] text-muted-foreground uppercase tracking-[1px] mb-1">{label}</p>
-                        <p className="text-sm font-medium">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* AI disclaimer */}
-                  <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-muted border border-border">
-                    <span className="text-primary text-xs flex-shrink-0">✨</span>
-                    <p className="text-[10px] text-muted-foreground font-medium">
-                      {shopMode === "vintage"
-                        ? "AI suggestions — prices are estimates for pre-loved items. Click to search on vintage platforms."
-                        : "AI suggestions — prices are estimates. Click any item to search on retailers."}
-                    </p>
-                  </div>
-
-                  {/* Tiered product sections */}
-                  <div className="space-y-4">
-                    {item.bestMatch && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground">Best Match</span>
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary text-primary-foreground">★</span>
+                  <AccordionContent className="px-3 sm:px-4 pb-4 pt-0">
+                    {/* Metadata grid */}
+                    <div className="grid grid-cols-3 gap-2 mb-4 mt-3">
+                      {[
+                        { label: "Color", value: item.color },
+                        { label: "Style", value: item.style },
+                        { label: "Price Range", value: item.estimatedPrice },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="bg-muted rounded-xl p-3">
+                          <p className="text-[9px] text-muted-foreground uppercase tracking-[1px] mb-1">{label}</p>
+                          <p className="text-sm font-medium">{value}</p>
                         </div>
-                        <ProductRow match={item.bestMatch} shopMode={shopMode} vintageIndex={0} />
-                      </div>
-                    )}
+                      ))}
+                    </div>
 
-                    {item.budget?.length > 0 && (
-                      <div>
-                        <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
-                          Budget <span className="normal-case font-normal">· Under $50</span>
-                        </p>
-                        <div className="space-y-2">
-                          {item.budget.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 1} />)}
-                        </div>
-                      </div>
-                    )}
+                    {/* AI disclaimer */}
+                    <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-muted border border-border">
+                      <span className="text-primary text-xs flex-shrink-0">✨</span>
+                      <p className="text-[10px] text-muted-foreground font-medium">
+                        {shopMode === "vintage"
+                          ? "AI suggestions — prices are estimates for pre-loved items. Click to search on vintage platforms."
+                          : "AI suggestions — prices are estimates. Click any item to search on retailers."}
+                      </p>
+                    </div>
 
-                    {item.midRange?.length > 0 && (
-                      <div>
-                        <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
-                          Mid-Range <span className="normal-case font-normal">· $50–$150</span>
-                        </p>
-                        <div className="space-y-2">
-                          {item.midRange.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 3} />)}
+                    {/* Tiered product sections */}
+                    <div className="space-y-4">
+                      {item.bestMatch && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground">Best Match</span>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary text-primary-foreground">★</span>
+                          </div>
+                          <ProductRow match={item.bestMatch} shopMode={shopMode} vintageIndex={0} />
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {item.luxury?.length > 0 && (
-                      <div>
-                        <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
-                          Luxury <span className="normal-case font-normal">· $150+</span>
-                        </p>
-                        <div className="space-y-2">
-                          {item.luxury.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 5} />)}
+                      {item.budget?.length > 0 && (
+                        <div>
+                          <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
+                            Budget <span className="normal-case font-normal">· Under $50</span>
+                          </p>
+                          <div className="space-y-2">
+                            {item.budget.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 1} />)}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+                      )}
+
+                      {item.midRange?.length > 0 && (
+                        <div>
+                          <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
+                            Mid-Range <span className="normal-case font-normal">· $50–$150</span>
+                          </p>
+                          <div className="space-y-2">
+                            {item.midRange.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 3} />)}
+                          </div>
+                        </div>
+                      )}
+
+                      {item.luxury?.length > 0 && (
+                        <div>
+                          <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
+                            Luxury <span className="normal-case font-normal">· $150+</span>
+                          </p>
+                          <div className="space-y-2">
+                            {item.luxury.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 5} />)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
         </div>
       </div>
     </div>
