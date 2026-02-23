@@ -137,7 +137,13 @@ function buildMatchUrl(match: ProductMatch, mode: "new" | "vintage", vintageInde
 
   // Try retailer (fuzzy)
   const retailerBuilder = fuzzyMatchRetailer(match.retailer || "");
-  if (retailerBuilder) return retailerBuilder(q);
+  if (retailerBuilder) {
+    // If retailer is also the brand (e.g. ASOS, H&M), strip brand from query
+    const retailerIsBrand = match.retailer && match.brand &&
+      match.retailer.toLowerCase().replace(/[^a-z]/g, "") === match.brand.toLowerCase().replace(/[^a-z]/g, "");
+    const rq = retailerIsBrand ? encodeURIComponent(stripBrand(rawQuery, match.brand || "")) : q;
+    return retailerBuilder(rq);
+  }
   // Try brand (fuzzy) — strip brand from query since we're on their site
   const brandBuilder = fuzzyMatchRetailer(match.brand || "");
   if (brandBuilder) {
