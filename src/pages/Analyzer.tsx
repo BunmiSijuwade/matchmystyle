@@ -347,49 +347,51 @@ const Analyzer = () => {
 
             {/* URL Tab */}
             {activeTab === "url" && (
-              <>
-                {!previewSrc ? (
-                  <div className="glass rounded-2xl p-8 space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Image URL</label>
-                      <input
-                        type="url"
-                        value={pastedUrl}
-                        onChange={handleUrlChange}
-                        placeholder="https://example.com/outfit.jpg"
-                        className="w-full h-11 rounded-xl border border-border bg-background px-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Paste a direct image URL from Instagram, TikTok, Pinterest, or any source
-                    </p>
-                  </div>
-                ) : (
-                  <div className="glass rounded-2xl overflow-hidden relative group">
-                    {!urlPreviewError ? (
-                      <img
-                        src={pastedUrl}
-                        alt="Outfit preview"
-                        className="w-full object-cover max-h-[360px]"
-                        onError={() => setUrlPreviewError(true)}
-                      />
-                    ) : (
-                      <div className="p-8 text-center">
-                        <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Could not load image from this URL.</p>
-                        <p className="text-xs text-muted-foreground mt-1">Try a direct image link ending in .jpg, .png, or .webp</p>
-                      </div>
-                    )}
+              <div className="space-y-3">
+                <input
+                  type="url"
+                  value={pastedUrl}
+                  onChange={handleUrlChange}
+                  placeholder="https://instagram.com/p/outfit123"
+                  className="w-full min-h-[48px] rounded-xl border border-border bg-muted/30 px-4 text-base placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
+                />
+                {pastedUrl.length > 0 && !isValidUrl(pastedUrl) && (
+                  <p className="text-destructive text-sm flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    Please enter a valid URL starting with https://
+                  </p>
+                )}
+                {(!pastedUrl || isValidUrl(pastedUrl)) && (
+                  <p className="text-xs text-muted-foreground">
+                    Paste from Instagram, TikTok, Pinterest, or any source
+                  </p>
+                )}
+                {previewSrc && !urlPreviewError && (
+                  <div className="glass rounded-2xl overflow-hidden relative">
+                    <img
+                      src={pastedUrl}
+                      alt="Outfit preview"
+                      className="w-full object-cover max-h-[400px]"
+                      onError={() => setUrlPreviewError(true)}
+                    />
                     <button
                       onClick={handleReset}
-                      className="absolute top-3 right-3 w-8 h-8 rounded-full glass flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:border-destructive hover:text-destructive"
+                      className="absolute top-3 right-3 min-h-[44px] px-4 py-2 rounded-full glass flex items-center gap-2 text-sm font-medium hover:border-primary transition-all"
                     >
                       <X className="w-4 h-4" />
+                      Clear
                     </button>
                     <ItemPills results={results ?? []} activeId={openAccordionItem} onPillClick={handlePillClick} />
                   </div>
                 )}
-              </>
+                {previewSrc && urlPreviewError && (
+                  <div className="rounded-2xl border border-border p-8 text-center">
+                    <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Could not load image from this URL.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Try a direct image link ending in .jpg, .png, or .webp</p>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* File Tab */}
