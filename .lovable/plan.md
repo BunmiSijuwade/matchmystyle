@@ -1,54 +1,42 @@
 
 
-## Fix: Speed Up Analysis by Preventing AI Model Loops
+## Revert Google Shopping Links to Direct Brand Search URLs
 
-### The Problem
-The last analysis took ~72 seconds. The AI model (Gemini) is entering a degenerate loop midway through its response, outputting:
-- Garbled field values mixing Chinese characters with JSON keys (e.g. `"price":"$98.00激温,retailer:"`)
-- Hundreds of repeated "go" tokens at the end of the response
+Replace all `google.com/search?...site:...&tbm=shop` entries in `RETAILER_SEARCH_URLS` with direct brand-site search URLs.
 
-This wastes tokens and time. No `max_tokens` parameter is set, so the model generates until it decides to stop on its own.
+### Changes (all in `src/pages/Results.tsx`)
 
-### The Fix (all in `supabase/functions/analyze-outfit/index.ts`)
-
-**1. Add `max_tokens` to the API request**
-
-Cap the response at 4096 tokens. A well-structured response for 4-6 items with 7 matches each needs ~2000-3000 tokens. 4096 gives headroom while preventing runaway generation.
-
-Add to the request body (around line 126):
-```typescript
-max_tokens: 4096,
+**1. Levi's** -- Use `levi.com/search`
+```
+"levi's": (q) => `https://www.levi.com/search?q=${q}`
+"levis":  (q) => `https://www.levi.com/search?q=${q}`
 ```
 
-**2. Add `temperature: 0.2` to reduce hallucination**
-
-Lower temperature makes the model more deterministic and less likely to enter repetitive loops or produce garbled output.
-
-```typescript
-temperature: 0.2,
+**2. Bershka** -- Use `bershka.com/us/search`
+```
+"bershka": (q) => `https://www.bershka.com/us/search?q=${q}`
 ```
 
-**3. Simplify the system prompt**
-
-The current prompt is clear but the model still degenerates on later items. Add an explicit instruction to keep output minimal and avoid repetition:
-
-Add to end of system prompt:
+**3. Pull&Bear** -- Use `pullandbear.com/us/search`
 ```
-Keep all field values short and concise. Do not repeat instructions or field names in values.
+"pull&bear": (q) => `https://www.pullandbear.com/us/search?q=${q}`
 ```
 
-**4. Redeploy the edge function**
+**4. Massimo Dutti** -- Use `massimodutti.com/us/search`
+```
+"massimo dutti": (q) => `https://www.massimodutti.com/us/search?q=${q}`
+```
 
-### Expected Impact
-- Analysis time should drop from ~72s to ~15-25s
-- Garbled output and Chinese characters should be significantly reduced at the source (sanitization remains as backup)
-- Token cost per analysis will decrease
+**5. COS** -- Use `cos.com/en/search`
+```
+"cos": (q) => `https://www.cos.com/en/search?q=${q}`
+```
 
-### Technical Details
+**6. & Other Stories** -- Use `stories.com/en/search`
+```
+"& other stories": (q) => `https://www.stories.com/en/search?q=${q}`
+"other stories":   (q) => `https://www.stories.com/en/search?q=${q}`
+```
 
-**File: `supabase/functions/analyze-outfit/index.ts`**
-
-In the `fetch` call body (line 126), add `max_tokens: 4096` and `temperature: 0.2` alongside the existing `model`, `messages`, `tools`, and `tool_choice` fields.
-
-Append to the system prompt string (around line 89): `"\nKeep all field values short and concise. Do not repeat instructions or field names in values."`
+No other files are affected. The fallback to Nordstrom search remains unchanged.
 
