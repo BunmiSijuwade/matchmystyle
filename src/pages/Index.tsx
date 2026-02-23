@@ -92,9 +92,9 @@ const Index = () => {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-16 sm:py-24 scroll-mt-16">
+      <section id="how-it-works" className="scroll-mt-16" style={{ backgroundColor: "#FAFAF8", paddingTop: "48px", paddingBottom: "48px" }}>
         <div className="container mx-auto px-5 sm:px-6">
-          <div className="divider" />
+          <div style={{ borderTop: "1px solid #E8DFD5", marginBottom: "48px" }} />
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-light text-center mb-10 sm:mb-14 tracking-[-1.2px]">
             Three Steps to{" "}
             <span className="text-gradient italic font-normal">Your Perfect Look</span>
@@ -172,6 +172,7 @@ const Index = () => {
               </div>
             ))}
           </div>
+          <div style={{ borderBottom: "1px solid #E8DFD5", marginTop: "48px" }} />
         </div>
       </section>
 
