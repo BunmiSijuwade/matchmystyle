@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { Upload, Camera, Sparkles, ShoppingBag, ExternalLink, X, Loader2, AlertCircle, Zap, Link } from "lucide-react";
+import { Upload, Camera, Sparkles, ShoppingBag, ExternalLink, X, Loader2, AlertCircle, Zap, Link, Leaf } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
 import { useToast } from "@/hooks/use-toast";
@@ -60,7 +61,25 @@ const RETAILER_SEARCH_URLS: Record<string, (q: string) => string> = {
   "nanushka":        (q) => `https://www.nanushka.com/search?query=${q}`,
 };
 
-function buildMatchUrl(match: ProductMatch, mode: "new" | "vintage" = "new"): string {
+const VINTAGE_PLATFORMS: { name: string; url: (q: string) => string }[] = [
+  { name: "Poshmark",              url: (q) => `https://poshmark.com/search?query=${q}` },
+  { name: "Depop",                 url: (q) => `https://www.depop.com/search/?q=${q}` },
+  { name: "ThredUp",               url: (q) => `https://www.thredup.com/products?search_text=${q}` },
+  { name: "Vestiaire Collective",  url: (q) => `https://www.vestiairecollective.com/search/?q=${q}` },
+];
+
+function pickVintagePlatform(index: number) {
+  return VINTAGE_PLATFORMS[index % VINTAGE_PLATFORMS.length];
+}
+
+function discountPrice(price: string): string {
+  const num = parseFloat(price.replace(/[^0-9.]/g, ""));
+  if (isNaN(num)) return price;
+  const discounted = Math.round(num * 0.55);
+  return `$${discounted}`;
+}
+
+function buildMatchUrl(match: ProductMatch, mode: "new" | "vintage" = "new", vintageIndex = 0): string {
   const q = encodeURIComponent(
     (match.searchQuery || `${match.brand} ${match.name}`)
       .replace(/\+/g, " ")
@@ -69,7 +88,7 @@ function buildMatchUrl(match: ProductMatch, mode: "new" | "vintage" = "new"): st
   );
 
   if (mode === "vintage") {
-    return `https://www.ebay.com/sch/i.html?_nkw=${q}&LH_PrefLoc=1`;
+    return pickVintagePlatform(vintageIndex).url(q);
   }
 
   const retailerKey = (match.retailer || "").toLowerCase().trim();
@@ -106,27 +125,38 @@ const ItemPills = ({ results, activeId, onPillClick }: ItemPillsProps) => (
   </div>
 );
 
-const ProductRow = ({ match, shopMode = "new" }: { match: ProductMatch; shopMode?: "new" | "vintage" }) => (
-  <a
-    href={buildMatchUrl(match, shopMode)}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="flex items-center justify-between p-3 rounded-xl border border-border hover:border-primary bg-background/50 transition-all group"
-  >
-    <div className="min-w-0 flex-1 mr-3">
-      <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{match.name}</p>
-      <p className="text-xs text-muted-foreground">
-        {shopMode === "vintage" ? `Search "${match.brand} ${match.name}" on eBay` : `${match.brand} · ${match.retailer}`}
-      </p>
-    </div>
-    <div className="flex items-center gap-2 flex-shrink-0">
-      <span className="font-semibold text-gradient text-sm">{match.price}</span>
-      <span className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center group-hover:shadow-glow transition-all">
-        <ExternalLink className="w-3.5 h-3.5 text-primary-foreground" />
-      </span>
-    </div>
-  </a>
-);
+const ProductRow = ({ match, shopMode = "new", vintageIndex = 0 }: { match: ProductMatch; shopMode?: "new" | "vintage"; vintageIndex?: number }) => {
+  const platform = pickVintagePlatform(vintageIndex);
+  const isVintage = shopMode === "vintage";
+  return (
+    <a
+      href={buildMatchUrl(match, shopMode, vintageIndex)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center justify-between p-3 rounded-xl border border-border hover:border-primary bg-background/50 transition-all group"
+    >
+      <div className="min-w-0 flex-1 mr-3">
+        <div className="flex items-center gap-1.5">
+          <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{match.name}</p>
+          {isVintage && (
+            <Badge className="bg-[hsl(142,71%,45%)]/10 text-[hsl(142,71%,35%)] border-[hsl(142,71%,45%)]/20 text-[10px] px-1.5 py-0 flex-shrink-0">
+              Vintage
+            </Badge>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {isVintage ? `${platform.name} · Pre-loved` : `${match.brand} · ${match.retailer}`}
+        </p>
+      </div>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <span className="font-semibold text-gradient text-sm">{isVintage ? discountPrice(match.price) : match.price}</span>
+        <span className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center group-hover:shadow-glow transition-all">
+          <ExternalLink className="w-3.5 h-3.5 text-primary-foreground" />
+        </span>
+      </div>
+    </a>
+  );
+};
 
 type Tab = "url" | "file";
 
@@ -569,6 +599,18 @@ const Analyzer = () => {
                   </div>
                 </div>
 
+                {/* Sustainability banner for vintage mode */}
+                {shopMode === "vintage" && (
+                  <div className="flex items-center gap-3 rounded-xl px-4 py-3 border"
+                    style={{ background: "rgba(34, 197, 94, 0.08)", borderColor: "rgba(34, 197, 94, 0.25)" }}
+                  >
+                    <Leaf className="w-5 h-5 flex-shrink-0" style={{ color: "hsl(142, 71%, 35%)" }} />
+                    <p className="text-sm font-medium" style={{ color: "hsl(142, 71%, 30%)" }}>
+                      🌱 Shopping sustainably with pre-loved fashion
+                    </p>
+                  </div>
+                )}
+
                 <Accordion
                   type="single"
                   collapsible
@@ -615,7 +657,9 @@ const Analyzer = () => {
                         <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-muted border border-border">
                           <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                           <p className="text-xs text-muted-foreground font-medium">
-                            AI suggestions — prices are estimates. Click any item to search on ASOS.
+                            {shopMode === "vintage"
+                              ? "AI suggestions — prices are estimates for pre-loved items. Click to search on vintage platforms."
+                              : "AI suggestions — prices are estimates. Click any item to search on retailers."}
                           </p>
                         </div>
 
@@ -628,7 +672,7 @@ const Analyzer = () => {
                                 <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Best Match</span>
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground">★</span>
                               </div>
-                              <ProductRow match={item.bestMatch} shopMode={shopMode} />
+                              <ProductRow match={item.bestMatch} shopMode={shopMode} vintageIndex={0} />
                             </div>
                           )}
 
@@ -639,7 +683,7 @@ const Analyzer = () => {
                                 Budget <span className="normal-case font-normal">· Under $50</span>
                               </p>
                               <div className="space-y-2">
-                                {item.budget.map((match) => <ProductRow key={match.id} match={match} shopMode={shopMode} />)}
+                                {item.budget.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 1} />)}
                               </div>
                             </div>
                           )}
@@ -651,7 +695,7 @@ const Analyzer = () => {
                                 Mid-Range <span className="normal-case font-normal">· $50–$150</span>
                               </p>
                               <div className="space-y-2">
-                                {item.midRange.map((match) => <ProductRow key={match.id} match={match} shopMode={shopMode} />)}
+                                {item.midRange.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 3} />)}
                               </div>
                             </div>
                           )}
@@ -663,7 +707,7 @@ const Analyzer = () => {
                                 Luxury <span className="normal-case font-normal">· $150+</span>
                               </p>
                               <div className="space-y-2">
-                                {item.luxury.map((match) => <ProductRow key={match.id} match={match} shopMode={shopMode} />)}
+                                {item.luxury.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 5} />)}
                               </div>
                             </div>
                           )}
