@@ -2,13 +2,8 @@ import { Link } from "react-router-dom";
 import { Camera, ArrowRight, Star, Zap, Heart } from "lucide-react";
 import GradientButton from "@/components/GradientButton";
 import Navbar from "@/components/Navbar";
+import TestimonialCarousel from "@/components/TestimonialCarousel";
 import heroBg from "@/assets/hero-bg.jpg";
-
-const testimonials = [
-  { name: "Sofia R.", size: "Size 14", quote: "Finally found that exact blazer from Emma Chamberlain's vlog — in MY size!", stars: 5 },
-  { name: "Priya K.", size: "Size 6", quote: "Saved me hours of hunting. The AI is scarily accurate at identifying brands.", stars: 5 },
-  { name: "Mia T.", size: "Size 18", quote: "As a plus-size girlie, I always struggle. MatchMyStyle changed the game for me.", stars: 5 },
-];
 
 const Index = () => {
   return (
@@ -122,39 +117,8 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-24">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="font-display text-4xl md:text-5xl font-bold">
-              Loved by Fashion{" "}
-              <span className="text-gradient italic">Enthusiasts</span>
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((t) => (
-              <div key={t.name} className="glass rounded-2xl p-8">
-                <div className="flex gap-1 mb-4">
-                  {Array.from({ length: t.stars }).map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-brand-pink text-brand-pink" />
-                  ))}
-                </div>
-                <p className="text-foreground mb-6 leading-relaxed italic font-display">"{t.quote}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
-                    {t.name[0]}
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{t.name}</p>
-                    <p className="text-muted-foreground text-xs">{t.size}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Testimonials Carousel */}
+      <TestimonialCarousel />
 
       {/* CTA Section */}
       <section className="py-24">
