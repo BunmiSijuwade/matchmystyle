@@ -50,7 +50,8 @@ const Analyzer = () => {
       const hasData = Object.values(p).some((v) => typeof v === "string" && (v as string).trim() !== "");
       if (!hasData) return null;
       const parts: string[] = [];
-      if (p.size) parts.push(`Size ${p.size}`);
+      const sizeVal = Array.isArray(p.size) ? p.size.join("/") : p.size;
+      if (sizeVal) parts.push(`Size ${sizeVal}`);
       if (p.height) parts.push(`${p.height}cm`);
       if (p.currency) parts.push(p.currency);
       return { profile: p, summary: parts.join(" · ") };

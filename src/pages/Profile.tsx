@@ -6,7 +6,7 @@ import GradientButton from "@/components/GradientButton";
 interface Measurements {
   height: string;
   heightUnit: "cm" | "ft";
-  size: string;
+  size: string[];
   bust: string;
   waist: string;
   hips: string;
@@ -20,7 +20,7 @@ const Profile = () => {
   const [measurements, setMeasurements] = useState<Measurements>({
     height: "",
     heightUnit: "cm",
-    size: "",
+    size: [],
     bust: "",
     waist: "",
     hips: "",
@@ -37,6 +37,15 @@ const Profile = () => {
 
   const update = (field: keyof Measurements, value: string) => {
     setMeasurements((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const toggleSize = (size: string) => {
+    setMeasurements((prev) => ({
+      ...prev,
+      size: prev.size.includes(size)
+        ? prev.size.filter((s) => s !== size)
+        : [...prev.size, size],
+    }));
   };
 
   return (
@@ -94,9 +103,9 @@ const Profile = () => {
               {sizeOptions.map((size) => (
                 <button
                   key={size}
-                  onClick={() => update("size", size)}
+                  onClick={() => toggleSize(size)}
                   className={`w-14 h-12 min-h-[44px] rounded-full text-[11px] font-medium tracking-[0.5px] transition-all duration-300 ease-out border ${
-                    measurements.size === size
+                    measurements.size.includes(size)
                       ? "bg-foreground text-background border-transparent"
                       : "border-border text-muted-foreground hover:border-primary hover:text-foreground bg-card"
                   }`}

@@ -91,7 +91,8 @@ Use realistic brand names that actually sell in each price range. Use the sugges
     // Append profile-based personalization if available
     if (profile && typeof profile === "object") {
       const parts: string[] = [];
-      if (profile.size) parts.push(`Size ${profile.size}`);
+      const sizeVal = Array.isArray(profile.size) ? profile.size.join("/") : profile.size;
+      if (sizeVal) parts.push(`Size ${sizeVal}`);
       if (profile.height) parts.push(`Height ${profile.height}cm`);
       if (profile.bust) parts.push(`Bust ${profile.bust}cm`);
       if (profile.waist) parts.push(`Waist ${profile.waist}cm`);
