@@ -8,6 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalysis, type DetectedItem, type ProductMatch } from "@/contexts/AnalysisContext";
+import { getSizeRecommendation, type UserMeasurements, type SizeRecommendation } from "@/services/sizingService";
 
 const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;
 
@@ -71,9 +72,20 @@ function buildMatchUrl(match: ProductMatch, mode: "new" | "vintage", vintageInde
   return `https://www.asos.com/search/?q=${q}`;
 }
 
-const ProductRow = ({ match, shopMode, vintageIndex = 0 }: { match: ProductMatch; shopMode: "new" | "vintage"; vintageIndex?: number }) => {
+const CONFIDENCE_COLORS: Record<string, string> = {
+  high: "bg-green-500",
+  medium: "bg-yellow-500",
+  low: "bg-orange-500",
+};
+
+const ProductRow = ({ match, shopMode, vintageIndex = 0, sizeRec }: { match: ProductMatch; shopMode: "new" | "vintage"; vintageIndex?: number; sizeRec?: SizeRecommendation | null }) => {
   const platform = pickVintagePlatform(vintageIndex);
   const isVintage = shopMode === "vintage";
+
+  const displaySizeNote = sizeRec
+    ? `Order size ${sizeRec.recommendedSize}${sizeRec.brandRunsSmall ? " (runs small)" : sizeRec.brandRunsLarge ? " (runs large)" : ""}`
+    : match.sizeNote;
+
   return (
     <a
       href={buildMatchUrl(match, shopMode, vintageIndex)}
@@ -90,8 +102,13 @@ const ProductRow = ({ match, shopMode, vintageIndex = 0 }: { match: ProductMatch
             </Badge>
           )}
         </div>
-        {match.sizeNote && (
-          <p className="text-[9px] text-primary font-medium">{match.sizeNote}</p>
+        {displaySizeNote && (
+          <div className="flex items-center gap-1.5">
+            {sizeRec && (
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${CONFIDENCE_COLORS[sizeRec.confidence]}`} title={`${sizeRec.confidence} confidence`} />
+            )}
+            <p className="text-[9px] text-primary font-medium">{displaySizeNote}</p>
+          </div>
         )}
         <p className="text-[9px] text-muted-foreground uppercase tracking-[0.5px] font-medium">
           {isVintage ? `${platform.name} · Pre-loved` : `${match.brand} · ${match.retailer}`}
@@ -136,6 +153,35 @@ const Results = () => {
   }, [profileRaw]);
   const hasProfile = !!profileData;
   const [useProfile, setUseProfile] = useState(false);
+
+  // Convert cm profile measurements to inches for sizing service
+  const userMeasurements: UserMeasurements | null = useMemo(() => {
+    if (!profileData || !useProfile) return null;
+    const p = profileData.profile;
+    const bust = p.bust ? parseFloat(p.bust) / 2.54 : undefined;
+    const waist = p.waist ? parseFloat(p.waist) / 2.54 : undefined;
+    const hips = p.hips ? parseFloat(p.hips) / 2.54 : undefined;
+    if (!bust && !waist && !hips) return null;
+    return { bust, waist, hips };
+  }, [profileData, useProfile]);
+
+  // Build a map of match id -> SizeRecommendation for all current items
+  const sizeRecMap = useMemo(() => {
+    const map = new Map<string, SizeRecommendation>();
+    if (!userMeasurements || !items) return map;
+    for (const item of items) {
+      const allMatches = [item.bestMatch, ...(item.budget ?? []), ...(item.midRange ?? []), ...(item.luxury ?? [])].filter(Boolean) as ProductMatch[];
+      for (const match of allMatches) {
+        const rec = getSizeRecommendation(
+          `${match.brand} ${match.name}`,
+          item.description,
+          userMeasurements
+        );
+        if (rec) map.set(match.id, rec);
+      }
+    }
+    return map;
+  }, [userMeasurements, items]);
 
   useEffect(() => {
     if (!items || items.length === 0) {
@@ -366,7 +412,7 @@ const Results = () => {
                             <span className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground">Best Match</span>
                             <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary text-primary-foreground">★</span>
                           </div>
-                          <ProductRow match={item.bestMatch} shopMode={shopMode} vintageIndex={0} />
+                          <ProductRow match={item.bestMatch} shopMode={shopMode} vintageIndex={0} sizeRec={sizeRecMap.get(item.bestMatch.id)} />
                         </div>
                       )}
 
@@ -376,7 +422,7 @@ const Results = () => {
                             Budget <span className="normal-case font-normal">· Under $50</span>
                           </p>
                           <div className="space-y-2">
-                            {item.budget.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 1} />)}
+                            {item.budget.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 1} sizeRec={sizeRecMap.get(match.id)} />)}
                           </div>
                         </div>
                       )}
@@ -387,7 +433,7 @@ const Results = () => {
                             Mid-Range <span className="normal-case font-normal">· $50–$150</span>
                           </p>
                           <div className="space-y-2">
-                            {item.midRange.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 3} />)}
+                            {item.midRange.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 3} sizeRec={sizeRecMap.get(match.id)} />)}
                           </div>
                         </div>
                       )}
@@ -398,7 +444,7 @@ const Results = () => {
                             Luxury <span className="normal-case font-normal">· $150+</span>
                           </p>
                           <div className="space-y-2">
-                            {item.luxury.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 5} />)}
+                            {item.luxury.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 5} sizeRec={sizeRecMap.get(match.id)} />)}
                           </div>
                         </div>
                       )}
