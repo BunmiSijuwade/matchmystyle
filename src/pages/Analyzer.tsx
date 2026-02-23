@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
 
 interface ProductMatch {
   id: string;
@@ -106,27 +106,36 @@ const ItemPills = ({ results, activeId, onPillClick }: ItemPillsProps) => (
   </div>
 );
 
-const ProductRow = ({ match, shopMode = "new" }: { match: ProductMatch; shopMode?: "new" | "vintage" }) => (
-  <a
-    href={buildMatchUrl(match, shopMode)}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="flex items-center justify-between p-3 rounded-xl border border-border hover:border-primary bg-background/50 transition-all group"
-  >
-    <div className="min-w-0 flex-1 mr-3">
-      <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{match.name}</p>
-      <p className="text-xs text-muted-foreground">
-        {shopMode === "vintage" ? `Search "${match.brand} ${match.name}" on eBay` : `${match.brand} · ${match.retailer}`}
-      </p>
-    </div>
-    <div className="flex items-center gap-2 flex-shrink-0">
-      <span className="font-semibold text-gradient text-sm">{match.price}</span>
-      <span className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center group-hover:shadow-glow transition-all">
-        <ExternalLink className="w-3.5 h-3.5 text-primary-foreground" />
-      </span>
-    </div>
-  </a>
-);
+const ProductCard = ({ match, shopMode = "new" }: { match: ProductMatch; shopMode?: "new" | "vintage" }) => {
+  const profileData = localStorage.getItem("matchmystyle_profile");
+  const userSize = profileData ? JSON.parse(profileData)?.size : null;
+
+  return (
+    <a
+      href={buildMatchUrl(match, shopMode)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block rounded-xl border border-border hover:border-primary bg-background/50 transition-all group overflow-hidden"
+    >
+      {/* Image placeholder */}
+      <div className="w-full aspect-square bg-muted flex items-center justify-center">
+        <ShoppingBag className="w-8 h-8 text-muted-foreground/40" />
+      </div>
+      <div className="p-3 space-y-1">
+        <p className="text-xs text-muted-foreground">{shopMode === "vintage" ? "eBay" : match.brand}</p>
+        <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{match.name}</p>
+        <p className="font-semibold text-gradient text-sm">{match.price}</p>
+        {userSize && (
+          <p className="text-xs text-accent-foreground flex items-center gap-1" style={{ color: "hsl(142, 71%, 45%)" }}>
+            ✓ Size {userSize} available
+          </p>
+        )}
+      </div>
+    </a>
+  );
+};
+
+const INITIAL_PRODUCTS_SHOWN = 2;
 
 type Tab = "url" | "file";
 
@@ -176,6 +185,7 @@ const Analyzer = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [results, setResults] = useState<DetectedItem[] | null>(null);
   const [openAccordionItem, setOpenAccordionItem] = useState<string>("");
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const accordionRef = useRef<HTMLDivElement>(null);
@@ -569,110 +579,71 @@ const Analyzer = () => {
                   </div>
                 </div>
 
-                <Accordion
-                  type="single"
-                  collapsible
-                  value={openAccordionItem}
-                  onValueChange={setOpenAccordionItem}
-                  className="glass rounded-2xl px-2 py-2"
-                >
-                  {results.map((item) => (
-                    <AccordionItem
-                      key={item.id}
-                      value={item.id}
-                      className="border-0 rounded-xl mb-1 last:mb-0 data-[state=open]:glass-light"
-                    >
-                      <AccordionTrigger className="px-4 py-3 rounded-xl hover:no-underline hover:bg-muted/50 [&[data-state=open]]:rounded-b-none transition-all">
-                        <div className="flex items-center gap-3 text-left">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-semibold uppercase tracking-widest text-primary">{item.category}</span>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                                {[item.bestMatch, ...(item.budget ?? []), ...(item.midRange ?? []), ...(item.luxury ?? [])].filter(Boolean).length} matches
-                              </span>
-                            </div>
-                            <p className="text-sm font-medium text-foreground truncate">{item.description}</p>
-                          </div>
-                        </div>
-                      </AccordionTrigger>
+                {/* AI disclaimer */}
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border">
+                  <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                  <p className="text-xs text-muted-foreground font-medium">
+                    AI suggestions — prices are estimates. Click any item to search.
+                  </p>
+                </div>
 
-                      <AccordionContent className="px-4 pb-4 pt-0">
-                        {/* Metadata grid */}
-                        <div className="grid grid-cols-3 gap-2 mb-4 mt-3">
-                          {[
-                            { label: "Color", value: item.color },
-                            { label: "Style", value: item.style },
-                            { label: "Price Range", value: item.estimatedPrice },
-                          ].map(({ label, value }) => (
-                            <div key={label} className="bg-muted rounded-xl p-3">
-                              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
-                              <p className="text-sm font-medium">{value}</p>
-                            </div>
+                {/* Item cards */}
+                <div className="space-y-6">
+                  {results.map((item) => {
+                    const allMatches: ProductMatch[] = [
+                      ...(item.bestMatch ? [item.bestMatch] : []),
+                      ...(item.budget ?? []),
+                      ...(item.midRange ?? []),
+                      ...(item.luxury ?? []),
+                    ];
+                    const isExpanded = expandedItems.has(item.id);
+                    const visibleMatches = isExpanded ? allMatches : allMatches.slice(0, INITIAL_PRODUCTS_SHOWN);
+                    const matchPercent = item.bestMatch ? "95%" : "85%";
+
+                    return (
+                      <div key={item.id} className="glass rounded-2xl p-4 sm:p-5 space-y-4">
+                        {/* Card header */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h4 className="font-display text-lg font-semibold">{item.description}</h4>
+                            <p className="text-sm text-muted-foreground mt-0.5">
+                              {item.color} · {item.style} · {item.estimatedPrice}
+                            </p>
+                          </div>
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold gradient-primary text-primary-foreground flex-shrink-0">
+                            {matchPercent} Match
+                          </span>
+                        </div>
+
+                        {/* 2-column product grid */}
+                        <div className="grid grid-cols-2 gap-3">
+                          {visibleMatches.map((match) => (
+                            <ProductCard key={match.id} match={match} shopMode={shopMode} />
                           ))}
                         </div>
 
-                        {/* AI disclaimer */}
-                        <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-muted border border-border">
-                          <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                          <p className="text-xs text-muted-foreground font-medium">
-                            AI suggestions — prices are estimates. Click any item to search on ASOS.
-                          </p>
-                        </div>
-
-                        {/* Tiered product sections */}
-                        <div className="space-y-4">
-                          {/* Best Match */}
-                          {item.bestMatch && (
-                            <div>
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Best Match</span>
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground">★</span>
-                              </div>
-                              <ProductRow match={item.bestMatch} shopMode={shopMode} />
-                            </div>
-                          )}
-
-                          {/* Budget */}
-                          {item.budget?.length > 0 && (
-                            <div>
-                              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-                                Budget <span className="normal-case font-normal">· Under $50</span>
-                              </p>
-                              <div className="space-y-2">
-                                {item.budget.map((match) => <ProductRow key={match.id} match={match} shopMode={shopMode} />)}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Mid-Range */}
-                          {item.midRange?.length > 0 && (
-                            <div>
-                              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-                                Mid-Range <span className="normal-case font-normal">· $50–$150</span>
-                              </p>
-                              <div className="space-y-2">
-                                {item.midRange.map((match) => <ProductRow key={match.id} match={match} shopMode={shopMode} />)}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Luxury */}
-                          {item.luxury?.length > 0 && (
-                            <div>
-                              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-                                Luxury <span className="normal-case font-normal">· $150+</span>
-                              </p>
-                              <div className="space-y-2">
-                                {item.luxury.map((match) => <ProductRow key={match.id} match={match} shopMode={shopMode} />)}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
+                        {/* View More */}
+                        {allMatches.length > INITIAL_PRODUCTS_SHOWN && (
+                          <button
+                            onClick={() => {
+                              setExpandedItems((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(item.id)) next.delete(item.id);
+                                else next.add(item.id);
+                                return next;
+                              });
+                            }}
+                            className="w-full py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary transition-all min-h-[44px]"
+                          >
+                            {isExpanded
+                              ? "Show Less"
+                              : `View ${allMatches.length - INITIAL_PRODUCTS_SHOWN} More Match${allMatches.length - INITIAL_PRODUCTS_SHOWN !== 1 ? "es" : ""}`}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
