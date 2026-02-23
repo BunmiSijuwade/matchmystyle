@@ -75,7 +75,7 @@ const ProductRow = ({ match, shopMode, vintageIndex = 0 }: { match: ProductMatch
       href={buildMatchUrl(match, shopMode, vintageIndex)}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center justify-between p-3 rounded-xl border border-border hover:border-primary bg-background/50 transition-all group"
+      className="flex items-center justify-between p-3 sm:p-4 rounded-xl border border-border hover:border-primary bg-background/50 transition-all duration-300 ease-out group min-h-[56px]"
     >
       <div className="min-w-0 flex-1 mr-3">
         <div className="flex items-center gap-1.5">
@@ -118,12 +118,12 @@ const Results = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <Toaster />
-      <div className="container mx-auto px-6 pt-28 pb-16">
-        <div className="max-w-2xl mx-auto space-y-5">
+      <div className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16">
+        <div className="max-w-2xl mx-auto space-y-4 sm:space-y-5">
           {/* Back button */}
           <button
             onClick={() => navigate("/analyzer")}
-            className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-300 ease-out min-h-[44px]"
           >
             <ArrowLeft className="w-4 h-4" />
             ← Analyze Another
@@ -132,19 +132,19 @@ const Results = () => {
           {/* Image preview */}
           {imageUrl && (
             <div className="glass rounded-2xl overflow-hidden">
-              <img src={imageUrl} alt="Analyzed outfit" className="w-full object-cover max-h-[300px]" />
+              <img src={imageUrl} alt="Analyzed outfit" className="w-full object-cover max-h-[250px] sm:max-h-[300px]" />
             </div>
           )}
 
           {/* Results header + toggle */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <h3 className="font-display text-2xl font-bold">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <h3 className="font-display text-xl sm:text-2xl font-bold">
               {items.length} Item{items.length !== 1 ? "s" : ""} Detected
             </h3>
-            <div className="flex p-1 rounded-full bg-muted w-fit">
+            <div className="flex p-1 rounded-full bg-muted w-full sm:w-fit">
               <button
                 onClick={() => setShopMode("new")}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all min-h-[40px] ${
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ease-out min-h-[44px] ${
                   shopMode === "new"
                     ? "gradient-primary text-primary-foreground shadow-brand"
                     : "text-muted-foreground hover:text-foreground"
@@ -154,7 +154,7 @@ const Results = () => {
               </button>
               <button
                 onClick={() => setShopMode("vintage")}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all min-h-[40px] ${
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ease-out min-h-[44px] ${
                   shopMode === "vintage"
                     ? "gradient-primary text-primary-foreground shadow-brand"
                     : "text-muted-foreground hover:text-foreground"
@@ -184,7 +184,7 @@ const Results = () => {
             collapsible
             value={openAccordionItem}
             onValueChange={setOpenAccordionItem}
-            className="glass rounded-2xl px-2 py-2"
+            className="glass rounded-2xl px-2 py-2 overflow-hidden"
           >
             {items.map((item) => (
               <AccordionItem
@@ -192,7 +192,7 @@ const Results = () => {
                 value={item.id}
                 className="border-0 rounded-xl mb-1 last:mb-0 data-[state=open]:glass-light"
               >
-                <AccordionTrigger className="px-4 py-3 rounded-xl hover:no-underline hover:bg-muted/50 [&[data-state=open]]:rounded-b-none transition-all">
+                <AccordionTrigger className="px-3 sm:px-4 py-3 rounded-xl hover:no-underline hover:bg-muted/50 [&[data-state=open]]:rounded-b-none transition-all duration-300 ease-out min-h-[52px]">
                   <div className="flex items-center gap-3 text-left">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -206,7 +206,7 @@ const Results = () => {
                   </div>
                 </AccordionTrigger>
 
-                <AccordionContent className="px-4 pb-4 pt-0">
+                <AccordionContent className="px-3 sm:px-4 pb-4 pt-0">
                   {/* Metadata grid */}
                   <div className="grid grid-cols-3 gap-2 mb-4 mt-3">
                     {[

@@ -169,18 +169,18 @@ const Analyzer = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <Toaster />
-      <div className="container mx-auto px-6 pt-28 pb-16">
+      <div className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16">
         {/* Header */}
-        <div className="mb-10 text-center">
+        <div className="mb-8 sm:mb-10 text-center">
           <div className="inline-flex items-center gap-2 glass-light rounded-full px-4 py-2 mb-4 text-sm font-medium text-primary">
             <Sparkles className="w-4 h-4" />
             <span>AI Outfit Analyzer</span>
           </div>
-          <h1 className="font-display text-4xl md:text-5xl font-bold mb-3">
+          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-3">
             Identify Any{" "}
             <span className="text-gradient italic">Outfit</span>
           </h1>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+          <p className="text-muted-foreground text-base sm:text-lg max-w-xl mx-auto">
             Upload a photo of an influencer's look and our AI will identify every item — then find them in your size.
           </p>
         </div>
@@ -189,10 +189,10 @@ const Analyzer = () => {
           <div className="space-y-4">
 
             {/* Tab bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => handleTabSwitch("file")}
-                className={`flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
+                className={`flex items-center justify-center gap-2 px-4 sm:px-5 py-3 rounded-xl text-sm font-medium transition-all duration-300 ease-out min-h-[44px] ${
                   activeTab === "file"
                     ? "gradient-primary text-primary-foreground shadow-brand"
                     : "bg-muted text-muted-foreground hover:text-foreground"
@@ -202,7 +202,7 @@ const Analyzer = () => {
               </button>
               <button
                 onClick={() => handleTabSwitch("url")}
-                className={`flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
+                className={`flex items-center justify-center gap-2 px-4 sm:px-5 py-3 rounded-xl text-sm font-medium transition-all duration-300 ease-out min-h-[44px] ${
                   activeTab === "url"
                     ? "gradient-primary text-primary-foreground shadow-brand"
                     : "bg-muted text-muted-foreground hover:text-foreground"

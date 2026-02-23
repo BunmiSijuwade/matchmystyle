@@ -42,23 +42,23 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container mx-auto px-6 pt-28 pb-16 max-w-2xl">
+      <div className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16 max-w-2xl">
         {/* Header */}
         <div className="mb-10">
           <div className="inline-flex items-center gap-2 glass-light rounded-full px-4 py-2 mb-4 text-sm font-medium text-primary">
             <Ruler className="w-4 h-4" />
             <span>Your Style Profile</span>
           </div>
-          <h1 className="font-display text-4xl font-bold mb-3">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold mb-3">
             My{" "}
             <span className="text-gradient italic">Measurements</span>
           </h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-base sm:text-lg">
             Enter your measurements once and get perfectly-sized outfit matches every time.
           </p>
         </div>
 
-        <div className="glass rounded-2xl p-8 space-y-8">
+        <div className="glass rounded-2xl p-5 sm:p-8 space-y-8">
           {/* Height */}
           <div>
             <h3 className="font-display text-lg font-semibold mb-4 text-foreground">Height</h3>
@@ -68,14 +68,14 @@ const Profile = () => {
                 value={measurements.height}
                 onChange={(e) => update("height", e.target.value)}
                 placeholder={measurements.heightUnit === "cm" ? "e.g. 165" : "e.g. 5.5"}
-                className="flex-1 bg-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                className="flex-1 bg-muted border border-border rounded-xl px-4 py-3 min-h-[44px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-300"
               />
               <div className="flex rounded-xl overflow-hidden border border-border">
                 {(["cm", "ft"] as const).map((unit) => (
                   <button
                     key={unit}
                     onClick={() => update("heightUnit", unit)}
-                    className={`px-5 py-3 text-sm font-medium transition-all ${
+                    className={`px-5 py-3 text-sm font-medium transition-all duration-300 ease-out min-h-[44px] ${
                       measurements.heightUnit === unit
                         ? "gradient-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground hover:text-foreground"
@@ -96,7 +96,7 @@ const Profile = () => {
                 <button
                   key={size}
                   onClick={() => update("size", size)}
-                  className={`w-14 h-12 rounded-xl text-sm font-medium transition-all border ${
+                  className={`w-14 h-12 min-h-[44px] rounded-xl text-sm font-medium transition-all duration-300 ease-out border ${
                     measurements.size === size
                       ? "gradient-primary text-primary-foreground border-transparent shadow-brand"
                       : "border-border text-muted-foreground hover:border-primary hover:text-foreground bg-muted"
@@ -128,7 +128,7 @@ const Profile = () => {
                     value={measurements[field]}
                     onChange={(e) => update(field, e.target.value)}
                     placeholder={placeholder}
-                    className="w-full bg-muted border border-border rounded-xl px-3 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm"
+                    className="w-full bg-muted border border-border rounded-xl px-3 py-3 min-h-[44px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-300 text-sm"
                   />
                 </div>
               ))}
@@ -143,7 +143,7 @@ const Profile = () => {
               value={measurements.shoeSize}
               onChange={(e) => update("shoeSize", e.target.value)}
               placeholder="e.g. 38"
-              className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+              className="w-full bg-muted border border-border rounded-xl px-4 py-3 min-h-[44px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-300"
             />
           </div>
 
@@ -155,7 +155,7 @@ const Profile = () => {
                 <button
                   key={currency}
                   onClick={() => update("preferredCurrency", currency)}
-                  className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all border ${
+                  className={`px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-medium transition-all duration-300 ease-out border ${
                     measurements.preferredCurrency === currency
                       ? "gradient-primary text-primary-foreground border-transparent shadow-brand"
                       : "border-border text-muted-foreground hover:border-primary bg-muted"
