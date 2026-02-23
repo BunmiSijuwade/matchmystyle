@@ -401,8 +401,10 @@ const Analyzer = () => {
                     onDragLeave={() => setDragOver(false)}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
-                    className={`glass rounded-2xl border-2 border-dashed p-16 text-center cursor-pointer transition-all duration-300 ${
-                      dragOver ? "border-primary shadow-brand bg-accent" : "border-border hover:border-primary hover:shadow-brand"
+                    className={`rounded-2xl border-2 border-dashed p-10 sm:p-16 text-center cursor-pointer transition-all duration-300 min-h-[240px] flex flex-col items-center justify-center ${
+                      dragOver
+                        ? "border-primary shadow-brand bg-accent/60"
+                        : "border-border bg-muted/30 hover:border-primary hover:shadow-brand hover:bg-muted/50"
                     }`}
                   >
                     <input
@@ -412,21 +414,27 @@ const Analyzer = () => {
                       className="hidden"
                       onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
                     />
-                    <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center mx-auto mb-6 shadow-brand animate-pulse-glow">
-                      <Upload className="w-8 h-8 text-primary-foreground" />
-                    </div>
-                    <h3 className="font-display text-xl font-semibold mb-2">Drop your photo here</h3>
-                    <p className="text-muted-foreground text-sm mb-4">Or click to browse files</p>
-                    <p className="text-xs text-muted-foreground">Supports JPG, PNG, WEBP · Max 20MB</p>
+                    <div className="text-5xl mb-4">⬆️</div>
+                    <h3 className="font-display text-xl font-semibold mb-1">Drop your photo here</h3>
+                    <p className="text-muted-foreground text-sm mb-3">or click to browse files</p>
+                    <p className="text-xs text-muted-foreground">JPG, PNG, WEBP · Max 20MB</p>
                   </div>
                 ) : (
-                  <div className="glass rounded-2xl overflow-hidden relative group">
-                    <img src={filePreviewUrl} alt="Uploaded outfit" className="w-full object-cover max-h-[360px]" />
+                  <div className="glass rounded-2xl overflow-hidden relative">
+                    <img src={filePreviewUrl} alt="Uploaded outfit" className="w-full object-cover max-h-[400px]" />
                     <button
-                      onClick={handleReset}
-                      className="absolute top-3 right-3 w-8 h-8 rounded-full glass flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:border-destructive hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFilePreviewUrl(null);
+                        setUploadedFile(null);
+                        setResults(null);
+                        setOpenAccordionItem("");
+                        fileInputRef.current?.click();
+                      }}
+                      className="absolute top-3 right-3 min-h-[44px] px-4 py-2 rounded-full glass flex items-center gap-2 text-sm font-medium hover:border-primary transition-all"
                     >
-                      <X className="w-4 h-4" />
+                      <Camera className="w-4 h-4" />
+                      Change image
                     </button>
                     <ItemPills results={results ?? []} activeId={openAccordionItem} onPillClick={handlePillClick} />
                   </div>
