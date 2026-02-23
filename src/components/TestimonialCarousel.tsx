@@ -14,7 +14,6 @@ const TestimonialCarousel = () => {
 
   const next = useCallback(() => setActive((i) => (i + 1) % testimonials.length), []);
 
-  // Auto-rotate
   useEffect(() => {
     timer.current = setInterval(next, 5000);
     return () => clearInterval(timer.current);
@@ -48,9 +47,10 @@ const TestimonialCarousel = () => {
   return (
     <section className="py-12 sm:py-16">
       <div className="container mx-auto px-5 sm:px-6">
-        <h2 className="font-display text-3xl sm:text-4xl font-bold text-center mb-8">
+        <div className="divider" />
+        <h2 className="text-3xl sm:text-4xl font-light text-center mb-8 tracking-[-1.2px]">
           Loved by Fashion{" "}
-          <span className="text-gradient italic">Enthusiasts</span>
+          <span className="text-gradient italic font-normal">Enthusiasts</span>
         </h2>
 
         <div
@@ -61,18 +61,18 @@ const TestimonialCarousel = () => {
           {/* Stars */}
           <div className="flex justify-center gap-1 mb-3">
             {Array.from({ length: t.stars }).map((_, i) => (
-              <Star key={i} className="w-4 h-4 fill-brand-pink text-brand-pink" />
+              <Star key={i} className="w-4 h-4 fill-primary text-primary" />
             ))}
           </div>
 
           {/* Quote */}
-          <p className="text-foreground leading-relaxed italic font-display text-base sm:text-lg mb-4 min-h-[3rem]">
+          <p className="text-foreground leading-relaxed italic text-base sm:text-lg mb-4 min-h-[3rem]">
             "{t.quote}"
           </p>
 
           {/* Avatar + Name */}
           <div className="flex items-center justify-center gap-3 mb-5">
-            <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+            <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-medium text-sm">
               {t.name[0]}
             </div>
             <div className="text-left">

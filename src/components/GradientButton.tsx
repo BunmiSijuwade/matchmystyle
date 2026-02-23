@@ -12,13 +12,13 @@ const GradientButton = forwardRef<HTMLButtonElement, GradientButtonProps>(
       <button
         ref={ref}
         className={cn(
-          "relative inline-flex items-center justify-center font-medium transition-all duration-300 ease-out rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:pointer-events-none",
-          variant === "primary" && "gradient-primary text-primary-foreground shadow-brand hover:scale-105 hover:shadow-glow animate-pulse-glow",
-          variant === "outline" && "border border-primary text-primary hover:bg-accent hover:text-accent-foreground hover:scale-105",
-          variant === "ghost" && "text-foreground hover:text-primary hover:bg-accent",
-          size === "sm" && "text-sm px-4 py-2 min-h-[44px]",
-          size === "md" && "text-base px-6 py-3 min-h-[44px]",
-          size === "lg" && "text-lg px-8 py-4 min-h-[48px]",
+          "relative inline-flex items-center justify-center font-medium transition-all duration-300 ease-out rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:pointer-events-none uppercase tracking-[1.5px]",
+          variant === "primary" && "bg-foreground text-background hover:bg-foreground/90 hover:translate-y-[-1px] shadow-brand",
+          variant === "outline" && "border border-[hsl(28,18%,78%)] text-muted-foreground hover:bg-muted hover:border-primary hover:text-foreground",
+          variant === "ghost" && "text-foreground hover:text-primary hover:bg-muted",
+          size === "sm" && "text-[11px] px-5 py-2 min-h-[44px] tracking-[1px]",
+          size === "md" && "text-[13px] px-6 py-3 min-h-[44px]",
+          size === "lg" && "text-[13px] px-8 py-4 min-h-[48px]",
           className
         )}
         {...props}

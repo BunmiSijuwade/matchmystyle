@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Camera, ArrowRight, Star, Zap, Heart } from "lucide-react";
+import { ArrowRight, Star } from "lucide-react";
 import GradientButton from "@/components/GradientButton";
 import Navbar from "@/components/Navbar";
 import TestimonialCarousel from "@/components/TestimonialCarousel";
@@ -17,29 +17,27 @@ const Index = () => {
           <img
             src={heroBg}
             alt="Fashion hero"
-            className="w-full h-full object-cover object-top sm:object-center opacity-50 sm:opacity-40"
+            className="w-full h-full object-cover object-top sm:object-center opacity-30 sm:opacity-20"
           />
-          <div className="absolute inset-0 bg-gradient-hero" />
-          <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 60% 50%, hsl(292 84% 61% / 0.15) 0%, transparent 70%)" }} />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/70 to-background" />
         </div>
 
-      {/* Hero content */}
+        {/* Hero content */}
         <div className="container mx-auto px-5 sm:px-6 relative z-10">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 glass-light rounded-full px-4 py-2 mb-6 text-sm font-medium text-primary">
-              <Zap className="w-4 h-4" />
+            <div className="inline-flex items-center gap-2 bg-muted rounded-full px-4 py-2 mb-6 text-[10px] font-medium tracking-[1px] uppercase text-muted-foreground">
               <span>Powered by AI</span>
             </div>
 
-            <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-bold leading-tight mb-6">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-light leading-[1.15] mb-6 tracking-[-1.2px]">
               Wear the Looks
               <br />
-              <span className="text-gradient italic">You Obsess Over</span>
+              <span className="text-gradient italic font-normal">You Obsess Over</span>
             </h1>
 
-            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-xl mb-8 leading-relaxed">
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-xl mb-8 leading-[1.7] tracking-[0.2px]">
               Upload any influencer outfit. Our AI identifies every item and finds them in{" "}
-              <strong className="text-foreground">your exact size</strong> — from luxury to budget dupes.
+              <strong className="text-foreground font-medium">your exact size</strong> — from luxury to budget dupes.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
@@ -53,16 +51,16 @@ const Index = () => {
                 onClick={() => {
                   document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
                 }}
-                className="inline-flex items-center justify-center min-h-[44px] rounded-full border border-primary text-primary hover:bg-accent hover:text-accent-foreground hover:scale-105 transition-all duration-300 text-lg px-8 py-4"
+                className="inline-flex items-center justify-center min-h-[44px] rounded-full border border-[hsl(28,18%,78%)] text-muted-foreground hover:bg-muted hover:text-foreground hover:border-primary transition-all duration-300 text-[13px] font-medium uppercase tracking-[1.5px] px-8 py-4"
               >
                 See How It Works
               </button>
             </div>
 
-            <div className="flex items-center gap-6 mt-10 text-sm text-muted-foreground">
+            <div className="flex items-center gap-6 mt-10 text-[11px] text-muted-foreground tracking-[0.5px]">
               <div className="flex items-center gap-2">
                 <div className="flex -space-x-2">
-                  {["#d946ef", "#9333ea", "#d946ef"].map((c, i) => (
+                  {["hsl(28,24%,44%)", "hsl(24,15%,54%)", "hsl(28,24%,44%)"].map((c, i) => (
                     <div key={i} className="w-7 h-7 rounded-full border-2 border-background" style={{ background: c }} />
                   ))}
                 </div>
@@ -70,7 +68,7 @@ const Index = () => {
               </div>
               <div className="flex items-center gap-1">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-brand-pink text-brand-pink" />
+                  <Star key={i} className="w-4 h-4 fill-primary text-primary" />
                 ))}
                 <span className="ml-1">4.9/5</span>
               </div>
@@ -78,27 +76,28 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Floating accent cards */}
-        <div className="hidden lg:block absolute right-12 top-1/2 -translate-y-1/2 z-10 animate-float">
-          <div className="glass rounded-2xl p-4 w-56 shadow-brand">
+        {/* Floating accent card */}
+        <div className="hidden lg:block absolute right-12 top-1/2 -translate-y-1/2 z-10">
+          <div className="bg-card border border-border rounded-2xl p-4 w-56 shadow-brand">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center">
-                <Camera className="w-4 h-4 text-primary-foreground" />
+                <span className="text-primary-foreground text-xs">📷</span>
               </div>
-              <span className="text-sm font-medium">Item Detected</span>
+              <span className="text-[11px] font-medium tracking-[0.5px] uppercase text-muted-foreground">Item Detected</span>
             </div>
-            <p className="text-xs text-muted-foreground mb-2">Blazer • Zara • ~$89</p>
-            <div className="text-xs font-medium text-gradient">3 matches in size M found ✓</div>
+            <p className="text-xs text-muted-foreground mb-2">Blazer · Zara · ~$89</p>
+            <div className="text-xs font-medium text-primary">3 matches in size M found ✓</div>
           </div>
         </div>
       </section>
 
-      {/* How It Works — compact 3-step row */}
-      <section id="how-it-works" className="py-16 sm:py-24 bg-muted/30 scroll-mt-16">
+      {/* How It Works */}
+      <section id="how-it-works" className="py-16 sm:py-24 scroll-mt-16">
         <div className="container mx-auto px-5 sm:px-6">
-          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-10 sm:mb-14">
+          <div className="divider" />
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-light text-center mb-10 sm:mb-14 tracking-[-1.2px]">
             Three Steps to{" "}
-            <span className="text-gradient italic">Your Perfect Look</span>
+            <span className="text-gradient italic font-normal">Your Perfect Look</span>
           </h2>
 
           <div className="grid grid-cols-3 gap-3 sm:gap-8 max-w-2xl mx-auto">
@@ -109,7 +108,7 @@ const Index = () => {
             ].map((step) => (
               <div key={step.title} className="text-center">
                 <div className="text-3xl sm:text-4xl mb-2 sm:mb-3">{step.emoji}</div>
-                <h3 className="font-display text-sm sm:text-lg font-semibold mb-1">{step.title}</h3>
+                <h3 className="text-sm sm:text-lg font-medium mb-1 tracking-[-0.3px]">{step.title}</h3>
                 <p className="text-muted-foreground text-xs sm:text-sm">{step.desc}</p>
               </div>
             ))}
@@ -123,14 +122,13 @@ const Index = () => {
       {/* CTA Section */}
       <section className="py-24">
         <div className="container mx-auto px-6">
-          <div className="glass-light rounded-3xl p-12 text-center relative overflow-hidden">
-            <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 50%, hsl(292 84% 61% / 0.15) 0%, transparent 70%)" }} />
-            <Heart className="w-10 h-10 mx-auto mb-6 text-secondary animate-pulse" />
-            <h2 className="font-display text-4xl md:text-5xl font-bold mb-4 relative z-10">
+          <div className="bg-muted rounded-3xl p-12 text-center relative overflow-hidden border border-border">
+            <div className="divider" />
+            <h2 className="text-4xl md:text-5xl font-light mb-4 relative z-10 tracking-[-1.2px]">
               Start Matching{" "}
-              <span className="text-gradient italic">Your Style</span>
+              <span className="text-gradient italic font-normal">Your Style</span>
             </h2>
-            <p className="text-muted-foreground text-lg mb-8 relative z-10 max-w-md mx-auto">
+            <p className="text-muted-foreground text-base mb-8 relative z-10 max-w-md mx-auto leading-[1.7]">
               Join thousands of fashion lovers finding their perfect outfit matches every day.
             </p>
             <div className="flex justify-center gap-4 relative z-10">
@@ -152,10 +150,12 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-display text-lg font-semibold text-gradient">MatchMyStyle</span>
+          <div className="flex items-center gap-0.5">
+            <span className="text-base font-medium tracking-[-0.3px]">Match</span>
+            <span className="text-base font-medium tracking-[-0.3px] text-gradient italic">My</span>
+            <span className="text-base font-medium tracking-[-0.3px]">Style</span>
           </div>
-          <p className="text-muted-foreground text-sm">© 2024 MatchMyStyle. Find your perfect fit.</p>
+          <p className="text-muted-foreground text-sm">© 2026 MatchMyStyle. Find your perfect fit.</p>
         </div>
       </footer>
     </div>

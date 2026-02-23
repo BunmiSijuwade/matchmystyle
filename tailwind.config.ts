@@ -12,8 +12,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["Playfair Display", "serif"],
-        sans: ["Inter", "sans-serif"],
+        display: ["Manrope", "sans-serif"],
+        sans: ["Manrope", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -50,8 +50,13 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         brand: {
-          pink: "hsl(292, 84%, 61%)",
-          purple: "hsl(271, 81%, 56%)",
+          taupe: "hsl(28, 24%, 44%)",
+          black: "hsl(0, 0%, 10%)",
+        },
+        vintage: {
+          DEFAULT: "hsl(142, 76%, 36%)",
+          bg: "rgba(34, 197, 94, 0.08)",
+          border: "rgba(34, 197, 94, 0.2)",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
@@ -63,11 +68,6 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-      },
-      backgroundImage: {
-        "gradient-brand": "linear-gradient(135deg, hsl(292, 84%, 61%) 0%, hsl(271, 81%, 56%) 100%)",
-        "gradient-subtle": "linear-gradient(135deg, hsl(292 84% 61% / 0.15) 0%, hsl(271 81% 56% / 0.15) 100%)",
-        "gradient-hero": "linear-gradient(180deg, transparent 0%, hsl(0 0% 4% / 0.8) 60%, hsl(0 0% 4%) 100%)",
       },
       borderRadius: {
         lg: "var(--radius)",

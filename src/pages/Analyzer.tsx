@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { Camera, Sparkles, ShoppingBag, X, Loader2, AlertCircle, Zap } from "lucide-react";
+import { Camera, ShoppingBag, X, Loader2, AlertCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
 import { useToast } from "@/hooks/use-toast";
@@ -44,15 +44,11 @@ const Analyzer = () => {
   const hasProfile = !!localStorage.getItem("matchmystyle_profile");
   const [dragOver, setDragOver] = useState(false);
 
-  // URL tab state
   const [pastedUrl, setPastedUrl] = useState("");
   const [urlPreviewError, setUrlPreviewError] = useState(false);
-
-  // File tab state
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
-  // Shared state
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [analyzeStep, setAnalyzeStep] = useState(0);
@@ -91,7 +87,6 @@ const Analyzer = () => {
     setAnalyzeError(null);
     setAnalyzeStep(0);
 
-    // Animate steps
     const stepTimer1 = setTimeout(() => setAnalyzeStep(1), 2500);
     const stepTimer2 = setTimeout(() => setAnalyzeStep(2), 5500);
 
@@ -143,7 +138,6 @@ const Analyzer = () => {
         return;
       }
 
-      // Store in context and navigate to results
       const imageUrl = activeTab === "url" ? pastedUrl : filePreviewUrl;
       setAnalysis(items, imageUrl);
       navigate("/results");
@@ -172,15 +166,12 @@ const Analyzer = () => {
       <div className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16">
         {/* Header */}
         <div className="mb-8 sm:mb-10 text-center">
-          <div className="inline-flex items-center gap-2 glass-light rounded-full px-4 py-2 mb-4 text-sm font-medium text-primary">
-            <Sparkles className="w-4 h-4" />
-            <span>AI Outfit Analyzer</span>
-          </div>
-          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-3">
+          <p className="text-[10px] font-medium tracking-[1px] uppercase text-muted-foreground mb-4">AI Outfit Analyzer</p>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-light mb-3 tracking-[-1.2px]">
             Identify Any{" "}
-            <span className="text-gradient italic">Outfit</span>
+            <span className="text-gradient italic font-normal">Outfit</span>
           </h1>
-          <p className="text-muted-foreground text-base sm:text-lg max-w-xl mx-auto">
+          <p className="text-muted-foreground text-sm sm:text-base max-w-xl mx-auto leading-[1.7]">
             Upload a photo of an influencer's look and our AI will identify every item — then find them in your size.
           </p>
         </div>
@@ -189,23 +180,23 @@ const Analyzer = () => {
           <div className="space-y-4">
 
             {/* Tab bar */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 bg-muted rounded-full p-1">
               <button
                 onClick={() => handleTabSwitch("file")}
-                className={`flex items-center justify-center gap-2 px-4 sm:px-5 py-3 rounded-xl text-sm font-medium transition-all duration-300 ease-out min-h-[44px] ${
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-full text-[11px] font-medium tracking-[1px] uppercase transition-all duration-300 ease-out min-h-[44px] ${
                   activeTab === "file"
-                    ? "gradient-primary text-primary-foreground shadow-brand"
-                    : "bg-muted text-muted-foreground hover:text-foreground"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 📷 Upload File
               </button>
               <button
                 onClick={() => handleTabSwitch("url")}
-                className={`flex items-center justify-center gap-2 px-4 sm:px-5 py-3 rounded-xl text-sm font-medium transition-all duration-300 ease-out min-h-[44px] ${
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-full text-[11px] font-medium tracking-[1px] uppercase transition-all duration-300 ease-out min-h-[44px] ${
                   activeTab === "url"
-                    ? "gradient-primary text-primary-foreground shadow-brand"
-                    : "bg-muted text-muted-foreground hover:text-foreground"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 🔗 Paste URL
@@ -220,7 +211,7 @@ const Analyzer = () => {
                   value={pastedUrl}
                   onChange={handleUrlChange}
                   placeholder="https://instagram.com/p/outfit123"
-                  className="w-full min-h-[48px] rounded-xl border border-border bg-muted/30 px-4 text-base placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
+                  className="w-full min-h-[48px] rounded-xl border border-border bg-card px-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
                 />
                 {pastedUrl.length > 0 && !isValidUrl(pastedUrl) && (
                   <p className="text-destructive text-sm flex items-center gap-1.5">
@@ -234,7 +225,7 @@ const Analyzer = () => {
                   </p>
                 )}
                 {previewSrc && !urlPreviewError && (
-                  <div className="glass rounded-2xl overflow-hidden relative">
+                  <div className="bg-card border border-border rounded-2xl overflow-hidden relative">
                     <img
                       src={pastedUrl}
                       alt="Outfit preview"
@@ -243,7 +234,7 @@ const Analyzer = () => {
                     />
                     <button
                       onClick={handleReset}
-                      className="absolute top-3 right-3 min-h-[44px] px-4 py-2 rounded-full glass flex items-center gap-2 text-sm font-medium hover:border-primary transition-all"
+                      className="absolute top-3 right-3 min-h-[44px] px-4 py-2 rounded-full bg-card/90 backdrop-blur-sm border border-border flex items-center gap-2 text-sm font-medium hover:border-primary transition-all"
                     >
                       <X className="w-4 h-4" />
                       Clear
@@ -251,7 +242,7 @@ const Analyzer = () => {
                   </div>
                 )}
                 {previewSrc && urlPreviewError && (
-                  <div className="rounded-2xl border border-border p-8 text-center">
+                  <div className="rounded-2xl border border-border p-8 text-center bg-card">
                     <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">Could not load image from this URL.</p>
                     <p className="text-xs text-muted-foreground mt-1">Try a direct image link ending in .jpg, .png, or .webp</p>
@@ -271,8 +262,8 @@ const Analyzer = () => {
                     onClick={() => fileInputRef.current?.click()}
                     className={`rounded-2xl border-2 border-dashed p-10 sm:p-16 text-center cursor-pointer transition-all duration-300 min-h-[240px] flex flex-col items-center justify-center ${
                       dragOver
-                        ? "border-primary shadow-brand bg-accent/60"
-                        : "border-border bg-muted/30 hover:border-primary hover:shadow-brand hover:bg-muted/50"
+                        ? "border-primary bg-muted"
+                        : "border-[hsl(28,18%,78%)] bg-muted/50 hover:border-primary hover:bg-muted"
                     }`}
                   >
                     <input
@@ -282,13 +273,18 @@ const Analyzer = () => {
                       className="hidden"
                       onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
                     />
-                    <div className="text-5xl mb-4">⬆️</div>
-                    <h3 className="font-display text-xl font-semibold mb-1">Drop your photo here</h3>
-                    <p className="text-muted-foreground text-sm mb-3">or click to browse files</p>
-                    <p className="text-xs text-muted-foreground">JPG, PNG, WEBP · Max 20MB</p>
+                    {/* Upload icon */}
+                    <svg width="56" height="56" viewBox="0 0 24 24" className="mb-4">
+                      <rect style={{ fill: "hsl(28, 24%, 44%)", opacity: 0.4 }} x="3" y="3" width="18" height="18" rx="2"/>
+                      <line style={{ stroke: "hsl(0, 0%, 10%)", strokeWidth: 2.5 }} x1="12" y1="8" x2="12" y2="16"/>
+                      <line style={{ stroke: "hsl(0, 0%, 10%)", strokeWidth: 2.5 }} x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    <h3 className="text-sm font-medium mb-1 text-foreground">Drop your photo here</h3>
+                    <p className="text-muted-foreground text-xs mb-3">or click to browse files</p>
+                    <p className="text-[11px] text-muted-foreground">JPG, PNG, WEBP · Max 20MB</p>
                   </div>
                 ) : (
-                  <div className="glass rounded-2xl overflow-hidden relative">
+                  <div className="bg-card border border-border rounded-2xl overflow-hidden relative">
                     <img src={filePreviewUrl} alt="Uploaded outfit" className="w-full object-cover max-h-[400px]" />
                     <button
                       onClick={(e) => {
@@ -297,7 +293,7 @@ const Analyzer = () => {
                         setUploadedFile(null);
                         fileInputRef.current?.click();
                       }}
-                      className="absolute top-3 right-3 min-h-[44px] px-4 py-2 rounded-full glass flex items-center gap-2 text-sm font-medium hover:border-primary transition-all"
+                      className="absolute top-3 right-3 min-h-[44px] px-4 py-2 rounded-full bg-card/90 backdrop-blur-sm border border-border flex items-center gap-2 text-sm font-medium hover:border-primary transition-all"
                     >
                       <Camera className="w-4 h-4" />
                       Change image
@@ -364,32 +360,32 @@ const Analyzer = () => {
               </div>
             )}
 
-            {/* AI Active Note */}
-            <div className="flex items-start gap-3 glass-light rounded-xl p-4 text-sm">
-              <Zap className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+            {/* AI Note */}
+            <div className="flex items-start gap-3 bg-muted border border-border rounded-xl p-4 text-sm">
+              <span className="text-primary mt-0.5 flex-shrink-0 text-xs">✨</span>
               <p className="text-muted-foreground">
-                <strong className="text-foreground">Real AI Active:</strong> Powered by Google Gemini via Lovable Cloud. Upload any outfit photo for instant identification and shoppable matches.
+                <strong className="text-foreground font-medium">Real AI Active:</strong> Powered by Google Gemini via Lovable Cloud. Upload any outfit photo for instant identification and shoppable matches.
               </p>
             </div>
           </div>
 
-          {/* Placeholder when not analyzing */}
+          {/* Placeholder */}
           {!analyzing && (
-            <div className="glass rounded-2xl p-12 text-center">
+            <div className="bg-card border border-border rounded-2xl p-12 text-center">
               <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
                 <ShoppingBag className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="font-display text-xl font-semibold mb-2 text-muted-foreground">Results will appear here</h3>
+              <h3 className="text-lg font-medium mb-2 text-muted-foreground tracking-[-0.3px]">Results will appear here</h3>
               <p className="text-muted-foreground text-sm">Upload a photo and click Analyze to see identified items and shopping matches.</p>
             </div>
           )}
 
           {analyzing && (
-            <div className="glass rounded-2xl p-12 text-center">
-              <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center mx-auto mb-6 shadow-brand animate-pulse-glow">
-                <Sparkles className="w-8 h-8 text-primary-foreground" />
+            <div className="bg-card border border-border rounded-2xl p-12 text-center">
+              <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center mx-auto mb-6 shadow-brand">
+                <span className="text-primary-foreground text-2xl">✨</span>
               </div>
-              <h3 className="font-display text-xl font-semibold mb-2">AI is analyzing...</h3>
+              <h3 className="text-lg font-medium mb-2 tracking-[-0.3px]">AI is analyzing...</h3>
               <p className="text-muted-foreground text-sm">Gemini is identifying clothing items, colors, and styles</p>
               <div className="mt-6 space-y-2">
                 {["Detecting clothing items...", "Identifying brands & styles...", "Finding shopping matches..."].map((step, i) => (
@@ -404,12 +400,14 @@ const Analyzer = () => {
               {/* Skeleton preview cards */}
               <div className="mt-8 space-y-3">
                 {[1, 2, 3].map((n) => (
-                  <div key={n} className="rounded-xl border border-border p-4 animate-pulse">
+                  <div key={n} className="rounded-xl border border-border p-4 animate-pulse bg-muted/50">
                     <div className="flex items-center gap-3">
-                      <div className="h-3 w-20 bg-muted rounded-full" />
-                      <div className="h-3 w-12 bg-muted rounded-full" />
+                      <div className="w-10 h-10 rounded-lg bg-muted" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 bg-muted rounded w-2/3" />
+                        <div className="h-2 bg-muted rounded w-1/3" />
+                      </div>
                     </div>
-                    <div className="h-3 w-40 bg-muted rounded-full mt-2" />
                   </div>
                 ))}
               </div>
