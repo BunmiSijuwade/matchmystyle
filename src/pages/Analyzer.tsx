@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import { Upload, Camera, Sparkles, ShoppingBag, ExternalLink, X, Loader2, AlertCircle, Zap, Link } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
@@ -151,6 +152,10 @@ function isValidUrl(str: string) {
 
 const Analyzer = () => {
   const [activeTab, setActiveTab] = useState<Tab>("file");
+  const [profileNudgeDismissed, setProfileNudgeDismissed] = useState(() => {
+    return localStorage.getItem("matchmystyle_profile_nudge_dismissed") === "true";
+  });
+  const hasProfile = !!localStorage.getItem("matchmystyle_profile");
   const [dragOver, setDragOver] = useState(false);
 
   // URL tab state
@@ -464,6 +469,28 @@ const Analyzer = () => {
                   </>
                 )}
               </GradientButton>
+            )}
+
+            {/* Profile suggestion */}
+            {!hasProfile && !profileNudgeDismissed && (
+              <div className="flex items-start gap-3 text-sm py-1">
+                <div className="flex-1 text-center space-y-1">
+                  <p className="text-muted-foreground">No profile needed to try! Results matched to standard sizes.</p>
+                  <RouterLink to="/profile" className="text-primary hover:underline inline-flex items-center gap-1 text-sm font-medium">
+                    Add measurements for better matches →
+                  </RouterLink>
+                </div>
+                <button
+                  onClick={() => {
+                    setProfileNudgeDismissed(true);
+                    localStorage.setItem("matchmystyle_profile_nudge_dismissed", "true");
+                  }}
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                  aria-label="Dismiss"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             )}
 
             {/* AI Active Note */}
