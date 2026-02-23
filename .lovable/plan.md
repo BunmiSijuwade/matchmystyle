@@ -1,179 +1,83 @@
 
-## AI-Generated Tiered Product Suggestions
 
-### Overview
+# Connect Profile Measurements to Results
 
-The AI tool schema in the edge function will be redesigned to return four categorized match groups per detected item instead of a flat `matches` array. The frontend will render them in labeled sections with a clear "AI Suggestions" disclaimer.
+## Overview
+Wire the saved profile data into the analysis pipeline so users with measurements get personalized sizing advice and currency-matched prices. Users without a profile get the same results they do today -- no degradation.
 
----
+## How It Works
 
-### File 1: `supabase/functions/analyze-outfit/index.ts`
-
-**System prompt update (line 54)**
-
-Change from asking for "3 product match suggestions" to asking for tiered suggestions:
-
-```
-You are a fashion expert AI. For each detected item, identify: category, description, color, style, estimatedPrice, searchKeywords. Then generate 4 groups of shopping suggestions:
-- bestMatch: the single most visually similar product (any price tier)
-- budget: 2 products realistically priced under $50 (e.g. SHEIN, H&M, ASOS own-brand, Boohoo, Missguided)
-- midRange: 2 products realistically priced $50–$150 (e.g. Zara, Mango, & Other Stories, Topshop, ASOS premium)
-- luxury: 2 products realistically priced over $150 (e.g. Theory, Toteme, Reformation, Sandro, IRO)
-Use realistic brand names that actually sell in each price range.
-```
-
-**Updated AI tool schema (lines 85–148)**
-
-Replace the `matches` array field with four fields per item:
-
-```
-bestMatch: { name, brand, price, retailer, searchQuery }   // single object
-budget:    [{ name, brand, price, retailer, searchQuery }, ...]  // 2 items
-midRange:  [{ name, brand, price, retailer, searchQuery }, ...]  // 2 items
-luxury:    [{ name, brand, price, retailer, searchQuery }, ...]  // 2 items
+```text
++------------------+       +-------------------+       +------------------+
+|  Analyzer Page   | ----> |  Edge Function    | ----> |  Results Page    |
+|                  |       |                   |       |                  |
+| Read localStorage|       | If profile exists:|       | Show sizeNote    |
+| "matchmystyle_   |       |  - Add to prompt  |       | under each match |
+|  profile"        |       |  - AI returns     |       |                  |
+|                  |       |    sizeNote per    |       | Show prices in   |
+| Include in POST  |       |    product        |       | preferred        |
+| body if present  |       |  - Prices in user |       | currency         |
+|                  |       |    currency       |       |                  |
+| No profile?      |       | No profile?       |       | No sizeNote?     |
+| Send nothing     |       |  Standard prompt  |       | Show nothing     |
++------------------+       +-------------------+       +------------------+
 ```
 
-Each product object has:
-- `name` — product description (e.g. "Oversized Blazer")
-- `brand` — realistic brand (e.g. "H&M")
-- `price` — estimated price (e.g. "$34.99")
-- `retailer` — retailer name (e.g. "H&M")
-- `searchQuery` — plain-text search phrase for that item
+## Changes
 
-**Updated mapping (lines 192–218)**
+### 1. Analyzer Page (`src/pages/Analyzer.tsx`)
 
-Replace the flat `matches.map()` with mapping each of the four groups:
+In `handleAnalyze`, before sending the request:
+- Read `matchmystyle_profile` from localStorage
+- If it exists and has data, add a `profile` field to the request body
+- If it does not exist, send the request exactly as today (no `profile` field)
 
-```typescript
-function mapMatches(arr: any[], itemIndex: number, prefix: string) {
-  return (arr ?? []).map((match: any, mIndex: number) => ({
-    id: `${itemIndex + 1}-${prefix}-${mIndex}`,
-    name: match.name,
-    brand: match.brand,
-    price: match.price,
-    retailer: match.retailer,
-    searchQuery: [match.brand, match.name]
-      .filter(Boolean).join(" ")
-      .replace(/\+/g, " ").replace(/\s+/g, " ").trim(),
-    available: true,
-  }));
-}
+### 2. Edge Function (`supabase/functions/analyze-outfit/index.ts`)
 
-// Per item:
-{
-  id, category, description, color, style, estimatedPrice, searchQuery,
-  bestMatch: mapMatches([item.bestMatch], index, "best")[0] ?? null,
-  budget:    mapMatches(item.budget,    index, "budget"),
-  midRange:  mapMatches(item.midRange,  index, "mid"),
-  luxury:    mapMatches(item.luxury,    index, "luxury"),
-}
-```
+- Extract optional `profile` from the request body
+- If `profile` is present and has measurements, append a paragraph to the system prompt:
+  ```
+  The user's measurements: Size M, Height 165cm, Bust 88cm, Waist 70cm, Hips 96cm, Shoe EU 38.
+  Preferred currency: EUR.
+  For each product, include a "sizeNote" with sizing advice (e.g. "Order size M", "Runs small - try L").
+  Use the preferred currency for all prices.
+  ```
+  Only include fields the user actually filled in (skip empty strings).
+- Add `sizeNote` (optional string) to each product in the tool schema
+- If no profile is sent, the prompt stays exactly as it is now
 
----
+### 3. Types (`src/contexts/AnalysisContext.tsx`)
 
-### File 2: `src/pages/Analyzer.tsx`
+- Add `sizeNote?: string` to the `ProductMatch` interface
 
-**A. Updated interfaces (lines 9–27)**
+### 4. Results Page (`src/pages/Results.tsx`)
 
-`ProductMatch` gets a `searchQuery` field (already there but not wired for tiers). `DetectedItem` drops `matches: ProductMatch[]` and gains four typed fields:
+- For each product match that has a `sizeNote`, display it as small muted text beneath the product name (e.g. "Order size M" or "Runs small -- size up")
+- If `sizeNote` is undefined or empty, show nothing -- no empty state, no placeholder
 
-```typescript
-interface ProductMatch {
-  id: string;
-  name: string;
-  brand: string;
-  price: string;
-  retailer: string;
-  searchQuery: string;
-  available: boolean;
-}
+## What Stays the Same
 
-interface DetectedItem {
-  id: string;
-  category: string;
-  description: string;
-  color: string;
-  style: string;
-  estimatedPrice: string;
-  searchQuery: string;
-  bestMatch: ProductMatch | null;
-  budget: ProductMatch[];
-  midRange: ProductMatch[];
-  luxury: ProductMatch[];
-}
-```
+- Profile page -- no changes needed
+- localStorage structure -- no migration
+- Upload/URL tabs, drag-and-drop, file handling
+- Image preview, reset, error handling
+- All existing results functionality for users without a profile
+- No database changes required
+- No new dependencies
 
-**B. Remove `buildRetailerUrls` (lines 29–37)** — replaced by a simple per-match URL builder.
+## Graceful Fallback Summary
 
-**C. Add `buildMatchUrl` helper**
+| Scenario | Behavior |
+|---|---|
+| No profile saved | Standard results, USD prices, no size notes |
+| Profile saved but all fields empty | Same as no profile (skipped) |
+| Profile saved with some fields | AI uses available fields, skips empty ones |
+| Profile saved with all fields | Full personalization: size notes + currency |
 
-```typescript
-function buildMatchUrl(match: ProductMatch): string {
-  const q = encodeURIComponent(match.searchQuery || `${match.brand} ${match.name}`);
-  return `https://www.asos.com/search/?q=${q}`;
-}
-```
+## Technical Notes
 
-**D. Fix match count badge (line 468)**
+- The `sizeNote` field is optional in the tool schema, so the AI can omit it when it has no sizing advice
+- Currency preference only affects the AI's price estimates (these are already approximate)
+- The `mapMatches` helper in the edge function will pass through `sizeNote` from the AI response
+- Backward compatible: old cached results without `sizeNote` render fine (undefined is simply not shown)
 
-Change from `item.matches.filter(...).length` to total across all tiers:
-
-```typescript
-{[item.bestMatch, ...(item.budget ?? []), ...(item.midRange ?? []), ...(item.luxury ?? [])].filter(Boolean).length} matches
-```
-
-**E. Replace accordion content (lines 491–524)**
-
-Remove the old `item.matches.map()` block. Replace with four labeled sections:
-
-```
-━━ AI SUGGESTIONS — prices are estimates ━━   (disclaimer banner)
-
-BEST MATCH
-  └─ [product row — ExternalLink button → ASOS search]
-
-BUDGET  ·  Under $50
-  └─ [product row]
-  └─ [product row]
-
-MID-RANGE  ·  $50–$150
-  └─ [product row]
-  └─ [product row]
-
-LUXURY  ·  $150+
-  └─ [product row]
-  └─ [product row]
-```
-
-Each product row keeps the existing card style:
-```
-┌────────────────────────────────────────────┐
-│  Product name                   $price  [↗] │
-│  Brand · Retailer                            │
-└────────────────────────────────────────────┘
-```
-
-- Empty tiers (AI returned nothing) are hidden — no empty states needed
-- The disclaimer banner uses a soft amber/muted style to clearly indicate AI estimates
-- Section headings use the existing `text-xs font-semibold uppercase tracking-widest text-muted-foreground` style
-- "Best Match" gets a small colored badge to make it stand out
-
----
-
-### What stays the same
-- Upload / URL tab logic, drag-and-drop, file handling
-- Image preview, reset button, pill overlays
-- Pill → scroll behavior (`handlePillClick`)
-- `handleAnalyze`, error handling, toasts
-- Accordion open/close, `openAccordionItem` state
-- Metadata grid (Color / Style / Price Range)
-- Navbar and all other files
-- `ExternalLink` icon (still used per product row)
-
----
-
-### Technical notes
-- The AI tool uses `required` constraints to ensure all four groups are always returned. If an item genuinely has no luxury equivalent, the AI will still attempt to fill the field — we defensively handle an empty array on both sides.
-- `buildMatchUrl` falls back to `brand + name` if `searchQuery` is empty, so no broken links.
-- The `bestMatch` field is a single object (not an array) in the schema — mapped to `ProductMatch | null` on the frontend with a null check before rendering.
-- No database changes needed — this is purely a prompt + schema + UI update.
