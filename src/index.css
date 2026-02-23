@@ -10,10 +10,10 @@
     --background: 40 14% 97%;        /* #FAFAF8 */
     --foreground: 0 0% 10%;          /* #1A1A1A */
 
-    --card: 0 0% 100%;               /* #FFFFFF */
+    --card: 40 14% 97%;               /* #FAFAF8 */
     --card-foreground: 0 0% 10%;     /* #1A1A1A */
 
-    --popover: 0 0% 100%;
+    --popover: 40 14% 97%;            /* #FAFAF8 */
     --popover-foreground: 0 0% 10%;
 
     /* Brand: warm taupe */
@@ -83,6 +83,8 @@
   }
   h1, h2, h3 {
     font-family: 'Manrope', sans-serif;
+    font-weight: 300;
+    color: hsl(0, 0%, 10%);
   }
 }
 
@@ -106,7 +108,7 @@
     box-shadow: var(--shadow-card);
   }
   .glass {
-    background: hsl(0 0% 100% / 0.9);
+    background: hsl(40 14% 97% / 0.9);
     backdrop-filter: blur(16px);
     border: 1px solid hsl(var(--border));
   }
