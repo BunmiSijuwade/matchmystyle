@@ -50,8 +50,8 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         brand: {
-          purple: "hsl(271, 76%, 57%)",
-          pink: "hsl(330, 80%, 60%)",
+          pink: "hsl(292, 84%, 61%)",
+          purple: "hsl(271, 81%, 56%)",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
@@ -65,9 +65,9 @@ export default {
         },
       },
       backgroundImage: {
-        "gradient-brand": "linear-gradient(135deg, hsl(271, 76%, 57%) 0%, hsl(330, 80%, 60%) 100%)",
-        "gradient-subtle": "linear-gradient(135deg, hsl(271 76% 57% / 0.15) 0%, hsl(330 80% 60% / 0.15) 100%)",
-        "gradient-hero": "linear-gradient(180deg, transparent 0%, hsl(240 15% 6% / 0.8) 60%, hsl(240 15% 6%) 100%)",
+        "gradient-brand": "linear-gradient(135deg, hsl(292, 84%, 61%) 0%, hsl(271, 81%, 56%) 100%)",
+        "gradient-subtle": "linear-gradient(135deg, hsl(292 84% 61% / 0.15) 0%, hsl(271 81% 56% / 0.15) 100%)",
+        "gradient-hero": "linear-gradient(180deg, transparent 0%, hsl(0 0% 4% / 0.8) 60%, hsl(0 0% 4%) 100%)",
       },
       borderRadius: {
         lg: "var(--radius)",
