@@ -45,7 +45,7 @@ const TestimonialCarousel = () => {
   const t = testimonials[active];
 
   return (
-    <section className="py-12 sm:py-16">
+    <section className="py-6 sm:py-8">
       <div className="container mx-auto px-5 sm:px-6">
         <div className="divider" />
         <h2 className="text-3xl sm:text-4xl font-light text-center mb-8 tracking-[-1.2px]">
