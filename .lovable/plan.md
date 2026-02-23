@@ -1,57 +1,65 @@
 
 
-## Add functional "Use my measurements" toggle to Results page
+## Integrate Client-Side Sizing Service
 
-### The Problem
-If a user forgets to turn on "Use my measurements" before analyzing, they currently have no way to retroactively apply their profile. They'd need to go back to the Analyzer and re-run the whole thing manually.
+### What This Does
+Currently, size recommendations come entirely from the AI model (which guesses sizing advice as free text). This sizing service adds **deterministic, client-side size matching** using real brand size charts for 16 brands. When a user has measurements saved, each product match will show a precise size recommendation (e.g., "Order size M at Zara") with confidence level and fit warnings.
 
-### The Solution
-Add the measurements toggle to the Results page. When toggled ON, it re-runs the analysis with the user's saved profile data, updating the matches with personalized size recommendations (e.g. "Order size L").
+### How It Fits Into the Current Flow
 
-### What needs to change
+The AI already returns product matches with brand names. After receiving results, the app will run each match through the local sizing service to generate accurate `sizeNote` values based on the user's saved measurements -- supplementing or replacing the AI's guessed sizing advice.
 
-**1. Store the original image data in AnalysisContext**
+### Implementation Steps
 
-The context currently only stores `imageUrl` (a display URL). To re-run the analysis from the Results page, we also need the original request payload (base64 + mimeType, or the pasted URL). We'll add an `imagePayload` field to the context:
+**1. Create the sizing service file**
+- Add `src/services/sizingService.ts` with the provided code (brand charts, matching logic, helper functions)
+- No modifications needed to the provided code
 
-- `imagePayload`: `{ imageUrl?: string; imageBase64?: string; mimeType?: string }`
+**2. Convert profile measurements from cm to inches**
+- The Profile page stores bust/waist/hips in **centimeters**
+- The sizing service expects **inches**
+- Add a small utility function that reads the localStorage profile and converts cm to inches (divide by 2.54)
 
-The Analyzer page will save this when setting the analysis, so the Results page can re-use it.
+**3. Enrich results with local size recommendations (Results.tsx)**
+- After items load (and when profile toggle is on), run each product match through `getSizeRecommendation()`
+- If the service returns a recommendation, override or append to the AI-generated `sizeNote`
+- Format: "Order size M" + fit warning if brand runs small/large
+- If the brand isn't in the chart (service returns null), keep the AI's original sizeNote
 
-**2. Update Analyzer.tsx to pass image payload**
+**4. Show fit confidence badge on product rows (Results.tsx)**
+- Add a small visual indicator next to size notes:
+  - High confidence: green dot
+  - Medium confidence: yellow dot  
+  - Low confidence / caution: orange dot
+- Only shown when local sizing service produced the recommendation
 
-When calling `setAnalysis`, also pass the request image data so it's available later for re-analysis.
+**5. No changes to the edge function**
+- The AI will continue generating its own sizeNote for brands not in the local chart
+- Local sizing overrides take priority when available
 
-**3. Add the toggle + re-analysis logic to Results.tsx**
+### Technical Details
 
-- Read profile from `localStorage` (same pattern as Analyzer)
-- Show the "Use my measurements" toggle when a profile exists
-- When toggled ON: call the `analyze-outfit` edge function again with the stored image payload + profile data
-- Show a loading state while re-analyzing
-- Replace the current items with the new personalized results
-- When toggled OFF: re-run without profile (or revert to original results)
+**New file:**
+- `src/services/sizingService.ts` -- the provided sizing service (brand charts + matching logic)
 
-### UI Behavior
+**Modified files:**
+- `src/pages/Results.tsx` -- import sizing service, apply recommendations to product matches when profile is active
+- `src/components/ProductRow` area in Results.tsx -- show confidence indicator alongside sizeNote
 
-- The toggle appears between the image preview and the "Items Detected" header (same styling as Analyzer page)
-- Toggling triggers a brief re-analysis with a loading indicator overlay
-- A toast confirms "Matches updated with your measurements" on success
-- If the re-analysis fails, a toast shows the error and the toggle reverts
+**Unit conversion (cm to inches):**
+```text
+bust_inches = bust_cm / 2.54
+waist_inches = waist_cm / 2.54
+hips_inches = hips_cm / 2.54
+```
 
-### Technical details
-
-**AnalysisContext.tsx changes:**
-- Add `imagePayload` to `AnalysisState` interface
-- Update `setAnalysis` signature to accept `imagePayload`
-- Store and expose it via context
-
-**Analyzer.tsx changes:**
-- Pass `imagePayload` (the request body minus profile) when calling `setAnalysis`
-
-**Results.tsx changes:**
-- Import `Switch`, read `localStorage` profile, add `useProfile` state
-- Add `reanalyze()` function that calls the edge function with stored payload +/- profile
-- Store original (no-profile) results so toggling OFF can revert without another API call
-- Render the toggle block with profile summary text
-- Show a subtle loading overlay on the accordion during re-analysis
+**Integration logic in Results.tsx:**
+```text
+For each detected item:
+  For each product match (bestMatch, budget[], midRange[], luxury[]):
+    1. Call getSizeRecommendation(match.name, item.description, userMeasurements)
+    2. If result exists, set match.sizeNote = "Order size {recommendedSize}"
+    3. If brandRunsSmall, append " (runs small)"
+    4. Store confidence level for badge display
+```
 
