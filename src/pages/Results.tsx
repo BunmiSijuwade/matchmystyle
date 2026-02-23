@@ -86,6 +86,9 @@ const ProductRow = ({ match, shopMode, vintageIndex = 0 }: { match: ProductMatch
             </Badge>
           )}
         </div>
+        {match.sizeNote && (
+          <p className="text-[9px] text-primary font-medium">{match.sizeNote}</p>
+        )}
         <p className="text-[9px] text-muted-foreground uppercase tracking-[0.5px] font-medium">
           {isVintage ? `${platform.name} · Pre-loved` : `${match.brand} · ${match.retailer}`}
         </p>

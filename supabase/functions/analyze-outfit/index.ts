@@ -14,6 +14,7 @@ const productShape = {
     price:       { type: "string", description: "Estimated price e.g. $34.99" },
     retailer:    { type: "string", description: "Retailer name e.g. H&M" },
     searchQuery: { type: "string", description: "Plain-text search phrase e.g. oversized linen blazer women" },
+    sizeNote:    { type: "string", description: "Sizing advice for this user e.g. Order size M or Runs small - try L" },
   },
   required: ["name", "brand", "price", "retailer", "searchQuery"],
 };
@@ -32,6 +33,7 @@ function mapMatches(arr: any[], itemIndex: number, prefix: string) {
       .replace(/\s+/g, " ")
       .trim(),
     available: true,
+    ...(match.sizeNote ? { sizeNote: match.sizeNote } : {}),
   }));
 }
 
@@ -42,7 +44,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { imageUrl } = body;
+    const { imageUrl, profile } = body;
     let { imageBase64, mimeType } = body;
 
     if (imageUrl) {
@@ -79,12 +81,32 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are a fashion expert AI. Analyze the clothing in the image and identify every visible clothing item or accessory. For each item return: category, description, color, style, estimatedPrice, searchKeywords. Then generate 4 groups of shopping suggestions:
+    let systemPrompt = `You are a fashion expert AI. Analyze the clothing in the image and identify every visible clothing item or accessory. For each item return: category, description, color, style, estimatedPrice, searchKeywords. Then generate 4 groups of shopping suggestions:
 - bestMatch: the single most visually similar product to the detected item (any price tier, most important field)
 - budget: exactly 2 products realistically priced under $50 (e.g. SHEIN, H&M, ASOS own-brand, Boohoo, Missguided)
 - midRange: exactly 2 products realistically priced $50–$150 (e.g. Zara, Mango, & Other Stories, Topshop, ASOS Premium)
 - luxury: exactly 2 products realistically priced over $150 (e.g. Theory, Toteme, Reformation, Sandro, IRO)
 Use realistic brand names that actually sell in each price range. Use the suggest_outfit_items tool to return structured output.`;
+
+    // Append profile-based personalization if available
+    if (profile && typeof profile === "object") {
+      const parts: string[] = [];
+      if (profile.size) parts.push(`Size ${profile.size}`);
+      if (profile.height) parts.push(`Height ${profile.height}cm`);
+      if (profile.bust) parts.push(`Bust ${profile.bust}cm`);
+      if (profile.waist) parts.push(`Waist ${profile.waist}cm`);
+      if (profile.hips) parts.push(`Hips ${profile.hips}cm`);
+      if (profile.shoeSize) parts.push(`Shoe ${profile.shoeUnit || "EU"} ${profile.shoeSize}`);
+
+      if (parts.length > 0) {
+        systemPrompt += `\n\nThe user's measurements: ${parts.join(", ")}.`;
+        if (profile.currency) {
+          systemPrompt += `\nPreferred currency: ${profile.currency}.`;
+          systemPrompt += `\nUse ${profile.currency} for all prices.`;
+        }
+        systemPrompt += `\nFor each product, include a "sizeNote" with sizing advice (e.g. "Order size M", "Runs small - try L").`;
+      }
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
