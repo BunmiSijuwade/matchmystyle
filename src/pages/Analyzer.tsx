@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { Camera, ShoppingBag, X, Loader2, AlertCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -6,6 +6,7 @@ import GradientButton from "@/components/GradientButton";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { useAnalysis, type DetectedItem } from "@/contexts/AnalysisContext";
+import { Switch } from "@/components/ui/switch";
 
 type Tab = "url" | "file";
 
@@ -41,7 +42,22 @@ const Analyzer = () => {
   const [profileNudgeDismissed, setProfileNudgeDismissed] = useState(() => {
     return localStorage.getItem("matchmystyle_profile_nudge_dismissed") === "true";
   });
-  const hasProfile = !!localStorage.getItem("matchmystyle_profile");
+  const profileRaw = localStorage.getItem("matchmystyle_profile");
+  const profileData = useMemo(() => {
+    try {
+      if (!profileRaw) return null;
+      const p = JSON.parse(profileRaw);
+      const hasData = Object.values(p).some((v) => typeof v === "string" && (v as string).trim() !== "");
+      if (!hasData) return null;
+      const parts: string[] = [];
+      if (p.size) parts.push(`Size ${p.size}`);
+      if (p.height) parts.push(`${p.height}cm`);
+      if (p.currency) parts.push(p.currency);
+      return { profile: p, summary: parts.join(" · ") };
+    } catch { return null; }
+  }, [profileRaw]);
+  const hasProfile = !!profileData;
+  const [useProfile, setUseProfile] = useState(hasProfile);
   const [dragOver, setDragOver] = useState(false);
 
   const [pastedUrl, setPastedUrl] = useState("");
@@ -100,17 +116,10 @@ const Analyzer = () => {
         requestBody = { imageBase64, mimeType: uploadedFile!.type };
       }
 
-      // Attach profile measurements if available
-      try {
-        const raw = localStorage.getItem("matchmystyle_profile");
-        if (raw) {
-          const profile = JSON.parse(raw);
-          const hasData = Object.values(profile).some((v) => typeof v === "string" && v.trim() !== "");
-          if (hasData) {
-            requestBody.profile = profile;
-          }
-        }
-      } catch { /* ignore malformed profile */ }
+      // Attach profile measurements if toggle is on
+      if (useProfile && profileData) {
+        requestBody.profile = profileData.profile;
+      }
 
       const response = await fetch(ANALYZE_URL, {
         method: "POST",
@@ -313,6 +322,19 @@ const Analyzer = () => {
                   </div>
                 )}
               </>
+            )}
+
+            {/* Profile toggle */}
+            {hasProfile && (
+              <div className="flex items-center justify-between gap-4 bg-muted border border-border rounded-xl p-4">
+                <div className="space-y-0.5">
+                  <label htmlFor="use-profile" className="text-sm font-medium cursor-pointer">Use my measurements</label>
+                  {profileData.summary && (
+                    <p className="text-xs text-muted-foreground">{profileData.summary}</p>
+                  )}
+                </div>
+                <Switch id="use-profile" checked={useProfile} onCheckedChange={setUseProfile} />
+              </div>
             )}
 
             {/* Analyze button */}
