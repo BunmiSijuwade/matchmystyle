@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Ruler, Save, CheckCircle } from "lucide-react";
+import { Save, CheckCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
 
@@ -44,41 +44,38 @@ const Profile = () => {
       <Navbar />
       <div className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16 max-w-2xl">
         {/* Header */}
-        <div className="mb-10">
-          <div className="inline-flex items-center gap-2 glass-light rounded-full px-4 py-2 mb-4 text-sm font-medium text-primary">
-            <Ruler className="w-4 h-4" />
-            <span>Your Style Profile</span>
-          </div>
-          <h1 className="font-display text-3xl sm:text-4xl font-bold mb-3">
+        <div className="mb-10 text-center">
+          <p className="text-[10px] font-medium tracking-[1px] uppercase text-muted-foreground mb-4">Your Style Profile</p>
+          <h1 className="text-3xl sm:text-4xl font-light mb-3 tracking-[-1.2px]">
             My{" "}
-            <span className="text-gradient italic">Measurements</span>
+            <span className="text-gradient italic font-normal">Measurements</span>
           </h1>
-          <p className="text-muted-foreground text-base sm:text-lg">
+          <p className="text-muted-foreground text-sm sm:text-base leading-[1.7]">
             Enter your measurements once and get perfectly-sized outfit matches every time.
           </p>
         </div>
 
-        <div className="glass rounded-2xl p-5 sm:p-8 space-y-8">
+        <div className="bg-card border border-border rounded-2xl p-5 sm:p-8 space-y-8">
           {/* Height */}
           <div>
-            <h3 className="font-display text-lg font-semibold mb-4 text-foreground">Height</h3>
+            <h3 className="text-base font-medium mb-4 text-foreground tracking-[-0.3px]">Height</h3>
             <div className="flex gap-3">
               <input
                 type="number"
                 value={measurements.height}
                 onChange={(e) => update("height", e.target.value)}
                 placeholder={measurements.heightUnit === "cm" ? "e.g. 165" : "e.g. 5.5"}
-                className="flex-1 bg-muted border border-border rounded-xl px-4 py-3 min-h-[44px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-300"
+                className="flex-1 bg-muted border border-border rounded-xl px-4 py-3 min-h-[44px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-300 text-sm"
               />
-              <div className="flex rounded-xl overflow-hidden border border-border">
+              <div className="flex rounded-full overflow-hidden border border-border bg-muted">
                 {(["cm", "ft"] as const).map((unit) => (
                   <button
                     key={unit}
                     onClick={() => update("heightUnit", unit)}
-                    className={`px-5 py-3 text-sm font-medium transition-all duration-300 ease-out min-h-[44px] ${
+                    className={`px-5 py-3 text-[11px] font-medium tracking-[1px] uppercase transition-all duration-300 ease-out min-h-[44px] ${
                       measurements.heightUnit === unit
-                        ? "gradient-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:text-foreground"
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {unit}
@@ -88,18 +85,20 @@ const Profile = () => {
             </div>
           </div>
 
+          <div className="w-full h-px bg-border" />
+
           {/* Clothing Size */}
           <div>
-            <h3 className="font-display text-lg font-semibold mb-4 text-foreground">Clothing Size</h3>
+            <h3 className="text-base font-medium mb-4 text-foreground tracking-[-0.3px]">Clothing Size</h3>
             <div className="flex flex-wrap gap-2">
               {sizeOptions.map((size) => (
                 <button
                   key={size}
                   onClick={() => update("size", size)}
-                  className={`w-14 h-12 min-h-[44px] rounded-xl text-sm font-medium transition-all duration-300 ease-out border ${
+                  className={`w-14 h-12 min-h-[44px] rounded-full text-[11px] font-medium tracking-[0.5px] transition-all duration-300 ease-out border ${
                     measurements.size === size
-                      ? "gradient-primary text-primary-foreground border-transparent shadow-brand"
-                      : "border-border text-muted-foreground hover:border-primary hover:text-foreground bg-muted"
+                      ? "bg-foreground text-background border-transparent"
+                      : "border-border text-muted-foreground hover:border-primary hover:text-foreground bg-card"
                   }`}
                 >
                   {size}
@@ -108,11 +107,13 @@ const Profile = () => {
             </div>
           </div>
 
+          <div className="w-full h-px bg-border" />
+
           {/* Body Measurements */}
           <div>
-            <h3 className="font-display text-lg font-semibold mb-2 text-foreground">
+            <h3 className="text-base font-medium mb-2 text-foreground tracking-[-0.3px]">
               Body Measurements{" "}
-              <span className="text-muted-foreground text-sm font-sans font-normal">(optional, in cm)</span>
+              <span className="text-muted-foreground text-xs font-normal">(optional, in cm)</span>
             </h3>
             <p className="text-muted-foreground text-sm mb-4">For more precise matching, especially for tops and dresses.</p>
             <div className="grid grid-cols-3 gap-3">
@@ -122,7 +123,7 @@ const Profile = () => {
                 { field: "hips" as const, label: "Hips", placeholder: "e.g. 96" },
               ].map(({ field, label, placeholder }) => (
                 <div key={field}>
-                  <label className="text-xs text-muted-foreground uppercase tracking-widest mb-2 block">{label}</label>
+                  <label className="text-[10px] text-muted-foreground uppercase tracking-[1px] mb-2 block font-medium">{label}</label>
                   <input
                     type="number"
                     value={measurements[field]}
@@ -135,30 +136,34 @@ const Profile = () => {
             </div>
           </div>
 
+          <div className="w-full h-px bg-border" />
+
           {/* Shoe Size */}
           <div>
-            <h3 className="font-display text-lg font-semibold mb-4 text-foreground">Shoe Size (EU)</h3>
+            <h3 className="text-base font-medium mb-4 text-foreground tracking-[-0.3px]">Shoe Size (EU)</h3>
             <input
               type="number"
               value={measurements.shoeSize}
               onChange={(e) => update("shoeSize", e.target.value)}
               placeholder="e.g. 38"
-              className="w-full bg-muted border border-border rounded-xl px-4 py-3 min-h-[44px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-300"
+              className="w-full bg-muted border border-border rounded-xl px-4 py-3 min-h-[44px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-300 text-sm"
             />
           </div>
 
+          <div className="w-full h-px bg-border" />
+
           {/* Currency */}
           <div>
-            <h3 className="font-display text-lg font-semibold mb-4 text-foreground">Preferred Currency</h3>
+            <h3 className="text-base font-medium mb-4 text-foreground tracking-[-0.3px]">Preferred Currency</h3>
             <div className="flex gap-2">
               {["USD", "EUR", "GBP", "CAD"].map((currency) => (
                 <button
                   key={currency}
                   onClick={() => update("preferredCurrency", currency)}
-                  className={`px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-medium transition-all duration-300 ease-out border ${
+                  className={`px-5 py-2.5 min-h-[44px] rounded-full text-[11px] font-medium tracking-[1px] uppercase transition-all duration-300 ease-out border ${
                     measurements.preferredCurrency === currency
-                      ? "gradient-primary text-primary-foreground border-transparent shadow-brand"
-                      : "border-border text-muted-foreground hover:border-primary bg-muted"
+                      ? "bg-foreground text-background border-transparent"
+                      : "border-border text-muted-foreground hover:border-primary bg-card"
                   }`}
                 >
                   {currency}

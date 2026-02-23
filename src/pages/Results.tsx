@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ExternalLink, Sparkles, ArrowLeft, Leaf } from "lucide-react";
+import { ExternalLink, ArrowLeft, Leaf } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { Toaster } from "@/components/ui/toaster";
 import { Badge } from "@/components/ui/badge";
@@ -75,25 +75,25 @@ const ProductRow = ({ match, shopMode, vintageIndex = 0 }: { match: ProductMatch
       href={buildMatchUrl(match, shopMode, vintageIndex)}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center justify-between p-3 sm:p-4 rounded-xl border border-border hover:border-primary bg-background/50 transition-all duration-300 ease-out group min-h-[56px]"
+      className="flex items-center justify-between p-3 sm:p-4 rounded-xl border border-border hover:border-primary bg-card transition-all duration-300 ease-out group min-h-[56px] hover:shadow-brand"
     >
       <div className="min-w-0 flex-1 mr-3">
         <div className="flex items-center gap-1.5">
-          <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{match.name}</p>
+          <p className="font-medium text-[11px] truncate group-hover:text-primary transition-colors">{match.name}</p>
           {isVintage && (
-            <Badge className="bg-[hsl(142,71%,45%)]/10 text-[hsl(142,71%,45%)] border-[hsl(142,71%,45%)]/30 text-[10px] px-1.5 py-0 flex-shrink-0">
+            <Badge className="bg-vintage-bg text-vintage border-vintage-border text-[8px] px-1.5 py-0 flex-shrink-0 uppercase tracking-[0.5px] font-semibold">
               Vintage
             </Badge>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[9px] text-muted-foreground uppercase tracking-[0.5px] font-medium">
           {isVintage ? `${platform.name} · Pre-loved` : `${match.brand} · ${match.retailer}`}
         </p>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="font-semibold text-gradient text-sm">{isVintage ? discountPrice(match.price) : match.price}</span>
-        <span className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center group-hover:shadow-glow transition-all">
-          <ExternalLink className="w-3.5 h-3.5 text-primary-foreground" />
+        <span className="font-semibold text-primary text-[13px]">{isVintage ? discountPrice(match.price) : match.price}</span>
+        <span className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center group-hover:shadow-brand transition-all">
+          <ExternalLink className="w-3.5 h-3.5 text-background" />
         </span>
       </div>
     </a>
@@ -123,30 +123,30 @@ const Results = () => {
           {/* Back button */}
           <button
             onClick={() => navigate("/analyzer")}
-            className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-300 ease-out min-h-[44px]"
+            className="inline-flex items-center gap-2 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors duration-300 ease-out min-h-[44px] uppercase tracking-[1px]"
           >
             <ArrowLeft className="w-4 h-4" />
-            ← Analyze Another
+            Analyze Another
           </button>
 
           {/* Image preview */}
           {imageUrl && (
-            <div className="glass rounded-2xl overflow-hidden">
+            <div className="bg-card border border-border rounded-2xl overflow-hidden">
               <img src={imageUrl} alt="Analyzed outfit" className="w-full object-cover max-h-[250px] sm:max-h-[300px]" />
             </div>
           )}
 
           {/* Results header + toggle */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <h3 className="font-display text-xl sm:text-2xl font-bold">
+            <h3 className="text-xl sm:text-2xl font-medium tracking-[-0.3px]">
               {items.length} Item{items.length !== 1 ? "s" : ""} Detected
             </h3>
             <div className="flex p-1 rounded-full bg-muted w-full sm:w-fit">
               <button
                 onClick={() => setShopMode("new")}
-                className={`flex-1 sm:flex-none px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ease-out min-h-[44px] ${
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-full text-[11px] font-medium tracking-[1px] uppercase transition-all duration-300 ease-out min-h-[44px] ${
                   shopMode === "new"
-                    ? "gradient-primary text-primary-foreground shadow-brand"
+                    ? "bg-foreground text-background"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -154,9 +154,9 @@ const Results = () => {
               </button>
               <button
                 onClick={() => setShopMode("vintage")}
-                className={`flex-1 sm:flex-none px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ease-out min-h-[44px] ${
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-full text-[11px] font-medium tracking-[1px] uppercase transition-all duration-300 ease-out min-h-[44px] ${
                   shopMode === "vintage"
-                    ? "gradient-primary text-primary-foreground shadow-brand"
+                    ? "bg-vintage text-white"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -167,12 +167,9 @@ const Results = () => {
 
           {/* Sustainability banner */}
           {shopMode === "vintage" && (
-            <div
-              className="flex items-center gap-3 rounded-xl px-4 py-3 border"
-              style={{ background: "rgba(34, 197, 94, 0.1)", borderColor: "rgba(34, 197, 94, 0.3)" }}
-            >
-              <Leaf className="w-5 h-5 flex-shrink-0" style={{ color: "#22c55e" }} />
-              <p className="text-sm font-medium" style={{ color: "#22c55e" }}>
+            <div className="flex items-center gap-3 rounded-xl px-4 py-3 border bg-vintage-bg border-vintage-border">
+              <Leaf className="w-5 h-5 flex-shrink-0 text-vintage" />
+              <p className="text-[11px] font-medium text-vintage uppercase tracking-[0.5px]">
                 🌱 Shopping sustainably with pre-loved fashion
               </p>
             </div>
@@ -184,20 +181,20 @@ const Results = () => {
             collapsible
             value={openAccordionItem}
             onValueChange={setOpenAccordionItem}
-            className="glass rounded-2xl px-2 py-2 overflow-hidden"
+            className="bg-card border border-border rounded-2xl px-2 py-2 overflow-hidden"
           >
             {items.map((item) => (
               <AccordionItem
                 key={item.id}
                 value={item.id}
-                className="border-0 rounded-xl mb-1 last:mb-0 data-[state=open]:glass-light"
+                className="border-0 rounded-xl mb-1 last:mb-0 data-[state=open]:bg-muted/50"
               >
                 <AccordionTrigger className="px-3 sm:px-4 py-3 rounded-xl hover:no-underline hover:bg-muted/50 [&[data-state=open]]:rounded-b-none transition-all duration-300 ease-out min-h-[52px]">
                   <div className="flex items-center gap-3 text-left">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-semibold uppercase tracking-widest text-primary">{item.category}</span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                        <span className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{item.category}</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
                           {[item.bestMatch, ...(item.budget ?? []), ...(item.midRange ?? []), ...(item.luxury ?? [])].filter(Boolean).length} matches
                         </span>
                       </div>
@@ -215,7 +212,7 @@ const Results = () => {
                       { label: "Price Range", value: item.estimatedPrice },
                     ].map(({ label, value }) => (
                       <div key={label} className="bg-muted rounded-xl p-3">
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-[1px] mb-1">{label}</p>
                         <p className="text-sm font-medium">{value}</p>
                       </div>
                     ))}
@@ -223,8 +220,8 @@ const Results = () => {
 
                   {/* AI disclaimer */}
                   <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-muted border border-border">
-                    <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                    <p className="text-xs text-muted-foreground font-medium">
+                    <span className="text-primary text-xs flex-shrink-0">✨</span>
+                    <p className="text-[10px] text-muted-foreground font-medium">
                       {shopMode === "vintage"
                         ? "AI suggestions — prices are estimates for pre-loved items. Click to search on vintage platforms."
                         : "AI suggestions — prices are estimates. Click any item to search on retailers."}
@@ -236,8 +233,8 @@ const Results = () => {
                     {item.bestMatch && (
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Best Match</span>
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground">★</span>
+                          <span className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground">Best Match</span>
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary text-primary-foreground">★</span>
                         </div>
                         <ProductRow match={item.bestMatch} shopMode={shopMode} vintageIndex={0} />
                       </div>
@@ -245,7 +242,7 @@ const Results = () => {
 
                     {item.budget?.length > 0 && (
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                        <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
                           Budget <span className="normal-case font-normal">· Under $50</span>
                         </p>
                         <div className="space-y-2">
@@ -256,7 +253,7 @@ const Results = () => {
 
                     {item.midRange?.length > 0 && (
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                        <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
                           Mid-Range <span className="normal-case font-normal">· $50–$150</span>
                         </p>
                         <div className="space-y-2">
@@ -267,7 +264,7 @@ const Results = () => {
 
                     {item.luxury?.length > 0 && (
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                        <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
                           Luxury <span className="normal-case font-normal">· $150+</span>
                         </p>
                         <div className="space-y-2">
