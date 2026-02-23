@@ -8,6 +8,7 @@ export interface ProductMatch {
   retailer: string;
   searchQuery: string;
   available: boolean;
+  sizeNote?: string;
 }
 
 export interface DetectedItem {

@@ -91,7 +91,7 @@ const Analyzer = () => {
     const stepTimer2 = setTimeout(() => setAnalyzeStep(2), 5500);
 
     try {
-      let requestBody: Record<string, string>;
+      let requestBody: Record<string, unknown>;
 
       if (activeTab === "url") {
         requestBody = { imageUrl: pastedUrl };
@@ -99,6 +99,18 @@ const Analyzer = () => {
         const imageBase64 = await fileToBase64(uploadedFile!);
         requestBody = { imageBase64, mimeType: uploadedFile!.type };
       }
+
+      // Attach profile measurements if available
+      try {
+        const raw = localStorage.getItem("matchmystyle_profile");
+        if (raw) {
+          const profile = JSON.parse(raw);
+          const hasData = Object.values(profile).some((v) => typeof v === "string" && v.trim() !== "");
+          if (hasData) {
+            requestBody.profile = profile;
+          }
+        }
+      } catch { /* ignore malformed profile */ }
 
       const response = await fetch(ANALYZE_URL, {
         method: "POST",
