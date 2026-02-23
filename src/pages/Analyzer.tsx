@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { Camera, ShoppingBag, X, Loader2, AlertCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -8,6 +8,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { useAnalysis, type DetectedItem } from "@/contexts/AnalysisContext";
 import { Switch } from "@/components/ui/switch";
 import PasteTipStrip from "@/components/PasteTipStrip";
+import { useClipboardPaste } from "@/hooks/useClipboardPaste";
 
 type Tab = "url" | "file";
 
@@ -62,26 +63,12 @@ const Analyzer = () => {
   const [useProfile, setUseProfile] = useState(hasProfile);
   const [dragOver, setDragOver] = useState(false);
 
-  // Clipboard paste support
-  const handlePaste = useCallback((e: ClipboardEvent) => {
-    if (!e.clipboardData) return;
-    const items = e.clipboardData.items;
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.startsWith("image/")) {
-        const file = items[i].getAsFile();
-        if (file) {
-          setActiveTab("file");
-          handleFile(file);
-        }
-        return;
-      }
-    }
+  // Clipboard paste support via extracted hook
+  const onImagePasted = useCallback((file: File) => {
+    setActiveTab("file");
+    handleFile(file);
   }, []);
-
-  useEffect(() => {
-    window.addEventListener("paste", handlePaste);
-    return () => window.removeEventListener("paste", handlePaste);
-  }, [handlePaste]);
+  useClipboardPaste({ onImagePasted });
 
   const [pastedUrl, setPastedUrl] = useState("");
   const [urlPreviewError, setUrlPreviewError] = useState(false);
