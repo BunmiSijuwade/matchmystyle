@@ -1,32 +1,8 @@
 import { Link } from "react-router-dom";
-import { Camera, Ruler, ShoppingBag, ArrowRight, Star, Zap, Heart } from "lucide-react";
+import { Camera, ArrowRight, Star, Zap, Heart } from "lucide-react";
 import GradientButton from "@/components/GradientButton";
 import Navbar from "@/components/Navbar";
 import heroBg from "@/assets/hero-bg.jpg";
-
-const features = [
-  {
-    icon: Camera,
-    title: "AI Outfit Analysis",
-    description: "Upload any influencer photo. Our Claude AI instantly identifies every clothing item, brand, and style element.",
-  },
-  {
-    icon: Ruler,
-    title: "Size-Smart Matching",
-    description: "Enter your measurements once. Get product recommendations perfectly calibrated to your unique body.",
-  },
-  {
-    icon: ShoppingBag,
-    title: "Shop the Look",
-    description: "Discover exact matches and budget-friendly dupes from hundreds of retailers — all in your size.",
-  },
-];
-
-const steps = [
-  { number: "01", title: "Upload the Look", desc: "Share a screenshot of your favorite influencer's outfit." },
-  { number: "02", title: "AI Identifies Items", desc: "Claude AI breaks down every piece — jacket, shoes, accessories." },
-  { number: "03", title: "Get Your Matches", desc: "We find the same (or similar) items available in your exact size." },
-];
 
 const testimonials = [
   { name: "Sofia R.", size: "Size 14", quote: "Finally found that exact blazer from Emma Chamberlain's vlog — in MY size!", stars: 5 },
@@ -122,57 +98,26 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-24 relative">
-        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 30% 50%, hsl(271 76% 57% / 0.06) 0%, transparent 60%)" }} />
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <p className="text-primary text-sm font-medium uppercase tracking-widest mb-3">How It Works</p>
-            <h2 className="font-display text-4xl md:text-5xl font-bold">
-              AI-Powered Fashion{" "}
-              <span className="text-gradient italic">at Your Fingertips</span>
-            </h2>
-          </div>
+      {/* How It Works — compact 3-step row */}
+      <section id="how-it-works" className="py-16 sm:py-24 bg-muted/30 scroll-mt-16">
+        <div className="container mx-auto px-5 sm:px-6">
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-10 sm:mb-14">
+            Three Steps to{" "}
+            <span className="text-gradient italic">Your Perfect Look</span>
+          </h2>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {features.map((feature) => (
-              <div key={feature.title} className="glass rounded-2xl p-8 group hover:border-primary transition-all duration-300 hover:shadow-brand">
-                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-6 group-hover:shadow-glow transition-all duration-300">
-                  <feature.icon className="w-6 h-6 text-primary-foreground" />
-                </div>
-                <h3 className="font-display text-xl font-semibold mb-3">{feature.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
+          <div className="grid grid-cols-3 gap-3 sm:gap-8 max-w-2xl mx-auto">
+            {[
+              { emoji: "📸", title: "Upload", desc: "Share the look" },
+              { emoji: "🤖", title: "AI Analyzes", desc: "Identifies items" },
+              { emoji: "🛍️", title: "Shop", desc: "In your size" },
+            ].map((step) => (
+              <div key={step.title} className="text-center">
+                <div className="text-3xl sm:text-4xl mb-2 sm:mb-3">{step.emoji}</div>
+                <h3 className="font-display text-sm sm:text-lg font-semibold mb-1">{step.title}</h3>
+                <p className="text-muted-foreground text-xs sm:text-sm">{step.desc}</p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Steps Section */}
-      <section id="how-it-works" className="py-24 bg-muted/30 scroll-mt-16">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="font-display text-4xl md:text-5xl font-bold">
-              Three Steps to{" "}
-              <span className="text-gradient italic">Your Perfect Look</span>
-            </h2>
-          </div>
-
-          <div className="relative">
-            {/* Connection line */}
-            <div className="hidden md:block absolute top-8 left-1/4 right-1/4 h-px bg-gradient-brand opacity-30" />
-
-            <div className="grid md:grid-cols-3 gap-12">
-              {steps.map((step) => (
-                <div key={step.number} className="text-center">
-                  <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center mx-auto mb-6 shadow-brand font-display text-xl font-bold text-primary-foreground">
-                    {step.number}
-                  </div>
-                  <h3 className="font-display text-xl font-semibold mb-3">{step.title}</h3>
-                  <p className="text-muted-foreground">{step.desc}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>
