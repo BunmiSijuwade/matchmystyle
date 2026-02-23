@@ -150,7 +150,7 @@ function isValidUrl(str: string) {
 }
 
 const Analyzer = () => {
-  const [activeTab, setActiveTab] = useState<Tab>("url");
+  const [activeTab, setActiveTab] = useState<Tab>("file");
   const [dragOver, setDragOver] = useState(false);
 
   // URL tab state
@@ -317,33 +317,31 @@ const Analyzer = () => {
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8 items-start">
+        <div className="max-w-2xl mx-auto space-y-4">
           {/* Upload Column */}
           <div className="space-y-4">
 
-            {/* Tab pill toggle */}
-            <div className="flex gap-1 p-1 glass rounded-xl w-fit">
-              <button
-                onClick={() => handleTabSwitch("url")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === "url"
-                    ? "gradient-primary text-primary-foreground shadow-brand"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Link className="w-3.5 h-3.5" />
-                Paste URL
-              </button>
+            {/* Tab bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 onClick={() => handleTabSwitch("file")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
                   activeTab === "file"
                     ? "gradient-primary text-primary-foreground shadow-brand"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Upload className="w-3.5 h-3.5" />
-                Upload File
+                📷 Upload File
+              </button>
+              <button
+                onClick={() => handleTabSwitch("url")}
+                className={`flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
+                  activeTab === "url"
+                    ? "gradient-primary text-primary-foreground shadow-brand"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                🔗 Paste URL
               </button>
             </div>
 
@@ -467,7 +465,7 @@ const Analyzer = () => {
             </div>
           </div>
 
-          {/* Results Column */}
+          {/* Results */}
           <div className="space-y-4" ref={accordionRef}>
             {!results && !analyzing && (
               <div className="glass rounded-2xl p-12 text-center">
