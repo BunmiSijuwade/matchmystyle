@@ -94,7 +94,8 @@ serve(async (req) => {
 - midRange: exactly 2 products realistically priced $50–$150 (e.g. Zara, Mango, & Other Stories, Topshop, ASOS Premium)
 - luxury: exactly 2 products realistically priced over $150 (e.g. Theory, Toteme, Reformation, Sandro, IRO)
 Use realistic brand names that actually sell in each price range. Use the suggest_outfit_items tool to return structured output.
-All output must be in English only. Do not use Chinese, Japanese, Korean, or any non-Latin characters in any field.`;
+All output must be in English only. Do not use Chinese, Japanese, Korean, or any non-Latin characters in any field.
+Keep all field values short and concise. Do not repeat instructions or field names in values.`;
 
     // Append profile-based personalization if available
     if (profile && typeof profile === "object") {
@@ -125,6 +126,8 @@ All output must be in English only. Do not use Chinese, Japanese, Korean, or any
       },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
+        max_tokens: 4096,
+        temperature: 0.2,
         messages: [
           { role: "system", content: systemPrompt },
           {
