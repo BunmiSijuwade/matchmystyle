@@ -9,6 +9,7 @@ export interface ProductMatch {
   searchQuery: string;
   available: boolean;
   sizeNote?: string;
+  aestheticScore?: number;
 }
 
 export interface DetectedItem {
@@ -25,6 +26,16 @@ export interface DetectedItem {
   luxury: ProductMatch[];
 }
 
+export interface StyleDNA {
+  primary_aesthetic: string;
+  secondary_aesthetics: string[];
+  mood: string[];
+  fit_philosophy: string;
+  price_positioning: "budget" | "accessible" | "elevated" | "luxury";
+  brand_matches: string[];
+  anti_brands: string[];
+}
+
 export interface ImagePayload {
   imageUrl?: string;
   imageBase64?: string;
@@ -36,10 +47,18 @@ interface AnalysisState {
   imageUrl: string | null;
   analysisId: string | null;
   imagePayload: ImagePayload | null;
+  styleDNA: StyleDNA | null;
+  overallDescription: string | null;
 }
 
 interface AnalysisContextType extends AnalysisState {
-  setAnalysis: (items: DetectedItem[], imageUrl: string | null, imagePayload?: ImagePayload | null) => void;
+  setAnalysis: (
+    items: DetectedItem[],
+    imageUrl: string | null,
+    imagePayload?: ImagePayload | null,
+    styleDNA?: StyleDNA | null,
+    overallDescription?: string | null
+  ) => void;
   clearAnalysis: () => void;
 }
 
@@ -51,15 +70,37 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     imageUrl: null,
     analysisId: null,
     imagePayload: null,
+    styleDNA: null,
+    overallDescription: null,
   });
 
-  const setAnalysis = useCallback((items: DetectedItem[], imageUrl: string | null, imagePayload?: ImagePayload | null) => {
+  const setAnalysis = useCallback((
+    items: DetectedItem[],
+    imageUrl: string | null,
+    imagePayload?: ImagePayload | null,
+    styleDNA?: StyleDNA | null,
+    overallDescription?: string | null
+  ) => {
     const analysisId = Date.now().toString(36);
-    setState({ items, imageUrl, analysisId, imagePayload: imagePayload ?? null });
+    setState({
+      items,
+      imageUrl,
+      analysisId,
+      imagePayload: imagePayload ?? null,
+      styleDNA: styleDNA ?? null,
+      overallDescription: overallDescription ?? null,
+    });
   }, []);
 
   const clearAnalysis = useCallback(() => {
-    setState({ items: null, imageUrl: null, analysisId: null, imagePayload: null });
+    setState({
+      items: null,
+      imageUrl: null,
+      analysisId: null,
+      imagePayload: null,
+      styleDNA: null,
+      overallDescription: null,
+    });
   }, []);
 
   return (
