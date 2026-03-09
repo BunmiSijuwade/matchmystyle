@@ -36,7 +36,7 @@ Brand discovery engine for emerging designers
 
 Why I built this:
 
-I spent 13 years in luxury retail and beauty e-commerce (Alexander Wang, Kiehl's, Estée Lauder), observing customers struggle with discovery despite sophisticated platforms. The core UX challenge wasn't technology — it was translating "I want something like this but not exactly this" into actionable product results. MatchMyStyle is my attempt to solve that with AI.
+I spent 13 years in luxury retail and beauty e-commerce (Alexander Wang, Kiehl's, Estée Lauder), observing customers struggle to discover products despite sophisticated platforms. The core UX challenge wasn't technology — it was translating "I want something like this but not exactly this" into actionable product results. MatchMyStyle is my attempt to solve that with AI.
 
 Built by Bunmi Sijuwade — Product Manager turned AI builder
-[GitHub](https://github.com/BunmiSijuwade/matchmystyle) | [LinkedIn](https://www.linkedin.com/in/bunmi-sijuwade/)
+[GitHub](https://github.com/BunmiSijuwade/matchmystyle) | [LinkedIn](https://www.linkedin.com/in/bunmi-sijuwade/) | [MatchMyStyle](https://matchmystyle.lovable.app/)
