@@ -1,5 +1,7 @@
 What is it?
+
 MatchMyStyle is an AI styling app that helps you discover fashion pieces that match your personal style across brands you've never heard of. Instead of filtering by price or category, you describe your aesthetic in natural language, and the app returns products that genuinely fit your style DNA.
+
 The problem: Fashion discovery is broken. You either scroll endlessly through generic recommendations, or you stick to the same 3 brands because finding new ones that match your taste is exhausting.
 The solution: AI that learns what "elevated minimalist" or "romantic maximalist" actually means by analyzing real brand aesthetics, then surfaces products from emerging brands that match your style profile.
 How it works
@@ -32,8 +34,9 @@ User taste graph that learns from upload history
 Collaborative style boards
 Brand discovery engine for emerging designers
 
-Why I built this
+Why I built this:
+
 I spent 13 years in luxury retail and beauty e-commerce (Alexander Wang, Kiehl's, Estée Lauder), observing customers struggle with discovery despite sophisticated platforms. The core UX challenge wasn't technology — it was translating "I want something like this but not exactly this" into actionable product results. MatchMyStyle is my attempt to solve that with AI.
 
 Built by Bunmi Sijuwade — Product Manager turned AI builder
-[GitHub]([ ](https://github.com/BunmiSijuwade/matchmystyle)) | [LinkedIn](https://www.linkedin.com/in/bunmi-sijuwade/)
+[GitHub](https://github.com/BunmiSijuwade/matchmystyle) | [LinkedIn](https://www.linkedin.com/in/bunmi-sijuwade/)
