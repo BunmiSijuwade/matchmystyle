@@ -1,73 +1,39 @@
-# Welcome to your Lovable project
+What is it?
+MatchMyStyle is an AI styling app that helps you discover fashion pieces that match your personal style across brands you've never heard of. Instead of filtering by price or category, you describe your aesthetic in natural language, and the app returns products that genuinely fit your style DNA.
+The problem: Fashion discovery is broken. You either scroll endlessly through generic recommendations, or you stick to the same 3 brands because finding new ones that match your taste is exhausting.
+The solution: AI that learns what "elevated minimalist" or "romantic maximalist" actually means by analyzing real brand aesthetics, then surfaces products from emerging brands that match your style profile.
+How it works
 
-## Project info
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Style Analysis — Describe your aesthetic or upload inspiration photos. Claude AI analyzes your style DNA across multiple dimensions (silhouette, color palette, texture, mood).
+Brand Intelligence — The app maps 100+ fashion brands across aesthetic profiles. It knows that COS, Toteme, and Arket share "Scandi minimalist" DNA even if they've never been explicitly tagged that way.
+Smart Product Search — Instead of searching "black blazer," you search "black blazer + brands that score high on effortless tailoring." New brands that fit that profile get surfaced automatically.
+Size Matching — Built-in size charts for 15+ brands with real measurement data, so you can confidently buy from new brands without guessing conversions.
 
-## How can I edit this code?
+Tech Stack
 
-There are several ways of editing your application.
+Frontend: React, built with Lovable and StackBlitz
+AI: Claude AI (Anthropic API) for style analysis and aesthetic tagging
+Data: Custom brand intelligence layer + product search via RapidAPI
+Deployment: GitHub
 
-**Use Lovable**
+Current Status
+v0.2 — Moving beyond MVP. Core features built:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+✅ Natural language style input
+✅ Size matching across 15+ brands
+✅ Brand aesthetic profiling framework
+🚧 Claude-powered aesthetic tagging engine (in progress)
+🚧 Dynamic product search integration (in progress)
 
-Changes made via Lovable will be committed automatically to this repo.
+Future vision:
 
-**Use your preferred IDE**
+User taste graph that learns from upload history
+Collaborative style boards
+Brand discovery engine for emerging designers
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Why I built this
+I spent 13 years in luxury retail and beauty e-commerce (Alexander Wang, Kiehl's, Estée Lauder), observing customers struggle with discovery despite sophisticated platforms. The core UX challenge wasn't technology — it was translating "I want something like this but not exactly this" into actionable product results. MatchMyStyle is my attempt to solve that with AI.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Built by Bunmi Sijuwade — Product Manager turned AI builder
+[GitHub]([ ](https://github.com/BunmiSijuwade/matchmystyle)) | [LinkedIn](https://www.linkedin.com/in/bunmi-sijuwade/)
