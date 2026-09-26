@@ -5,7 +5,7 @@ const TICKER = ["real pieces", "real prices", "your size", "no made-up stuff"];
 
 const ConciergeHeader = ({ fittingRoomCount = 0 }: { fittingRoomCount?: number }) => (
   <>
-    <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+    <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
       <Link to="/" className="flex min-h-[44px] items-center gap-3" aria-label="MatchMyStyle home">
         <span className="mono-outline mono-pill mono-display flex h-11 w-11 items-center justify-center text-sm">mm</span>
         <span className="mono-display text-lg">matchmystyle</span>
