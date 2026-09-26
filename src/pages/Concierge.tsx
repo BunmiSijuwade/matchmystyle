@@ -1,21 +1,25 @@
 import { useState, type FormEvent } from "react";
-import { AlertCircle, ArrowDown, Search } from "lucide-react";
-import Navbar from "@/components/Navbar";
-import GradientButton from "@/components/GradientButton";
+import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import VisionSearch from "@/components/concierge/VisionSearch";
+import ConciergeHeader from "@/components/concierge/ConciergeHeader";
+import ConciergeStart, { CHOICES, FOLLOW_UPS, type ChoiceId } from "@/components/concierge/ConciergeStart";
+import ConciergeComposer from "@/components/concierge/ConciergeComposer";
 import EditorialProductCard, { type CatalogProduct } from "@/components/concierge/EditorialProductCard";
 import { supabase } from "@/integrations/supabase/client";
+import "@/styles/mono.css";
 
 interface SearchMeta { tool: string; durationMs: number; count?: number }
-
 type Status = "idle" | "loading" | "done" | "error";
 
-const REFINEMENTS = ["More architectural", "Less conventional", "More dramatic", "Show me something unexpected"];
+const Bubble = ({ from, children }: { from: "me" | "you"; children: React.ReactNode }) => (
+  <div className={`flex ${from === "you" ? "justify-end" : "justify-start"}`}>
+    <p className={`max-w-[85%] px-5 py-3 text-base leading-6 mono-card ${from === "you" ? "mono-ink-bg" : "mono-panel"}`}>{children}</p>
+  </div>
+);
 
 const Concierge = () => {
   const [query, setQuery] = useState("");
+  const [choice, setChoice] = useState<ChoiceId | null>(null);
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [products, setProducts] = useState<CatalogProduct[]>([]);
@@ -35,7 +39,7 @@ const Concierge = () => {
     if (fnError || !data || data.error || !Array.isArray(data.products)) {
       let msg = data?.error as string | undefined;
       try { msg = msg ?? (await (fnError as any)?.context?.json?.())?.error; } catch { /* ignore */ }
-      setError(msg ?? "Couldn't search products right now.");
+      setError(msg ?? "couldn't search right now.");
       setMeta(data?.meta ?? null);
       setStatus("error");
       return;
@@ -45,83 +49,59 @@ const Concierge = () => {
     setStatus("done");
   };
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    const q = query.trim();
-    if (q.length >= 2 && status !== "loading") runSearch(q);
+  const send = (text: string) => {
+    const q = text.trim();
+    if (q.length < 2 || status === "loading") return;
+    setQuery("");
+    runSearch(q);
   };
 
-  const refineSearch = (reaction: string) => {
-    const base = submitted ?? query.trim();
-    if (!base || status === "loading") return;
-    const refined = `${base}. ${reaction}.`;
-    setQuery(refined);
-    runSearch(refined);
-  };
+  const handleSubmit = (e: FormEvent) => { e.preventDefault(); send(query); };
+
+  const chosen = CHOICES.find((c) => c.id === choice);
+  const followUp = choice ? FOLLOW_UPS[choice] : null;
+  const started = choice || submitted;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <header className="mx-auto flex min-h-[62vh] max-w-7xl flex-col justify-end px-4 pb-12 pt-28 sm:px-6 sm:pb-16 sm:pt-32">
-        <div className="grid items-end gap-10 md:grid-cols-[1.45fr_0.55fr]">
-          <div>
-            <p className="mb-5 text-[10px] font-medium uppercase tracking-[2.5px] text-primary">MatchMyStyle / The Concierge</p>
-            <h1 className="max-w-4xl text-5xl font-light leading-[1.02] sm:text-6xl lg:text-7xl">
-              Start with a feeling.<br /><span className="italic text-primary">Discover the pieces.</span>
-            </h1>
-          </div>
-          <div className="border-l border-border pl-5 md:pb-2">
-            <p className="text-sm leading-6 text-muted-foreground">
-              Share an image or describe the world you want to dress for. We’ll search real pieces from independent and established shops.
-            </p>
-          </div>
-        </div>
-        <a href="#begin" className="mt-12 inline-flex min-h-[44px] w-fit items-center gap-2 text-[10px] font-medium uppercase tracking-[1.5px] text-muted-foreground transition-colors hover:text-primary">
-          Begin your edit <ArrowDown className="h-3.5 w-3.5" />
-        </a>
-      </header>
+    <div className="theme-mono flex min-h-screen flex-col">
+      <ConciergeHeader fittingRoomCount={0} />
 
-      <div id="begin">
-        <VisionSearch query={query} loading={status === "loading"} onQueryChange={setQuery} onSubmit={handleSubmit} />
-      </div>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-10 pt-10 sm:px-6 sm:pt-14">
+        {!started && <ConciergeStart onChoose={setChoice} />}
 
-      <main className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-        <section aria-label="Product results" aria-live="polite">
-          {submitted && status !== "idle" && (
-            <div className="mb-9 flex flex-col gap-5 border-b border-border pb-7 md:flex-row md:items-end md:justify-between">
-              <div>
-                <p className="mb-2 text-[10px] font-medium uppercase tracking-[2px] text-primary">The edit</p>
-                <h2 className="text-2xl font-light sm:text-3xl">
-                  {status === "done" ? `${products.length} pieces for you` : "Curating your pieces"}
-                </h2>
-                <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground">“{submitted}”</p>
+        {started && (
+          <section aria-label="conversation" className="mx-auto max-w-2xl space-y-3">
+            {chosen && <Bubble from="you">{chosen.label}</Bubble>}
+            {followUp && <Bubble from="me">{followUp.question}</Bubble>}
+            {followUp && !submitted && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {followUp.examples.map((ex) => (
+                  <button key={ex} type="button" onClick={() => send(ex)} className="mono-outline mono-pill mono-press min-h-[44px] px-4 py-2 text-left text-sm">
+                    {ex}
+                  </button>
+                ))}
               </div>
-              {status === "done" && products.length > 0 && (
-                <div className="flex flex-wrap gap-2" aria-label="Refine these results">
-                  {REFINEMENTS.map((reaction) => (
-                    <Button key={reaction} type="button" variant="outline" onClick={() => refineSearch(reaction)} className="min-h-[44px] rounded-full px-4 text-[10px] font-normal">
-                      {reaction}
-                    </Button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+            )}
+            {submitted && <Bubble from="you">{submitted}</Bubble>}
+            {submitted && status !== "error" && (
+              <Bubble from="me">{status === "loading" ? "pulling a rail..." : products.length ? `here's a first rail: ${products.length} pieces.` : "hmm, nothing came back for that."}</Bubble>
+            )}
+            <button
+              type="button"
+              onClick={() => { setChoice(null); setSubmitted(null); setStatus("idle"); setProducts([]); }}
+              className="mono-soft min-h-[44px] text-sm underline underline-offset-4"
+            >
+              start over
+            </button>
+          </section>
+        )}
 
-          {status === "idle" && (
-            <div className="grid gap-8 border-b border-border pb-14 md:grid-cols-[0.7fr_1.3fr] md:items-end">
-              <p className="text-[10px] font-medium uppercase tracking-[2px] text-primary">A more personal way to search</p>
-              <p className="max-w-2xl text-2xl font-light leading-snug text-foreground sm:text-3xl">
-                No rigid filters. Begin with the mood, proportion or occasion—and shape the edit from there.
-              </p>
-            </div>
-          )}
-
+        <section aria-label="product results" aria-live="polite" className="mt-10">
           {status === "loading" && (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 md:gap-x-6 lg:gap-x-8">
-              {Array.from({ length: 8 }).map((_, i) => (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 md:gap-x-6">
+              {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="space-y-3">
-                  <Skeleton className="aspect-[3/4] w-full rounded-none" />
+                  <Skeleton className="mono-card aspect-[3/4] w-full" />
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-3 w-1/2" />
                 </div>
@@ -130,24 +110,24 @@ const Concierge = () => {
           )}
 
           {status === "error" && (
-            <div className="border border-destructive/40 bg-card p-8 text-center">
-              <AlertCircle className="h-7 w-7 mx-auto mb-3 text-destructive" />
-              <p className="text-sm text-foreground mb-4">{error}</p>
-              <GradientButton type="button" size="sm" onClick={() => submitted && runSearch(submitted)}>
-                Try again
-              </GradientButton>
+            <div className="mono-outline mono-card p-8 text-center">
+              <AlertCircle className="mono-accent-text mx-auto mb-3 h-7 w-7" />
+              <p className="mb-4 text-sm">{error}</p>
+              <button type="button" onClick={() => submitted && runSearch(submitted)} className="mono-ink-bg mono-pill min-h-[44px] px-6 text-sm font-medium">
+                try again
+              </button>
             </div>
           )}
 
           {status === "done" && products.length === 0 && (
-            <div className="border border-dashed border-border bg-card p-10 text-center">
-              <p className="text-sm text-foreground mb-1">No products found.</p>
-              <p className="text-xs text-muted-foreground">Try describing a specific piece, material or occasion.</p>
+            <div className="mono-dashed mono-card p-10 text-center">
+              <p className="mb-1 text-sm">no pieces found.</p>
+              <p className="mono-soft text-sm">try a specific piece, material or occasion.</p>
             </div>
           )}
 
           {status === "done" && products.length > 0 && (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-12 md:grid-cols-3 md:gap-x-6 md:gap-y-16 lg:gap-x-8">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-12 md:grid-cols-3 md:gap-x-6 md:gap-y-16">
               {products.map((product, index) => (
                 <EditorialProductCard key={product.productId} product={product} index={index} />
               ))}
@@ -155,12 +135,14 @@ const Concierge = () => {
           )}
 
           {import.meta.env.DEV && meta && (
-            <p className="mt-6 text-[11px] text-muted-foreground font-mono">
+            <p className="mono-soft mt-6 font-mono text-[11px]">
               dev: {meta.tool} · {meta.durationMs}ms{typeof meta.count === "number" ? ` · ${meta.count} items` : ""}
             </p>
           )}
         </section>
       </main>
+
+      <ConciergeComposer value={query} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />
     </div>
   );
 };
