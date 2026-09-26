@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap');
+
+/* "mono" palette — every Concierge color, font, radius and border lives here.
+   Swap palettes by adding another .theme-<name> block with the same variables. */
+.theme-mono {
+  --mono-bg: #ffffff;
+  --mono-ink: #111111;
+  --mono-accent: #e5482f;
+  --mono-accent-ink: #ffffff;
+  --mono-panel: #f4f2ee;
+  --mono-soft-ink: #5c5a57;
+
+  --mono-font-display: 'Fraunces', Georgia, serif;
+  --mono-font-body: 'Manrope', -apple-system, sans-serif;
+
+  --mono-radius-tile: 22px;
+  --mono-radius-card: 18px;
+  --mono-radius-pill: 999px;
+  --mono-border-width: 1.5px;
+  --mono-border: var(--mono-border-width) solid var(--mono-ink);
+  --mono-border-dashed: var(--mono-border-width) dashed var(--mono-ink);
+
+  /* map shared UI tokens so existing parts (cards, skeletons, buttons) follow the palette */
+  --background: 0 0% 100%;
+  --foreground: 0 0% 7%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 7%;
+  --primary: 9 78% 54%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 40 18% 94%;
+  --muted-foreground: 30 2% 35%;
+  --accent: 40 18% 94%;
+  --accent-foreground: 0 0% 7%;
+  --border: 0 0% 7%;
+  --input: 0 0% 7%;
+  --ring: 9 78% 54%;
+
+  background: var(--mono-bg);
+  color: var(--mono-ink);
+  font-family: var(--mono-font-body);
+}
+
+.theme-mono .mono-display {
+  font-family: var(--mono-font-display);
+  font-weight: 600;
+  color: var(--mono-ink);
+  letter-spacing: -0.01em;
+}
+.theme-mono .mono-outline { border: var(--mono-border); }
+.theme-mono .mono-dashed { border: var(--mono-border-dashed); }
+.theme-mono .mono-tile { border-radius: var(--mono-radius-tile); }
+.theme-mono .mono-card { border-radius: var(--mono-radius-card); }
+.theme-mono .mono-pill { border-radius: var(--mono-radius-pill); }
+.theme-mono .mono-bg { background: var(--mono-bg); }
+.theme-mono .mono-panel { background: var(--mono-panel); }
+.theme-mono .mono-ink-bg { background: var(--mono-ink); color: var(--mono-bg); }
+.theme-mono .mono-accent-bg { background: var(--mono-accent); color: var(--mono-accent-ink); }
+.theme-mono .mono-accent-text { color: var(--mono-accent); }
+.theme-mono .mono-soft { color: var(--mono-soft-ink); }
+.theme-mono .mono-press { transition: transform 300ms ease, background-color 300ms ease; }
+.theme-mono .mono-press:hover { background: var(--mono-panel); }
+.theme-mono .mono-press:focus-visible { outline: 2px solid var(--mono-accent); outline-offset: 2px; }
+
+@keyframes mono-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.theme-mono .mono-ticker-track { animation: mono-ticker 28s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .theme-mono .mono-ticker-track { animation: none; } }
