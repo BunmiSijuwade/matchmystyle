@@ -9,6 +9,7 @@ import Profile from "./pages/Profile";
 import Analyzer from "./pages/Analyzer";
 import Results from "./pages/Results";
 import NotFound from "./pages/NotFound";
+import Concierge from "./pages/Concierge";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/analyzer" element={<Analyzer />} />
             <Route path="/results" element={<Results />} />
             <Route path="/results/:analysisId" element={<Results />} />
+            <Route path="/concierge" element={<Concierge />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
