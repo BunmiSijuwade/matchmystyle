@@ -88,6 +88,72 @@
   }
 }
 
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap');
+
+/* Concierge-only theme — scoped to /concierge via .theme-concierge on the page root.
+   Does not affect Analyzer, Results or Profile. */
+.theme-concierge {
+  --concierge-bg: #ffffff;
+  --concierge-ink: #111111;
+  --concierge-accent: #e5482f;
+  --concierge-accent-ink: #ffffff;
+  --concierge-panel: #f4f2ee;
+  --concierge-soft-ink: #5c5a57;
+
+  --concierge-font-display: 'Fraunces', Georgia, serif;
+  --concierge-font-body: 'Manrope', -apple-system, sans-serif;
+
+  --concierge-radius-tile: 22px;
+  --concierge-radius-card: 18px;
+  --concierge-radius-pill: 999px;
+  --concierge-border: 1.5px solid var(--concierge-ink);
+  --concierge-border-dashed: 1.5px dashed var(--concierge-ink);
+
+  /* remap shared shadcn tokens so cards, skeletons and buttons follow this palette */
+  --background: 0 0% 100%;
+  --foreground: 0 0% 7%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 7%;
+  --primary: 9 78% 54%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 40 18% 94%;
+  --muted-foreground: 30 2% 35%;
+  --accent: 40 18% 94%;
+  --accent-foreground: 0 0% 7%;
+  --border: 0 0% 7%;
+  --input: 0 0% 7%;
+  --ring: 9 78% 54%;
+
+  background: var(--concierge-bg);
+  color: var(--concierge-ink);
+  font-family: var(--concierge-font-body);
+}
+
+.theme-concierge .mono-display {
+  font-family: var(--concierge-font-display);
+  font-weight: 600;
+  color: var(--concierge-ink);
+  letter-spacing: -0.01em;
+}
+.theme-concierge .mono-outline { border: var(--concierge-border); }
+.theme-concierge .mono-dashed { border: var(--concierge-border-dashed); }
+.theme-concierge .mono-tile { border-radius: var(--concierge-radius-tile); }
+.theme-concierge .mono-card { border-radius: var(--concierge-radius-card); }
+.theme-concierge .mono-pill { border-radius: var(--concierge-radius-pill); }
+.theme-concierge .mono-bg { background: var(--concierge-bg); }
+.theme-concierge .mono-panel { background: var(--concierge-panel); }
+.theme-concierge .mono-ink-bg { background: var(--concierge-ink); color: var(--concierge-bg); }
+.theme-concierge .mono-accent-bg { background: var(--concierge-accent); color: var(--concierge-accent-ink); }
+.theme-concierge .mono-accent-text { color: var(--concierge-accent); }
+.theme-concierge .mono-soft { color: var(--concierge-soft-ink); }
+.theme-concierge .mono-press { transition: transform 300ms ease, background-color 300ms ease; }
+.theme-concierge .mono-press:hover { background: var(--concierge-panel); }
+.theme-concierge .mono-press:focus-visible { outline: 2px solid var(--concierge-accent); outline-offset: 2px; }
+
+@keyframes concierge-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.theme-concierge .mono-ticker-track { animation: concierge-ticker 28s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .theme-concierge .mono-ticker-track { animation: none; } }
+
 @layer utilities {
   .gradient-primary {
     background: var(--gradient-primary);
