@@ -6,7 +6,6 @@ import ConciergeStart, { CHOICES, FOLLOW_UPS, type ChoiceId } from "@/components
 import ConciergeComposer from "@/components/concierge/ConciergeComposer";
 import EditorialProductCard, { type CatalogProduct } from "@/components/concierge/EditorialProductCard";
 import { supabase } from "@/integrations/supabase/client";
-import "@/styles/mono.css";
 
 interface SearchMeta { tool: string; durationMs: number; count?: number }
 type Status = "idle" | "loading" | "done" | "error";
