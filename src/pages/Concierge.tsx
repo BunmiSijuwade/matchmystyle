@@ -62,7 +62,7 @@ const Concierge = () => {
   const started = choice || submitted;
 
   return (
-    <div className="theme-mono flex min-h-screen flex-col">
+    <div className="theme-concierge flex min-h-screen flex-col">
       <ConciergeHeader fittingRoomCount={0} />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-10 pt-10 sm:px-6 sm:pt-14">
