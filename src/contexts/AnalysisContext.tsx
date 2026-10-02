@@ -36,6 +36,13 @@ export interface StyleDNA {
   anti_brands: string[];
 }
 
+export interface AestheticResult {
+  name: string;
+  role: "primary" | "secondary";
+  weight: number;
+  evidence: string[];
+}
+
 export interface ImagePayload {
   imageUrl?: string;
   imageBase64?: string;
@@ -49,6 +56,7 @@ interface AnalysisState {
   imagePayload: ImagePayload | null;
   styleDNA: StyleDNA | null;
   overallDescription: string | null;
+  aesthetics: AestheticResult[];
 }
 
 interface AnalysisContextType extends AnalysisState {
@@ -57,7 +65,8 @@ interface AnalysisContextType extends AnalysisState {
     imageUrl: string | null,
     imagePayload?: ImagePayload | null,
     styleDNA?: StyleDNA | null,
-    overallDescription?: string | null
+    overallDescription?: string | null,
+    aesthetics?: AestheticResult[] | null
   ) => void;
   clearAnalysis: () => void;
 }
@@ -72,6 +81,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     imagePayload: null,
     styleDNA: null,
     overallDescription: null,
+    aesthetics: [],
   });
 
   const setAnalysis = useCallback((
@@ -79,7 +89,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     imageUrl: string | null,
     imagePayload?: ImagePayload | null,
     styleDNA?: StyleDNA | null,
-    overallDescription?: string | null
+    overallDescription?: string | null,
+    aesthetics?: AestheticResult[] | null
   ) => {
     const analysisId = Date.now().toString(36);
     setState({
@@ -89,6 +100,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       imagePayload: imagePayload ?? null,
       styleDNA: styleDNA ?? null,
       overallDescription: overallDescription ?? null,
+      aesthetics: Array.isArray(aesthetics) ? aesthetics : [],
     });
   }, []);
 
@@ -100,6 +112,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       imagePayload: null,
       styleDNA: null,
       overallDescription: null,
+      aesthetics: [],
     });
   }, []);
 

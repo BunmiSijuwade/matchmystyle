@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import AestheticBlock from "@/components/results/AestheticBlock";
 import { useAnalysis, type DetectedItem, type ProductMatch } from "@/contexts/AnalysisContext";
 import { getSizeRecommendation, type UserMeasurements, type SizeRecommendation } from "@/services/sizingService";
 
@@ -208,7 +209,8 @@ const ProductRow = ({ match, shopMode, vintageIndex = 0, sizeRec }: { match: Pro
 
 const Results = () => {
   const navigate = useNavigate();
-  const { items, imageUrl, imagePayload, setAnalysis } = useAnalysis();
+  const { items, imageUrl, imagePayload, setAnalysis, aesthetics } = useAnalysis();
+  const [originalAesthetics, setOriginalAesthetics] = useState(aesthetics);
   const { toast } = useToast();
   const [shopMode, setShopMode] = useState<"new" | "vintage">("new");
   const [openAccordionItem, setOpenAccordionItem] = useState<string>("");
@@ -309,9 +311,10 @@ const Results = () => {
       // Save original items on first toggle-on so we can revert
       if (withProfile && !originalItems) {
         setOriginalItems(items);
+        setOriginalAesthetics(aesthetics);
       }
 
-      setAnalysis(newItems, imageUrl, imagePayload);
+      setAnalysis(newItems, imageUrl, imagePayload, null, null, data.aesthetics ?? []);
       toast({
         title: withProfile ? "Matches personalized" : "Matches updated",
         description: withProfile
@@ -325,18 +328,18 @@ const Results = () => {
     } finally {
       setReanalyzing(false);
     }
-  }, [imagePayload, profileData, items, originalItems, imageUrl, setAnalysis, toast]);
+  }, [imagePayload, profileData, items, aesthetics, originalItems, imageUrl, setAnalysis, toast]);
 
   const handleToggleProfile = useCallback((checked: boolean) => {
     setUseProfile(checked);
     if (!checked && originalItems) {
       // Revert to cached original results without API call
-      setAnalysis(originalItems, imageUrl, imagePayload);
+      setAnalysis(originalItems, imageUrl, imagePayload, null, null, originalAesthetics);
       toast({ title: "Matches updated", description: "Reverted to standard sizing" });
       return;
     }
     reanalyze(checked);
-  }, [originalItems, imageUrl, imagePayload, setAnalysis, toast, reanalyze]);
+  }, [originalItems, originalAesthetics, imageUrl, imagePayload, setAnalysis, toast, reanalyze]);
 
   if (!items || items.length === 0) return null;
 
@@ -384,6 +387,8 @@ const Results = () => {
               </div>
             </div>
           )}
+
+          <AestheticBlock aesthetics={aesthetics} />
 
           {/* Results header + toggle */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
