@@ -172,7 +172,7 @@ const Analyzer = () => {
       }
 
       const displayUrl = activeTab === "url" ? pastedUrl : filePreviewUrl;
-      setAnalysis(items, displayUrl, imagePayload);
+      setAnalysis(items, displayUrl, imagePayload, null, null, data.aesthetics ?? []);
       navigate("/results");
     } catch (err) {
       console.error("Analyze error:", err);
