@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { AESTHETIC_NAMES, aestheticPromptBlock } from "../_shared/aesthetics.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,6 +43,35 @@ function mapMatches(arr: any[], itemIndex: number, prefix: string) {
     available: true,
     ...(match.sizeNote ? { sizeNote: match.sizeNote } : {}),
   }));
+}
+
+function sanitizeAesthetics(raw: any): { name: string; role: "primary" | "secondary"; weight: number; evidence: string[] }[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  let list = raw
+    .filter((a: any) => a && typeof a.name === "string" && AESTHETIC_NAMES.includes(a.name) && !seen.has(a.name) && seen.add(a.name))
+    .map((a: any) => ({
+      name: a.name as string,
+      role: (a.role === "primary" ? "primary" : "secondary") as "primary" | "secondary",
+      weight: Math.max(1, Number(a.weight) || 1),
+      evidence: (Array.isArray(a.evidence) ? a.evidence : [])
+        .filter((e: any) => typeof e === "string")
+        .map((e: string) => sanitizeText(e))
+        .filter(Boolean)
+        .slice(0, 3),
+    }));
+  if (list.length === 0) return [];
+  list.sort((a, b) => b.weight - a.weight);
+  let primaryIdx = list.findIndex((a) => a.role === "primary");
+  if (primaryIdx < 0) primaryIdx = 0;
+  list = list.map((a, i) => ({ ...a, role: i === primaryIdx ? "primary" : "secondary" }));
+  list.sort((a, b) => (a.role === "primary" ? -1 : b.role === "primary" ? 1 : b.weight - a.weight));
+  list = list.slice(0, 3);
+  const total = list.reduce((s, a) => s + a.weight, 0);
+  const scaled = list.map((a) => ({ ...a, weight: Math.round((a.weight / total) * 100) }));
+  const diff = 100 - scaled.reduce((s, a) => s + a.weight, 0);
+  scaled[0].weight += diff;
+  return scaled;
 }
 
 serve(async (req) => {
@@ -118,6 +148,8 @@ Keep all field values short and concise. Do not repeat instructions or field nam
       }
     }
 
+    systemPrompt += "\n\n" + aestheticPromptBlock();
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -193,8 +225,22 @@ Keep all field values short and concise. Do not repeat instructions or field nam
                       required: ["category", "description", "color", "style", "estimatedPrice", "searchKeywords", "bestMatch", "budget", "midRange", "luxury"],
                     },
                   },
+                  aesthetics: {
+                    type: "array",
+                    maxItems: 3,
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string", enum: AESTHETIC_NAMES },
+                        role: { type: "string", enum: ["primary", "secondary"] },
+                        weight: { type: "integer", minimum: 1, maximum: 100 },
+                        evidence: { type: "array", items: { type: "string" }, maxItems: 3 },
+                      },
+                      required: ["name", "role", "weight", "evidence"],
+                    },
+                  },
                 },
-                required: ["items"],
+                required: ["items", "aesthetics"],
                 additionalProperties: false,
               },
             },
@@ -265,7 +311,7 @@ Keep all field values short and concise. Do not repeat instructions or field nam
     });
 
     return new Response(
-      JSON.stringify({ items: detectedItems }),
+      JSON.stringify({ items: detectedItems, aesthetics: sanitizeAesthetics(parsed.aesthetics) }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
