@@ -29,6 +29,7 @@ export default function AestheticBlock({ aesthetics }: { aesthetics: AestheticRe
               src={info.image}
               alt={`${info.name} look`}
               className="h-full w-full object-cover"
+              style={{ objectPosition: "50% 20%" }}
               onError={() => setImgFailed(true)}
             />
           </div>
