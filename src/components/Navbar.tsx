@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import GradientButton from "./GradientButton";
@@ -88,7 +89,7 @@ const Navbar = () => {
         </div>
       </div>
 
-      {open && (
+      {open && createPortal(<>
         <div
           id="mobile-menu"
           ref={panelRef}
@@ -119,8 +120,8 @@ const Navbar = () => {
             ))}
           </ul>
         </div>
-      )}
-      {open && <div className="md:hidden fixed inset-0 top-0 z-[55] bg-[#1A1A1A]/20" onClick={() => setOpen(false)} aria-hidden="true" />}
+        <div className="md:hidden fixed inset-0 z-[55] bg-[#1A1A1A]/20" onClick={() => setOpen(false)} aria-hidden="true" />
+      </>, document.body)}
     </nav>
   );
 };
