@@ -202,3 +202,20 @@
     margin: 35px auto;
   }
 }
+
+/* Concierge "the look" polaroids, matching the homepage hero */
+.theme-concierge .look-polaroid {
+  background: #FFFFFF;
+  padding: 10px 10px 8px;
+  box-shadow: 0 8px 24px rgba(26, 26, 26, 0.12);
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform 300ms ease;
+  margin: 0;
+}
+.theme-concierge .look-polaroid:hover { transform: rotate(0deg); }
+.theme-concierge .look-polaroid--empty { background: #FAFAF8; border: 1px dashed #D4C4B8; box-shadow: none; padding-bottom: 14px; }
+.theme-concierge .look-polaroid__img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.theme-concierge .look-polaroid__label { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 15px; text-align: center; margin-top: 8px; color: #1A1A1A; }
+.theme-concierge .look-polaroid__price { font-family: 'Manrope', sans-serif; font-size: 12px; text-align: center; color: #7A6F68; }
+.theme-concierge .look-stack > * + * { margin-top: -12px; }
+.theme-concierge .look-stack > *:hover { position: relative; z-index: 1; }
