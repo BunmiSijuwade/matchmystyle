@@ -155,7 +155,7 @@ export default function ShopAesthetic({ aesthetics }: { aesthetics: AestheticRes
   return (
     <section aria-label="Shop the aesthetic" className="rounded-2xl p-5 sm:p-8" style={{ background: CREAM, border: `1px solid ${BORDER}`, color: INK }}>
       <h2 className="text-[28px] sm:text-[32px] leading-tight" style={{ fontFamily: SERIF, fontWeight: 400 }}>
-        Love this look? Shop more {pInfo.name}
+        Love this look? Shop more {info.name}
         {size ? " in your size" : ""}
       </h2>
 
