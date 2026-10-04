@@ -66,7 +66,7 @@ function sanitizeAesthetics(raw: any): { name: string; role: "primary" | "second
   if (primaryIdx < 0) primaryIdx = 0;
   list = list.map((a, i) => ({ ...a, role: i === primaryIdx ? "primary" : "secondary" }));
   list.sort((a, b) => (a.role === "primary" ? -1 : b.role === "primary" ? 1 : b.weight - a.weight));
-  list = list.slice(0, 3);
+  list = list.filter((a) => a.role === "primary" || a.weight >= 25).slice(0, 2);
   const total = list.reduce((s, a) => s + a.weight, 0);
   const scaled = list.map((a) => ({ ...a, weight: Math.round((a.weight / total) * 100) }));
   const diff = 100 - scaled.reduce((s, a) => s + a.weight, 0);
@@ -227,7 +227,7 @@ Keep all field values short and concise. Do not repeat instructions or field nam
                   },
                   aesthetics: {
                     type: "array",
-                    maxItems: 3,
+                    maxItems: 2,
                     items: {
                       type: "object",
                       properties: {
@@ -239,8 +239,9 @@ Keep all field values short and concise. Do not repeat instructions or field nam
                       required: ["name", "role", "weight", "evidence"],
                     },
                   },
+                  aestheticSummary: { type: "string" },
                 },
-                required: ["items", "aesthetics"],
+                required: ["items", "aesthetics", "aestheticSummary"],
                 additionalProperties: false,
               },
             },
@@ -311,7 +312,13 @@ Keep all field values short and concise. Do not repeat instructions or field nam
     });
 
     return new Response(
-      JSON.stringify({ items: detectedItems, aesthetics: sanitizeAesthetics(parsed.aesthetics) }),
+      JSON.stringify((() => {
+        const aesthetics = sanitizeAesthetics(parsed.aesthetics);
+        const aestheticSummary = aesthetics.length && typeof parsed.aestheticSummary === "string"
+          ? sanitizeText(parsed.aestheticSummary).replace(/\s*[\u2014\u2013]\s*/g, ", ")
+          : "";
+        return { items: detectedItems, aesthetics, aestheticSummary };
+      })()),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

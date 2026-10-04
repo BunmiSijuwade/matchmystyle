@@ -57,6 +57,7 @@ interface AnalysisState {
   styleDNA: StyleDNA | null;
   overallDescription: string | null;
   aesthetics: AestheticResult[];
+  aestheticSummary: string;
 }
 
 interface AnalysisContextType extends AnalysisState {
@@ -66,7 +67,8 @@ interface AnalysisContextType extends AnalysisState {
     imagePayload?: ImagePayload | null,
     styleDNA?: StyleDNA | null,
     overallDescription?: string | null,
-    aesthetics?: AestheticResult[] | null
+    aesthetics?: AestheticResult[] | null,
+    aestheticSummary?: string | null
   ) => void;
   clearAnalysis: () => void;
 }
@@ -82,6 +84,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     styleDNA: null,
     overallDescription: null,
     aesthetics: [],
+    aestheticSummary: "",
   });
 
   const setAnalysis = useCallback((
@@ -90,7 +93,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     imagePayload?: ImagePayload | null,
     styleDNA?: StyleDNA | null,
     overallDescription?: string | null,
-    aesthetics?: AestheticResult[] | null
+    aesthetics?: AestheticResult[] | null,
+    aestheticSummary?: string | null
   ) => {
     const analysisId = Date.now().toString(36);
     setState({
@@ -101,6 +105,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       styleDNA: styleDNA ?? null,
       overallDescription: overallDescription ?? null,
       aesthetics: Array.isArray(aesthetics) ? aesthetics : [],
+      aestheticSummary: typeof aestheticSummary === "string" ? aestheticSummary : "",
     });
   }, []);
 
@@ -113,6 +118,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       styleDNA: null,
       overallDescription: null,
       aesthetics: [],
+    aestheticSummary: "",
     });
   }, []);
 
