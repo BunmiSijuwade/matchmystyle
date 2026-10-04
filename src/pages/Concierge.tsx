@@ -3,7 +3,7 @@ import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Navbar from "@/components/Navbar";
 import { AESTHETICS, type AestheticInfo } from "@/data/aesthetics";
-import { readProfileSize, searchCatalog, readCache, writeCache, type CatalogProduct as ShopProduct } from "@/lib/shopCatalog";
+import { readProfileSize, searchCatalog, readCache, writeCache, majorAmount, type CatalogProduct as ShopProduct } from "@/lib/shopCatalog";
 import ConciergeStart, { CHOICES, FOLLOW_UPS, type ChoiceId } from "@/components/concierge/ConciergeStart";
 import ConciergeComposer from "@/components/concierge/ConciergeComposer";
 import EditorialProductCard, { type CatalogProduct } from "@/components/concierge/EditorialProductCard";
@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface SearchMeta { tool: string; durationMs: number; count?: number }
 type Status = "idle" | "loading" | "done" | "error";
 interface PlanPiece { label: string; query: string }
-interface Plan { note: string; aesthetic: string | null; pieces: PlanPiece[] }
+interface Plan { note: string; aesthetic: string | null; pieces: PlanPiece[]; maxPrice?: number }
 interface RailGroup { label: string; products: CatalogProduct[] }
 
 const toCard = (p: ShopProduct): CatalogProduct => ({
@@ -26,68 +26,143 @@ const Bubble = ({ from, children }: { from: "me" | "you"; children: React.ReactN
   </div>
 );
 
+const REFINEMENTS = ["under $100", "more color", "dressier", "more relaxed", "different shoes"];
+const FOLLOW_UP_Q = "how's that? i can tweak it.";
+interface Turn { from: "me" | "you"; text: string }
+type RawMap = Record<string, ShopProduct[]>;
+interface CachedRail { plan: Plan; raw: RawMap; changed: string[] }
+
+const sizeSuffix = (size: string | null) => (size ? ` size ${size}` : "");
+
+/** Build the rail from raw search results: maxPrice filter, dedupe, 3 per piece. */
+function buildGroups(plan: Plan, raw: RawMap): RailGroup[] {
+  const seen = new Set<string>();
+  const out: RailGroup[] = [];
+  for (const pc of plan.pieces) {
+    const picked: CatalogProduct[] = [];
+    for (const prod of raw[pc.query] ?? []) {
+      if (picked.length >= 3) break;
+      if (plan.maxPrice && majorAmount(prod.price) > plan.maxPrice) continue;
+      if (seen.has(prod.productUrl) || seen.has(prod.imageUrl)) continue;
+      seen.add(prod.productUrl); seen.add(prod.imageUrl);
+      picked.push(toCard(prod));
+    }
+    if (picked.length) out.push({ label: pc.label, products: picked });
+  }
+  return out;
+}
+
 const Concierge = () => {
   const [query, setQuery] = useState("");
-  const [aesthetic, setAesthetic] = useState<string | null>(null);
   const [choice, setChoice] = useState<ChoiceId | null>(null);
-  const [submitted, setSubmitted] = useState<string | null>(null);
+  const [turns, setTurns] = useState<Turn[]>([]);
+  const [pending, setPending] = useState<string | null>(null);
+  const [lastSearch, setLastSearch] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState<SearchMeta | null>(null);
-  const [planning, setPlanning] = useState(false);
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [raw, setRaw] = useState<RawMap>({});
   const [groups, setGroups] = useState<RailGroup[]>([]);
+  const [history, setHistory] = useState<string[]>([]); // [request, ...refinements]
+
+  const say = (...t: Turn[]) => setTurns((prev) => [...prev, ...t]);
+  const cacheKeyFor = (h: string[], size: string | null) => `mms_concierge_plan:${h.join(" >> ").toLowerCase()}|${size ?? ""}`;
+
+  const invokePlan = async (body: Record<string, unknown>): Promise<Plan | null> => {
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("concierge-plan", { body });
+      if (import.meta.env.DEV) console.info("[concierge] plan", data, fnError);
+      if (!fnError && data && Array.isArray(data.pieces) && data.pieces.length) return data as Plan;
+    } catch (e) { console.error("[concierge] plan failed", e); }
+    return null;
+  };
+
+  /** Search pieces not already in `base`, then re-search any piece left empty by maxPrice. */
+  const fillRaw = async (next: Plan, base: RawMap, size: string | null) => {
+    const map: RawMap = {};
+    for (const pc of next.pieces) if (base[pc.query]) map[pc.query] = base[pc.query];
+    const toSearch = next.pieces.filter((pc) => !map[pc.query]);
+    let searches = toSearch.length;
+    const res = await Promise.all(toSearch.map((pc) => searchCatalog(`women's ${pc.query}${sizeSuffix(size)}`)));
+    toSearch.forEach((pc, i) => { map[pc.query] = res[i].products; });
+    const changed = new Set(toSearch.map((pc) => pc.label));
+    if (next.maxPrice) {
+      const max = next.maxPrice;
+      const empty = next.pieces.filter((pc) => !(map[pc.query] ?? []).some((p) => majorAmount(p.price) <= max));
+      searches += empty.length;
+      const res2 = await Promise.all(empty.map((pc) => searchCatalog(`women's ${pc.query} under $${max}${sizeSuffix(size)}`)));
+      empty.forEach((pc, i) => { map[pc.query] = [...res2[i].products, ...(map[pc.query] ?? [])]; changed.add(pc.label); });
+    }
+    if (import.meta.env.DEV) console.info("[concierge] searches", searches);
+    return { map, changed: [...changed], searches };
+  };
+
+  const showRail = (next: Plan, map: RawMap) => {
+    const built = buildGroups(next, map);
+    if (import.meta.env.DEV) console.info("[concierge] rail", built.map((g) => `${g.label}: ${g.products.map((p) => p.price ? majorAmount(p.price) : "?").join(",")}`));
+    setPlan(next); setRaw(map); setGroups(built); setProducts([]); setStatus("done");
+    return built;
+  };
 
   const runPlan = async (text: string) => {
-    setSubmitted(text);
-    setAesthetic(null);
-    setPlan(null);
-    setGroups([]);
-    setProducts([]);
-    setError(null);
-    setStatus("loading");
+    say({ from: "you", text });
+    setPlan(null); setGroups([]); setProducts([]); setError(null); setStatus("loading");
     const size = readProfileSize();
-    const cacheKey = `mms_concierge_plan:${text.toLowerCase()}|${size ?? ""}`;
-    const cached = readCache<{ plan: Plan; groups: RailGroup[] }>(cacheKey);
+    const h = [text];
+    setHistory(h);
+    const key = cacheKeyFor(h, size);
+    const cached = readCache<CachedRail>(key);
     if (cached) {
-      setPlan(cached.plan); setGroups(cached.groups);
+      say({ from: "me", text: cached.plan.note }, { from: "me", text: `pulling a rail: ${cached.plan.pieces.map((p) => p.label).join(", ")}.` });
+      const built = showRail(cached.plan, cached.raw);
+      if (built.length) say({ from: "me", text: FOLLOW_UP_Q });
+      return;
+    }
+    setPending("give me a sec, styling it...");
+    const next = await invokePlan({ request: text, size: size ?? undefined });
+    setPending(null);
+    if (!next) { await runSearch(text); return; }
+    say({ from: "me", text: next.note }, { from: "me", text: `pulling a rail: ${next.pieces.map((p) => p.label).join(", ")}.` });
+    const { map, changed } = await fillRaw(next, {}, size);
+    const built = showRail(next, map);
+    if (built.length) { writeCache(key, { plan: next, raw: map, changed }); say({ from: "me", text: FOLLOW_UP_Q }); }
+  };
+
+  const runRefine = async (instruction: string) => {
+    if (!plan) return;
+    say({ from: "you", text: instruction });
+    const size = readProfileSize();
+    const h = [...history, instruction];
+    const key = cacheKeyFor(h, size);
+    const current = plan;
+    const finish = (next: Plan, map: RawMap, changed: string[]) => {
+      const label = changed.length ? changed.join(", ") : next.maxPrice ? `everything under $${next.maxPrice}` : "nothing needed changing";
+      say({ from: "me", text: next.note }, { from: "me", text: `updated the rail: ${label}.` });
+      setHistory(h);
+      const built = showRail(next, map);
+      if (built.length) say({ from: "me", text: FOLLOW_UP_Q });
+      return built;
+    };
+    const cached = readCache<CachedRail>(key);
+    if (cached) { finish(cached.plan, cached.raw, cached.changed); return; }
+    setStatus("loading"); setError(null);
+    setPending("give me a sec...");
+    const next = await invokePlan({ request: history[0], size: size ?? undefined, previous: current, refine: instruction });
+    setPending(null);
+    if (!next) {
+      say({ from: "me", text: "hmm, i couldn't tweak that one. try saying it another way?" });
       setStatus("done");
       return;
     }
-    setPlanning(true);
-    let next: Plan | null = null;
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke("concierge-plan", { body: { request: text, size: size ?? undefined } });
-      if (!fnError && data && Array.isArray(data.pieces) && data.pieces.length) next = data as Plan;
-      if (import.meta.env.DEV) console.info("[concierge] plan", data, fnError);
-    } catch (e) { console.error("[concierge] plan failed", e); }
-    setPlanning(false);
-    if (!next) { await runSearch(text); return; }
-    setPlan(next);
-    const results = await Promise.all(
-      next.pieces.map((pc) => searchCatalog(`women's ${pc.query}${size ? ` size ${size}` : ""}`)),
-    );
-    const seen = new Set<string>();
-    const built: RailGroup[] = [];
-    next.pieces.forEach((pc, i) => {
-      const picked: CatalogProduct[] = [];
-      for (const prod of results[i].products) {
-        if (picked.length >= 3) break;
-        if (seen.has(prod.productUrl) || seen.has(prod.imageUrl)) continue;
-        seen.add(prod.productUrl); seen.add(prod.imageUrl);
-        picked.push(toCard(prod));
-      }
-      if (picked.length) built.push({ label: pc.label, products: picked });
-    });
-    if (import.meta.env.DEV) console.info("[concierge] rail", built.map((g) => [g.label, g.products.length]));
-    setGroups(built);
-    if (built.length) writeCache(cacheKey, { plan: next, groups: built });
-    setStatus("done");
+    const { map, changed } = await fillRaw(next, raw, size);
+    const built = finish(next, map, changed);
+    if (built.length) writeCache(key, { plan: next, raw: map, changed });
   };
 
   const runSearch = async (q: string) => {
-    setSubmitted(q);
+    setLastSearch(q);
     setPlan(null);
     setGroups([]);
     setStatus("loading");
@@ -109,28 +184,34 @@ const Concierge = () => {
     setProducts(data.products);
     setMeta(data.meta ?? null);
     setStatus("done");
+    say({ from: "me", text: data.products.length ? `here's a first rail: ${data.products.length} pieces.` : "hmm, nothing came back for that." });
   };
 
   const send = (text: string) => {
     const q = text.trim();
     if (q.length < 2 || status === "loading") return;
     setQuery("");
-    runPlan(q);
+    if (plan) runRefine(q); else runPlan(q);
   };
 
   const startAesthetic = (a: AestheticInfo) => {
     if (status === "loading") return;
-    setPlan(null); setGroups([]);
-    setAesthetic(a.name);
+    say({ from: "you", text: a.name }, { from: "me", text: `love it. pulling a ${a.name} rail.` });
     const pieces = a.signaturePieces.split(",").slice(0, 2).map((p) => p.trim().toLowerCase());
     runSearch(`women's ${pieces.join(" ")}`);
+  };
+
+  const startOver = () => {
+    setChoice(null); setTurns([]); setPending(null); setLastSearch(null); setStatus("idle");
+    setProducts([]); setPlan(null); setRaw({}); setGroups([]); setHistory([]);
   };
 
   const handleSubmit = (e: FormEvent) => { e.preventDefault(); send(query); };
 
   const chosen = CHOICES.find((c) => c.id === choice);
   const followUp = choice ? FOLLOW_UPS[choice] : null;
-  const started = choice || submitted || aesthetic;
+  const started = choice || turns.length > 0;
+  const lastIsFollowUp = turns.length > 0 && turns[turns.length - 1].text === FOLLOW_UP_Q;
 
   return (
     <div className="theme-concierge flex min-h-screen flex-col">
@@ -143,7 +224,7 @@ const Concierge = () => {
           <section aria-label="conversation" className="mx-auto max-w-2xl space-y-3">
             {chosen && <Bubble from="you">{chosen.label}</Bubble>}
             {followUp && <Bubble from="me">{followUp.question}</Bubble>}
-            {followUp && !submitted && (
+            {followUp && turns.length === 0 && (
               <div className="flex flex-wrap gap-2 pt-1">
                 {followUp.examples.map((ex) => (
                   <button key={ex} type="button" onClick={() => send(ex)} className="mono-outline mono-pill mono-press min-h-[44px] px-4 py-2 text-left text-sm">
@@ -152,18 +233,26 @@ const Concierge = () => {
                 ))}
               </div>
             )}
-            {aesthetic && <Bubble from="you">{aesthetic}</Bubble>}
-            {aesthetic && <Bubble from="me">love it. pulling a {aesthetic} rail.</Bubble>}
-            {submitted && !aesthetic && <Bubble from="you">{submitted}</Bubble>}
-            {submitted && !aesthetic && planning && <Bubble from="me">give me a sec, styling it...</Bubble>}
-            {plan && <Bubble from="me">{plan.note}</Bubble>}
-            {plan && <Bubble from="me">pulling a rail: {plan.pieces.map((p) => p.label).join(", ")}.</Bubble>}
-            {submitted && !planning && !plan && status !== "error" && (
-              <Bubble from="me">{status === "loading" ? "pulling a rail..." : products.length ? `here's a first rail: ${products.length} pieces.` : "hmm, nothing came back for that."}</Bubble>
+            {turns.map((t, i) => <Bubble key={i} from={t.from}>{t.text}</Bubble>)}
+            {pending && <Bubble from="me">{pending}</Bubble>}
+            {!pending && status === "loading" && !plan && lastSearch && <Bubble from="me">pulling a rail...</Bubble>}
+            {plan && lastIsFollowUp && status === "done" && !pending && (
+              <div className="space-y-2 pt-1">
+                <div className="flex flex-wrap gap-2">
+                  {REFINEMENTS.map((r) => (
+                    <button key={r} type="button" onClick={() => send(r)} className="mono-outline mono-pill mono-press min-h-[44px] px-4 py-2 text-left text-sm">
+                      {r}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => { setPlan(null); setHistory([]); }} className="mono-soft min-h-[44px] text-sm underline underline-offset-4">
+                  new request
+                </button>
+              </div>
             )}
             <button
               type="button"
-              onClick={() => { setChoice(null); setAesthetic(null); setSubmitted(null); setStatus("idle"); setProducts([]); setPlan(null); setGroups([]); }}
+              onClick={startOver}
               className="mono-soft min-h-[44px] text-sm underline underline-offset-4"
             >
               start over
@@ -188,7 +277,7 @@ const Concierge = () => {
             <div className="mono-outline mono-card p-8 text-center">
               <AlertCircle className="mono-accent-text mx-auto mb-3 h-7 w-7" />
               <p className="mb-4 text-sm">{error}</p>
-              <button type="button" onClick={() => submitted && runSearch(submitted)} className="mono-ink-bg mono-pill min-h-[44px] px-6 text-sm font-medium">
+              <button type="button" onClick={() => lastSearch && runSearch(lastSearch)} className="mono-ink-bg mono-pill min-h-[44px] px-6 text-sm font-medium">
                 try again
               </button>
             </div>
@@ -209,7 +298,7 @@ const Concierge = () => {
             </div>
           )}
 
-          {status === "done" && groups.length > 0 && (
+          {status === "done" && groups.length > 0 && products.length === 0 && (
             <>
               {plan?.aesthetic && (() => {
                 const a = AESTHETICS.find((x) => x.name === plan.aesthetic);
