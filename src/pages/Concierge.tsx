@@ -274,11 +274,17 @@ const Concierge = () => {
   const followUp = choice ? FOLLOW_UPS[choice] : null;
   const started = choice || turns.length > 0;
 
+  const slots: LookSlot[] | null = plan && look && groups.length
+    ? plan.pieces.map((pc) => ({ label: pc.label, product: look[pc.label] ?? null }))
+    : null;
+  const removeFromLook = (label: string) => setLook((prev) => ({ ...(prev ?? {}), [label]: null }));
+
   return (
     <div className="theme-concierge flex min-h-screen flex-col">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-10 pt-[104px] sm:px-6 sm:pt-[120px]">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-10 pt-[104px] sm:px-6 sm:pt-[120px] lg:flex lg:gap-10">
+        <div className="min-w-0 flex-1">
         {!started && <ConciergeStart onChoose={setChoice} onAesthetic={startAesthetic} />}
 
         {started && (
@@ -375,7 +381,13 @@ const Concierge = () => {
                   <p className="mono-soft mb-4 text-[11px] font-medium uppercase tracking-[1.5px]">{g.label}</p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-12 md:grid-cols-3 md:gap-x-6">
                     {g.products.map((product, index) => (
-                      <EditorialProductCard key={product.productId} product={product} index={index} />
+                      <EditorialProductCard
+                        key={product.productId}
+                        product={product}
+                        index={index}
+                        inLook={slots ? look?.[g.label]?.productId === product.productId : undefined}
+                        onAdd={slots ? () => setLook((prev) => ({ ...(prev ?? {}), [g.label]: product })) : undefined}
+                      />
                     ))}
                   </div>
                 </div>
@@ -390,9 +402,14 @@ const Concierge = () => {
             </p>
           )}
         </section>
+        </div>
+        {slots && <LookSidebar slots={slots} maxPrice={plan?.maxPrice} onRemove={removeFromLook} />}
       </main>
 
-      <ConciergeComposer value={query} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />
+      <div className="sticky bottom-0 z-20">
+        {slots && <LookBar slots={slots} maxPrice={plan?.maxPrice} onRemove={removeFromLook} />}
+        <ConciergeComposer value={query} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />
+      </div>
     </div>
   );
 };
