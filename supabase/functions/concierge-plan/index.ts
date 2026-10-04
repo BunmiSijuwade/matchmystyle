@@ -21,17 +21,32 @@ Rules:
 - pieces: 3 or 4 pieces that together make one complete outfit for the request. No duplicate categories.
 - Each piece has a short lowercase role label (e.g. "the statement top") and a query: concrete searchable product terms, 2 to 5 words, a category plus 1 or 2 descriptors (e.g. "sculptural draped black top"). Never copy the user's sentence.
 - If the request is a single piece, return that piece first plus 2 pieces that complete the look.
-- English only. Respond only by calling the tool.`;
+- English only. Respond only by calling the tool.
+
+Refinement mode (when a previous plan and an instruction are given):
+- Return an updated plan for the same occasion. Change only the pieces the instruction affects; copy every other piece exactly (same label and same query).
+- If the instruction sets a budget (e.g. "under $100"), set maxPrice to that number. If the previous plan had a maxPrice, keep it unless the instruction changes it. Otherwise omit maxPrice.
+- A budget alone does not require changing any piece queries.
+- Write a fresh note about the change, same lowercase playful voice, no em dashes.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    const { request, size } = await req.json().catch(() => ({}));
+    const { request, size, previous, refine } = await req.json().catch(() => ({}));
     const text = clean(request, 300);
     if (text.length < 2) return json({ error: "invalid_request", message: "Request is required." }, 400);
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) return json({ error: "LOVABLE_API_KEY is not configured" }, 500);
     const sz = clean(size, 20);
+    const refineText = clean(refine, 200);
+    const prevPieces = Array.isArray(previous?.pieces)
+      ? previous.pieces.slice(0, 4).map((p: any) => ({ label: clean(p?.label, 40), query: clean(p?.query, 60) })).filter((p: any) => p.label && p.query)
+      : [];
+    const prevMax = typeof previous?.maxPrice === "number" && previous.maxPrice > 0 ? previous.maxPrice : undefined;
+    const isRefine = Boolean(refineText && prevPieces.length);
+    const userContent = isRefine
+      ? `Original request: ${text}\nPrevious plan: ${JSON.stringify({ aesthetic: previous?.aesthetic ?? null, maxPrice: prevMax ?? null, pieces: prevPieces })}\nInstruction: ${refineText}${sz ? `\nShopper size: ${sz}` : ""}`
+      : `Request: ${text}${sz ? `\nShopper size: ${sz}` : ""}`;
 
     const started = Date.now();
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -42,7 +57,7 @@ serve(async (req) => {
         temperature: 0.4,
         messages: [
           { role: "system", content: SYSTEM },
-          { role: "user", content: `Request: ${text}${sz ? `\nShopper size: ${sz}` : ""}` },
+          { role: "user", content: userContent },
         ],
         tools: [{
           type: "function",
@@ -54,6 +69,7 @@ serve(async (req) => {
               properties: {
                 note: { type: "string" },
                 aesthetic: { type: "string", enum: AESTHETIC_NAMES },
+                maxPrice: { type: "number", description: "Budget ceiling in dollars, only when the shopper set one." },
                 pieces: {
                   type: "array",
                   items: {
@@ -95,7 +111,9 @@ serve(async (req) => {
     const aesthetic = AESTHETIC_NAMES.includes(parsed.aesthetic) ? parsed.aesthetic : null;
     const note = clean(parsed.note, 200).toLowerCase() || "here's how i'd put it together.";
     console.log(`concierge-plan ${Date.now() - started}ms`, pieces.length, "pieces");
-    return json({ note, aesthetic, pieces });
+    let maxPrice: number | undefined = typeof parsed.maxPrice === "number" && parsed.maxPrice > 0 ? Math.round(parsed.maxPrice) : undefined;
+    if (isRefine && maxPrice === undefined) maxPrice = prevMax;
+    return json({ note, aesthetic, pieces, ...(maxPrice ? { maxPrice } : {}) });
   } catch (e) {
     console.error("concierge-plan error", e);
     return json({ error: "server_error", message: "An unexpected error occurred." }, 500);
