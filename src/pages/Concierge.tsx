@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Navbar from "@/components/Navbar";
@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface SearchMeta { tool: string; durationMs: number; count?: number }
 type Status = "idle" | "loading" | "done" | "error";
 interface PlanPiece { label: string; query: string }
-interface Plan { note: string; aesthetic: string | null; pieces: PlanPiece[]; maxPrice?: number; ask?: string; options?: string[] }
+interface Plan { note: string; aesthetic: string | null; pieces: PlanPiece[]; maxPrice?: number; budget?: number; ask?: string; options?: string[] }
 interface RailGroup { label: string; products: CatalogProduct[] }
 
 const toCard = (p: ShopProduct): CatalogProduct => ({
@@ -39,8 +39,22 @@ const readSession = (): Session | null => {
   try { const r = localStorage.getItem(SESSION_KEY); return r ? (JSON.parse(r) as Session) : null; } catch { return null; }
 };
 
-/** Keep each slot's product if it's still in that piece's group, otherwise take the group's first. */
-function reconcileLook(plan: Plan, groups: RailGroup[], prev: Look | null): Look {
+/** Per-piece price caps. Whole-look budget: hero (first piece) 40%, the rest split 60%. Otherwise maxPrice. */
+function pieceCaps(plan: Plan): Record<string, number | undefined> {
+  const out: Record<string, number | undefined> = {};
+  const n = plan.pieces.length;
+  plan.pieces.forEach((pc, i) => {
+    if (plan.budget) out[pc.label] = Math.floor(n === 1 ? plan.budget : i === 0 ? plan.budget * 0.4 : (plan.budget * 0.6) / (n - 1));
+    else out[pc.label] = plan.maxPrice;
+  });
+  return out;
+}
+
+const cardPrice = (p: CatalogProduct | null | undefined) => (p?.price ? majorAmount(p.price) : 0);
+
+/** Keep each slot's product if it's still in that piece's group, otherwise take the group's first (already within cap).
+ *  With a budget, then try upgrading the hero to its highest-ranked product that keeps the total within budget. */
+function reconcileLook(plan: Plan, groups: RailGroup[], prev: Look | null, raw: RawMap): { look: Look; groups: RailGroup[] } {
   const out: Look = {};
   for (const pc of plan.pieces) {
     const g = groups.find((x) => x.label === pc.label);
@@ -48,7 +62,23 @@ function reconcileLook(plan: Plan, groups: RailGroup[], prev: Look | null): Look
     const keep = prev?.[pc.label] && g.products.find((p) => p.productId === prev[pc.label]!.productId);
     out[pc.label] = keep ?? g.products[0];
   }
-  return out;
+  const hero = plan.pieces[0];
+  if (!plan.budget || !hero) return { look: out, groups };
+  const others = plan.pieces.slice(1).reduce((sum, pc) => sum + cardPrice(out[pc.label]), 0);
+  const room = plan.budget - others;
+  const current = out[hero.label];
+  const used = new Set(plan.pieces.slice(1).map((pc) => out[pc.label]?.productUrl).filter(Boolean));
+  for (const prod of raw[hero.query] ?? []) {
+    if (current && prod.key === current.productId) break; // nothing ranked above the current pick fits
+    if (used.has(prod.productUrl) || !prod.price || majorAmount(prod.price) > room) continue;
+    const card = toCard(prod);
+    out[hero.label] = card;
+    const nextGroups = groups.map((g) => g.label !== hero.label || g.products.some((p) => p.productId === card.productId)
+      ? g : { ...g, products: [card, ...g.products].slice(0, 3) });
+    if (!groups.some((g) => g.label === hero.label)) nextGroups.unshift({ label: hero.label, products: [card] });
+    return { look: out, groups: nextGroups };
+  }
+  return { look: out, groups };
 }
 
 const sizeSuffix = (size: string | null) => (size ? ` size ${size}` : "");
@@ -57,11 +87,13 @@ const sizeSuffix = (size: string | null) => (size ? ` size ${size}` : "");
 function buildGroups(plan: Plan, raw: RawMap): RailGroup[] {
   const seen = new Set<string>();
   const out: RailGroup[] = [];
+  const caps = pieceCaps(plan);
   for (const pc of plan.pieces) {
+    const cap = caps[pc.label];
     const picked: CatalogProduct[] = [];
     for (const prod of raw[pc.query] ?? []) {
       if (picked.length >= 3) break;
-      if (plan.maxPrice && majorAmount(prod.price) > plan.maxPrice) continue;
+      if (cap && (!prod.price || majorAmount(prod.price) > cap)) continue;
       if (seen.has(prod.productUrl) || seen.has(prod.imageUrl)) continue;
       seen.add(prod.productUrl); seen.add(prod.imageUrl);
       picked.push(toCard(prod));
@@ -89,6 +121,8 @@ const Concierge = () => {
   const [chips, setChips] = useState<string[] | null>(initial?.chips ?? null);
   const [asked, setAsked] = useState<string | null>(initial?.asked ?? null);
   const [look, setLook] = useState<Look | null>(initial?.look ?? null);
+  const lookRef = useRef(look);
+  lookRef.current = look;
 
   useEffect(() => {
     if (!plan && !turns.length) { try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ } return; }
@@ -119,11 +153,11 @@ const Concierge = () => {
     const res = await Promise.all(toSearch.map((pc) => searchCatalog(`women's ${pc.query}${sizeSuffix(size)}`)));
     toSearch.forEach((pc, i) => { map[pc.query] = res[i].products; });
     const changed = new Set(toSearch.map((pc) => pc.label));
-    if (next.maxPrice) {
-      const max = next.maxPrice;
-      const empty = next.pieces.filter((pc) => !(map[pc.query] ?? []).some((p) => majorAmount(p.price) <= max));
+    const caps = pieceCaps(next);
+    if (next.maxPrice || next.budget) {
+      const empty = next.pieces.filter((pc) => caps[pc.label] && !(map[pc.query] ?? []).some((p) => p.price && majorAmount(p.price) <= caps[pc.label]!));
       searches += empty.length;
-      const res2 = await Promise.all(empty.map((pc) => searchCatalog(`women's ${pc.query} under $${max}${sizeSuffix(size)}`)));
+      const res2 = await Promise.all(empty.map((pc) => searchCatalog(`women's ${pc.query} under $${caps[pc.label]}${sizeSuffix(size)}`)));
       empty.forEach((pc, i) => { map[pc.query] = [...res2[i].products, ...(map[pc.query] ?? [])]; changed.add(pc.label); });
     }
     if (import.meta.env.DEV) console.info("[concierge] searches", searches);
@@ -131,10 +165,10 @@ const Concierge = () => {
   };
 
   const showRail = (next: Plan, map: RawMap) => {
-    const built = buildGroups(next, map);
+    const { look: nextLook, groups: built } = reconcileLook(next, buildGroups(next, map), lookRef.current, map);
     if (import.meta.env.DEV) console.info("[concierge] rail", built.map((g) => `${g.label}: ${g.products.map((p) => p.price ? majorAmount(p.price) : "?").join(",")}`));
     setPlan(next); setRaw(map); setGroups(built); setProducts([]); setStatus("done");
-    setLook((prev) => reconcileLook(next, built, prev));
+    setLook(nextLook);
     return built;
   };
 
@@ -142,9 +176,10 @@ const Concierge = () => {
   const afterRail = (next: Plan, built: RailGroup[]) => {
     if (!built.length) { setChips(null); return; }
     const have = new Set(built.map((g) => g.label));
-    const dropped = next.maxPrice ? next.pieces.filter((pc) => !have.has(pc.label)) : [];
+    const caps = pieceCaps(next);
+    const dropped = next.maxPrice || next.budget ? next.pieces.filter((pc) => !have.has(pc.label)) : [];
     if (dropped.length) {
-      say(...dropped.map((pc) => ({ from: "me" as const, text: `couldn't find ${pc.label} under $${next.maxPrice}. want me to try something different?` })));
+      say(...dropped.map((pc) => ({ from: "me" as const, text: `couldn't find ${pc.label} under $${caps[pc.label]}. want me to try something different?` })));
       const short = dropped[0].label.replace(/^the\s+/, "");
       setChips([`try a different ${short}`, "raise the budget", "skip it"]);
     } else {
@@ -155,7 +190,7 @@ const Concierge = () => {
 
   const runPlan = async (text: string) => {
     say({ from: "you", text });
-    setPlan(null); setGroups([]); setLook(null); setProducts([]); setError(null); setStatus("loading");
+    setPlan(null); setGroups([]); setLook(null); lookRef.current = null; setProducts([]); setError(null); setStatus("loading");
     const size = readProfileSize();
     const h = [text];
     setHistory(h);
@@ -189,7 +224,7 @@ const Concierge = () => {
       const built = showRail(next, map);
       const have = new Set(built.map((g) => g.label));
       const shown = changed.filter((l) => have.has(l));
-      const label = shown.length ? shown.join(", ") : next.maxPrice ? `everything under $${next.maxPrice}` : "nothing needed changing";
+      const label = shown.length ? shown.join(", ") : next.budget ? `everything within $${next.budget}` : next.maxPrice ? `everything under $${next.maxPrice}` : "nothing needed changing";
       say({ from: "me", text: next.note }, { from: "me", text: `updated the rail: ${label}.` });
       afterRail(next, built);
       return built;
@@ -403,11 +438,11 @@ const Concierge = () => {
           )}
         </section>
         </div>
-        {slots && <LookSidebar slots={slots} maxPrice={plan?.maxPrice} onRemove={removeFromLook} />}
+        {slots && <LookSidebar slots={slots} budget={plan?.budget} caps={plan ? pieceCaps(plan) : {}} onRemove={removeFromLook} />}
       </main>
 
       <div className="sticky bottom-0 z-20">
-        {slots && <LookBar slots={slots} maxPrice={plan?.maxPrice} onRemove={removeFromLook} />}
+        {slots && <LookBar slots={slots} budget={plan?.budget} caps={plan ? pieceCaps(plan) : {}} onRemove={removeFromLook} />}
         <ConciergeComposer value={query} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />
       </div>
     </div>
