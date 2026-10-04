@@ -82,7 +82,7 @@ export const LookBar = ({ slots, maxPrice, onRemove }: BoardProps) => {
         </div>
       </div>
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="bottom" className="theme-concierge max-h-[85vh] overflow-y-auto rounded-t-[16px] border-[#E8DFD5] [&>button:last-child]:hidden">
+        <SheetContent side="bottom" aria-modal="true" className="theme-concierge max-h-[85vh] overflow-y-auto rounded-t-[16px] border-[#E8DFD5] [&>button:last-child]:hidden">
           <div className="flex items-start justify-between">
             <div>
               <SheetTitle className="mono-display text-[28px] font-normal leading-tight">the look</SheetTitle>
