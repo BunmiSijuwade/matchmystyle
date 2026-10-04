@@ -70,7 +70,7 @@ export async function searchCatalog(query: string): Promise<{ ok: boolean; produ
     if (error || !Array.isArray(data?.products)) return { ok: false, products: [] };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const products = (data.products as any[])
-      .filter((p) => p?.imageUrl && p?.price && p?.productUrl && p?.title)
+      .filter((p) => p?.imageUrl && p?.price && p?.productUrl && p?.title && String(p.price.currency).toUpperCase() === "USD")
       .map((p) => ({
         key: p.productId ?? p.productUrl,
         title: p.title,

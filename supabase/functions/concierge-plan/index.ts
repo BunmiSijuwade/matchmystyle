@@ -16,7 +16,7 @@ const clean = (s: unknown, max: number) =>
 
 const SYSTEM = `You are MatchMyStyle's shopping concierge. Turn a shopping request into one complete outfit plan.
 Rules:
-- note: one short sentence in a lowercase, warm, playful voice. No em dashes. Example of the tone only (never reuse its words): "a gallery opening wants one sculptural moment and everything else quiet." Write a fresh sentence about this request.
+- note: one short lowercase sentence about this specific request that names a piece or a feeling. Playful and warm, no em dashes, never a stock phrase.
 - aesthetic: the closest of: ${AESTHETIC_NAMES.join(", ")}.
 - pieces: 3 or 4 pieces that together make one complete outfit for the request. No duplicate categories.
 - Each piece has a short lowercase role label (e.g. "the statement top") and a query: concrete searchable product terms, 2 to 5 words, a category plus 1 or 2 descriptors (e.g. "sculptural draped black top"). Never copy the user's sentence.
@@ -27,12 +27,20 @@ Refinement mode (when a previous plan and an instruction are given):
 - Return an updated plan for the same occasion. Change only the pieces the instruction affects; copy every other piece exactly (same label and same query).
 - If the instruction sets a budget (e.g. "under $100"), set maxPrice to that number. If the previous plan had a maxPrice, keep it unless the instruction changes it. Otherwise omit maxPrice.
 - A budget alone does not require changing any piece queries.
-- Write a fresh note about the change, same lowercase playful voice, no em dashes.`;
+- Write a fresh note about the change, same lowercase playful voice, no em dashes.
+- If the shopper gives a budget for the whole look, set maxPrice to that budget divided by the number of pieces, rounded, and mention the per-piece amount in the note.
+- If the instruction names one of the aesthetics, re-plan the same occasion in that aesthetic.
+- Clear, actionable instructions ("under $100", "make the shoes flats", "more color") get an updated plan.
+- Vague instructions or ones missing key info get a clarifying question instead: set ask (one short lowercase question) and options (2 to 5 short lowercase answer chips), and copy the previous pieces unchanged. Examples:
+  - "this isn't the look" / "i don't like it" -> ask "got it. what feels off?" options ["too dressy", "too casual", "wrong colors", "not my style", "the shapes"]
+  - "i have a budget" / "too expensive" with no number -> ask "what's your budget for the whole look?" options ["under $100", "under $250", "under $500", "no limit"]
+  - "not my style" -> ask "which feels more like you?" options: 3 or 4 aesthetic names from the list that differ from the current aesthetic.
+- If the instruction is an answer to your previous question, never ask again: make a reasonable plan and say what you assumed in the note.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    const { request, size, previous, refine } = await req.json().catch(() => ({}));
+    const { request, size, previous, refine, answered } = await req.json().catch(() => ({}));
     const text = clean(request, 300);
     if (text.length < 2) return json({ error: "invalid_request", message: "Request is required." }, 400);
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -45,7 +53,7 @@ serve(async (req) => {
     const prevMax = typeof previous?.maxPrice === "number" && previous.maxPrice > 0 ? previous.maxPrice : undefined;
     const isRefine = Boolean(refineText && prevPieces.length);
     const userContent = isRefine
-      ? `Original request: ${text}\nPrevious plan: ${JSON.stringify({ aesthetic: previous?.aesthetic ?? null, maxPrice: prevMax ?? null, pieces: prevPieces })}\nInstruction: ${refineText}${sz ? `\nShopper size: ${sz}` : ""}`
+      ? `Original request: ${text}\nPrevious plan: ${JSON.stringify({ aesthetic: previous?.aesthetic ?? null, maxPrice: prevMax ?? null, pieces: prevPieces })}\n${answered ? "This is the shopper's answer to your question. " : ""}Instruction: ${refineText}${sz ? `\nShopper size: ${sz}` : ""}`
       : `Request: ${text}${sz ? `\nShopper size: ${sz}` : ""}`;
 
     const started = Date.now();
@@ -69,6 +77,8 @@ serve(async (req) => {
               properties: {
                 note: { type: "string" },
                 aesthetic: { type: "string", enum: AESTHETIC_NAMES },
+                ask: { type: "string", description: "Optional clarifying question, refinement mode only." },
+                options: { type: "array", items: { type: "string" }, description: "2 to 5 answer chips for ask." },
                 maxPrice: { type: "number", description: "Budget ceiling in dollars, only when the shopper set one." },
                 pieces: {
                   type: "array",
@@ -108,6 +118,11 @@ serve(async (req) => {
       .slice(0, 4);
     if (!pieces.length) return json({ error: "no_plan", message: "Couldn't plan that right now." }, 500);
 
+    const ask = isRefine && !answered ? clean(parsed.ask, 120).toLowerCase() : "";
+    const options = Array.isArray(parsed.options) ? parsed.options.map((o: unknown) => clean(o, 40).toLowerCase()).filter(Boolean).slice(0, 5) : [];
+    if (ask && options.length >= 2) {
+      return json({ ask, options, note: "", aesthetic: previous?.aesthetic ?? null, pieces: prevPieces, ...(prevMax ? { maxPrice: prevMax } : {}) });
+    }
     const aesthetic = AESTHETIC_NAMES.includes(parsed.aesthetic) ? parsed.aesthetic : null;
     const note = clean(parsed.note, 200).toLowerCase() || "here's how i'd put it together.";
     console.log(`concierge-plan ${Date.now() - started}ms`, pieces.length, "pieces");

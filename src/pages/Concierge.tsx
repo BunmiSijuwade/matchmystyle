@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface SearchMeta { tool: string; durationMs: number; count?: number }
 type Status = "idle" | "loading" | "done" | "error";
 interface PlanPiece { label: string; query: string }
-interface Plan { note: string; aesthetic: string | null; pieces: PlanPiece[]; maxPrice?: number }
+interface Plan { note: string; aesthetic: string | null; pieces: PlanPiece[]; maxPrice?: number; ask?: string; options?: string[] }
 interface RailGroup { label: string; products: CatalogProduct[] }
 
 const toCard = (p: ShopProduct): CatalogProduct => ({
@@ -66,6 +66,8 @@ const Concierge = () => {
   const [raw, setRaw] = useState<RawMap>({});
   const [groups, setGroups] = useState<RailGroup[]>([]);
   const [history, setHistory] = useState<string[]>([]); // [request, ...refinements]
+  const [chips, setChips] = useState<string[] | null>(null);
+  const [asked, setAsked] = useState<string | null>(null);
 
   const say = (...t: Turn[]) => setTurns((prev) => [...prev, ...t]);
   const cacheKeyFor = (h: string[], size: string | null) => `mms_concierge_plan:${h.join(" >> ").toLowerCase()}|${size ?? ""}`;
@@ -106,6 +108,21 @@ const Concierge = () => {
     return built;
   };
 
+  /** After a rail: report dropped pieces or offer the usual tweaks. */
+  const afterRail = (next: Plan, built: RailGroup[]) => {
+    if (!built.length) { setChips(null); return; }
+    const have = new Set(built.map((g) => g.label));
+    const dropped = next.maxPrice ? next.pieces.filter((pc) => !have.has(pc.label)) : [];
+    if (dropped.length) {
+      say(...dropped.map((pc) => ({ from: "me" as const, text: `couldn't find ${pc.label} under $${next.maxPrice}. want me to try something different?` })));
+      const short = dropped[0].label.replace(/^the\s+/, "");
+      setChips([`try a different ${short}`, "raise the budget", "skip it"]);
+    } else {
+      say({ from: "me", text: FOLLOW_UP_Q });
+      setChips(REFINEMENTS);
+    }
+  };
+
   const runPlan = async (text: string) => {
     say({ from: "you", text });
     setPlan(null); setGroups([]); setProducts([]); setError(null); setStatus("loading");
@@ -116,8 +133,7 @@ const Concierge = () => {
     const cached = readCache<CachedRail>(key);
     if (cached) {
       say({ from: "me", text: cached.plan.note }, { from: "me", text: `pulling a rail: ${cached.plan.pieces.map((p) => p.label).join(", ")}.` });
-      const built = showRail(cached.plan, cached.raw);
-      if (built.length) say({ from: "me", text: FOLLOW_UP_Q });
+      afterRail(cached.plan, showRail(cached.plan, cached.raw));
       return;
     }
     setPending("give me a sec, styling it...");
@@ -127,7 +143,8 @@ const Concierge = () => {
     say({ from: "me", text: next.note }, { from: "me", text: `pulling a rail: ${next.pieces.map((p) => p.label).join(", ")}.` });
     const { map, changed } = await fillRaw(next, {}, size);
     const built = showRail(next, map);
-    if (built.length) { writeCache(key, { plan: next, raw: map, changed }); say({ from: "me", text: FOLLOW_UP_Q }); }
+    if (built.length) writeCache(key, { plan: next, raw: map, changed });
+    afterRail(next, built);
   };
 
   const runRefine = async (instruction: string) => {
@@ -138,21 +155,35 @@ const Concierge = () => {
     const key = cacheKeyFor(h, size);
     const current = plan;
     const finish = (next: Plan, map: RawMap, changed: string[]) => {
-      const label = changed.length ? changed.join(", ") : next.maxPrice ? `everything under $${next.maxPrice}` : "nothing needed changing";
-      say({ from: "me", text: next.note }, { from: "me", text: `updated the rail: ${label}.` });
       setHistory(h);
       const built = showRail(next, map);
-      if (built.length) say({ from: "me", text: FOLLOW_UP_Q });
+      const have = new Set(built.map((g) => g.label));
+      const shown = changed.filter((l) => have.has(l));
+      const label = shown.length ? shown.join(", ") : next.maxPrice ? `everything under $${next.maxPrice}` : "nothing needed changing";
+      say({ from: "me", text: next.note }, { from: "me", text: `updated the rail: ${label}.` });
+      afterRail(next, built);
       return built;
     };
-    const cached = readCache<CachedRail>(key);
+    const question = asked;
+    setAsked(null); setChips(null);
+    const cached = question ? null : readCache<CachedRail>(key);
     if (cached) { finish(cached.plan, cached.raw, cached.changed); return; }
     setStatus("loading"); setError(null);
     setPending("give me a sec...");
-    const next = await invokePlan({ request: history[0], size: size ?? undefined, previous: current, refine: instruction });
+    const next = await invokePlan({
+      request: history[0], size: size ?? undefined, previous: current,
+      refine: question ? `you asked "${question}" and the shopper answered: ${instruction}` : instruction,
+      answered: Boolean(question),
+    });
     setPending(null);
+    if (next?.ask && next.options?.length) {
+      say({ from: "me", text: next.ask });
+      setAsked(next.ask); setChips(next.options); setHistory(h); setStatus("done");
+      return;
+    }
     if (!next) {
       say({ from: "me", text: "hmm, i couldn't tweak that one. try saying it another way?" });
+      setChips(REFINEMENTS);
       setStatus("done");
       return;
     }
@@ -203,7 +234,7 @@ const Concierge = () => {
 
   const startOver = () => {
     setChoice(null); setTurns([]); setPending(null); setLastSearch(null); setStatus("idle");
-    setProducts([]); setPlan(null); setRaw({}); setGroups([]); setHistory([]);
+    setProducts([]); setPlan(null); setRaw({}); setGroups([]); setHistory([]); setChips(null); setAsked(null);
   };
 
   const handleSubmit = (e: FormEvent) => { e.preventDefault(); send(query); };
@@ -211,7 +242,6 @@ const Concierge = () => {
   const chosen = CHOICES.find((c) => c.id === choice);
   const followUp = choice ? FOLLOW_UPS[choice] : null;
   const started = choice || turns.length > 0;
-  const lastIsFollowUp = turns.length > 0 && turns[turns.length - 1].text === FOLLOW_UP_Q;
 
   return (
     <div className="theme-concierge flex min-h-screen flex-col">
@@ -236,16 +266,16 @@ const Concierge = () => {
             {turns.map((t, i) => <Bubble key={i} from={t.from}>{t.text}</Bubble>)}
             {pending && <Bubble from="me">{pending}</Bubble>}
             {!pending && status === "loading" && !plan && lastSearch && <Bubble from="me">pulling a rail...</Bubble>}
-            {plan && lastIsFollowUp && status === "done" && !pending && (
+            {plan && chips && status === "done" && !pending && (
               <div className="space-y-2 pt-1">
                 <div className="flex flex-wrap gap-2">
-                  {REFINEMENTS.map((r) => (
+                  {chips.map((r) => (
                     <button key={r} type="button" onClick={() => send(r)} className="mono-outline mono-pill mono-press min-h-[44px] px-4 py-2 text-left text-sm">
                       {r}
                     </button>
                   ))}
                 </div>
-                <button type="button" onClick={() => { setPlan(null); setHistory([]); }} className="mono-soft min-h-[44px] text-sm underline underline-offset-4">
+                <button type="button" onClick={() => { setPlan(null); setHistory([]); setChips(null); setAsked(null); }} className="mono-soft min-h-[44px] text-sm underline underline-offset-4">
                   new request
                 </button>
               </div>
