@@ -2,7 +2,8 @@ import { useState, type FormEvent } from "react";
 import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Navbar from "@/components/Navbar";
-import type { AestheticInfo } from "@/data/aesthetics";
+import { AESTHETICS, type AestheticInfo } from "@/data/aesthetics";
+import { readProfileSize, searchCatalog, readCache, writeCache, type CatalogProduct as ShopProduct } from "@/lib/shopCatalog";
 import ConciergeStart, { CHOICES, FOLLOW_UPS, type ChoiceId } from "@/components/concierge/ConciergeStart";
 import ConciergeComposer from "@/components/concierge/ConciergeComposer";
 import EditorialProductCard, { type CatalogProduct } from "@/components/concierge/EditorialProductCard";
@@ -10,6 +11,14 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface SearchMeta { tool: string; durationMs: number; count?: number }
 type Status = "idle" | "loading" | "done" | "error";
+interface PlanPiece { label: string; query: string }
+interface Plan { note: string; aesthetic: string | null; pieces: PlanPiece[] }
+interface RailGroup { label: string; products: CatalogProduct[] }
+
+const toCard = (p: ShopProduct): CatalogProduct => ({
+  productId: p.key, variantIds: [], title: p.title, imageUrl: p.imageUrl, imageAlt: null,
+  price: p.price, merchantName: p.merchantName, productUrl: p.productUrl, available: null,
+});
 
 const Bubble = ({ from, children }: { from: "me" | "you"; children: React.ReactNode }) => (
   <div className={`flex ${from === "you" ? "justify-end" : "justify-start"}`}>
@@ -26,9 +35,61 @@ const Concierge = () => {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState<SearchMeta | null>(null);
+  const [planning, setPlanning] = useState(false);
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const [groups, setGroups] = useState<RailGroup[]>([]);
+
+  const runPlan = async (text: string) => {
+    setSubmitted(text);
+    setAesthetic(null);
+    setPlan(null);
+    setGroups([]);
+    setProducts([]);
+    setError(null);
+    setStatus("loading");
+    const size = readProfileSize();
+    const cacheKey = `mms_concierge_plan:${text.toLowerCase()}|${size ?? ""}`;
+    const cached = readCache<{ plan: Plan; groups: RailGroup[] }>(cacheKey);
+    if (cached) {
+      setPlan(cached.plan); setGroups(cached.groups);
+      setStatus("done");
+      return;
+    }
+    setPlanning(true);
+    let next: Plan | null = null;
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("concierge-plan", { body: { request: text, size: size ?? undefined } });
+      if (!fnError && data && Array.isArray(data.pieces) && data.pieces.length) next = data as Plan;
+      if (import.meta.env.DEV) console.info("[concierge] plan", data, fnError);
+    } catch (e) { console.error("[concierge] plan failed", e); }
+    setPlanning(false);
+    if (!next) { await runSearch(text); return; }
+    setPlan(next);
+    const results = await Promise.all(
+      next.pieces.map((pc) => searchCatalog(`women's ${pc.query}${size ? ` size ${size}` : ""}`)),
+    );
+    const seen = new Set<string>();
+    const built: RailGroup[] = [];
+    next.pieces.forEach((pc, i) => {
+      const picked: CatalogProduct[] = [];
+      for (const prod of results[i].products) {
+        if (picked.length >= 3) break;
+        if (seen.has(prod.productUrl) || seen.has(prod.imageUrl)) continue;
+        seen.add(prod.productUrl); seen.add(prod.imageUrl);
+        picked.push(toCard(prod));
+      }
+      if (picked.length) built.push({ label: pc.label, products: picked });
+    });
+    if (import.meta.env.DEV) console.info("[concierge] rail", built.map((g) => [g.label, g.products.length]));
+    setGroups(built);
+    if (built.length) writeCache(cacheKey, { plan: next, groups: built });
+    setStatus("done");
+  };
 
   const runSearch = async (q: string) => {
     setSubmitted(q);
+    setPlan(null);
+    setGroups([]);
     setStatus("loading");
     setError(null);
     setProducts([]);
@@ -53,13 +114,13 @@ const Concierge = () => {
   const send = (text: string) => {
     const q = text.trim();
     if (q.length < 2 || status === "loading") return;
-    setAesthetic(null);
     setQuery("");
-    runSearch(q);
+    runPlan(q);
   };
 
   const startAesthetic = (a: AestheticInfo) => {
     if (status === "loading") return;
+    setPlan(null); setGroups([]);
     setAesthetic(a.name);
     const pieces = a.signaturePieces.split(",").slice(0, 2).map((p) => p.trim().toLowerCase());
     runSearch(`women's ${pieces.join(" ")}`);
