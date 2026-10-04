@@ -155,12 +155,15 @@ const Concierge = () => {
             {aesthetic && <Bubble from="you">{aesthetic}</Bubble>}
             {aesthetic && <Bubble from="me">love it. pulling a {aesthetic} rail.</Bubble>}
             {submitted && !aesthetic && <Bubble from="you">{submitted}</Bubble>}
-            {submitted && status !== "error" && (
+            {submitted && !aesthetic && planning && <Bubble from="me">give me a sec, styling it...</Bubble>}
+            {plan && <Bubble from="me">{plan.note}</Bubble>}
+            {plan && <Bubble from="me">pulling a rail: {plan.pieces.map((p) => p.label).join(", ")}.</Bubble>}
+            {submitted && !planning && !plan && status !== "error" && (
               <Bubble from="me">{status === "loading" ? "pulling a rail..." : products.length ? `here's a first rail: ${products.length} pieces.` : "hmm, nothing came back for that."}</Bubble>
             )}
             <button
               type="button"
-              onClick={() => { setChoice(null); setAesthetic(null); setSubmitted(null); setStatus("idle"); setProducts([]); }}
+              onClick={() => { setChoice(null); setAesthetic(null); setSubmitted(null); setStatus("idle"); setProducts([]); setPlan(null); setGroups([]); }}
               className="mono-soft min-h-[44px] text-sm underline underline-offset-4"
             >
               start over
@@ -191,7 +194,7 @@ const Concierge = () => {
             </div>
           )}
 
-          {status === "done" && products.length === 0 && (
+          {status === "done" && products.length === 0 && groups.length === 0 && (
             <div className="mono-dashed mono-card p-10 text-center">
               <p className="mb-1 text-sm">no pieces found.</p>
               <p className="mono-soft text-sm">try a specific piece, material or occasion.</p>
@@ -203,6 +206,29 @@ const Concierge = () => {
               {products.map((product, index) => (
                 <EditorialProductCard key={product.productId} product={product} index={index} />
               ))}
+            </div>
+          )}
+
+          {status === "done" && groups.length > 0 && (
+            <div className="space-y-12">
+              {groups.map((g) => (
+                <div key={g.label}>
+                  <p className="mono-soft mb-4 text-[11px] font-medium uppercase tracking-[1.5px]">{g.label}</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-12 md:grid-cols-3 md:gap-x-6">
+                    {g.products.map((product, index) => (
+                      <EditorialProductCard key={product.productId} product={product} index={index} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {plan?.aesthetic && (() => {
+                const a = AESTHETICS.find((x) => x.name === plan.aesthetic);
+                return a ? (
+                  <button type="button" onClick={() => startAesthetic(a)} className="mono-soft min-h-[44px] text-sm underline underline-offset-4">
+                    closest aesthetic: {a.name}
+                  </button>
+                ) : null;
+              })()}
             </div>
           )}
 
