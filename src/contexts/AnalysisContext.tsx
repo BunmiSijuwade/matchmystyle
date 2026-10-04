@@ -20,10 +20,8 @@ export interface DetectedItem {
   style: string;
   estimatedPrice: string;
   searchQuery: string;
-  bestMatch: ProductMatch | null;
-  budget: ProductMatch[];
-  midRange: ProductMatch[];
-  luxury: ProductMatch[];
+  /** Optional sizing advice from the analyzer. Product matches are sourced live, not from the analyzer. */
+  sizeNote?: string;
 }
 
 export interface StyleDNA {
