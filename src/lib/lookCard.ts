@@ -58,9 +58,11 @@ function polaroid(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: n
     ctx.drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, ix, iy, size, size);
   } else { ctx.fillStyle = BLANK; ctx.fillRect(ix, iy, size, size); }
   const by = iy + size;
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillStyle = INK; ctx.font = `italic 30px ${SERIF}`;
-  ctx.fillText(truncate(ctx, piece.label, size - 140), piece.price ? -50 : 0, by + band / 2);
+  ctx.textBaseline = "middle";
+  ctx.font = `400 24px ${SANS}`;
+  const pw = piece.price ? ctx.measureText(piece.price).width + 16 : 0;
+  ctx.fillStyle = INK; ctx.font = `italic 30px ${SERIF}`; ctx.textAlign = "left";
+  ctx.fillText(truncate(ctx, piece.label, size - pw), ix, by + band / 2);
   if (piece.price) {
     ctx.fillStyle = MUTED; ctx.font = `400 24px ${SANS}`; ctx.textAlign = "right";
     ctx.fillText(piece.price, w / 2 - pad, by + band / 2);
