@@ -210,6 +210,15 @@ const Concierge = () => {
           )}
 
           {status === "done" && groups.length > 0 && (
+            <>
+              {plan?.aesthetic && (() => {
+                const a = AESTHETICS.find((x) => x.name === plan.aesthetic);
+                return a ? (
+                  <button type="button" onClick={() => startAesthetic(a)} className="mono-soft mb-4 min-h-[44px] text-sm underline underline-offset-4">
+                    closest aesthetic: {a.name}
+                  </button>
+                ) : null;
+              })()}
             <div className="space-y-12">
               {groups.map((g) => (
                 <div key={g.label}>
@@ -221,15 +230,8 @@ const Concierge = () => {
                   </div>
                 </div>
               ))}
-              {plan?.aesthetic && (() => {
-                const a = AESTHETICS.find((x) => x.name === plan.aesthetic);
-                return a ? (
-                  <button type="button" onClick={() => startAesthetic(a)} className="mono-soft min-h-[44px] text-sm underline underline-offset-4">
-                    closest aesthetic: {a.name}
-                  </button>
-                ) : null;
-              })()}
             </div>
+            </>
           )}
 
           {import.meta.env.DEV && meta && (
