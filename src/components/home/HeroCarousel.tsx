@@ -74,9 +74,9 @@ export default function HeroCarousel({ ctaHref = "/analyzer" }: Props) {
           <p className="mms-hero__line">{a.line}</p>
           <div className="mms-hero__actions">
             <Link className="mms-btn" to={ctaHref}>
-              Find your aesthetic
+              Upload a look
             </Link>
-            <span className="mms-hero__note">Most people are a mix. Find yours.</span>
+            <span className="mms-hero__note">See its aesthetic and shop it in your size.</span>
           </div>
           <ul className="mms-tags" aria-label="Tags">
             {a.tags.map((t) => (
