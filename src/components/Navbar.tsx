@@ -30,6 +30,9 @@ const Navbar = () => {
               }`}
             >
               {link.label}
+              {link.href === "/concierge" && (
+                <span className="ml-1.5 rounded-full border border-[#D4C4B8] px-1.5 text-[11px] lowercase leading-4 tracking-normal text-[#7A6F68]">beta</span>
+              )}
             </Link>
           ))}
         </div>
