@@ -6,9 +6,10 @@ interface Props {
   loading: boolean;
   onChange: (v: string) => void;
   onSubmit: (e: FormEvent) => void;
+  placeholder?: string;
 }
 
-const ConciergeComposer = ({ value, loading, onChange, onSubmit }: Props) => (
+const ConciergeComposer = ({ value, loading, onChange, onSubmit, placeholder }: Props) => (
   <form onSubmit={onSubmit} className="mono-bg sticky bottom-0 z-20 border-t border-transparent px-4 pb-4 pt-3 sm:px-6">
     <div className="mx-auto flex max-w-6xl items-center gap-3">
       <label htmlFor="concierge-input" className="sr-only">tell the concierge what you want</label>
@@ -18,7 +19,10 @@ const ConciergeComposer = ({ value, loading, onChange, onSubmit }: Props) => (
           value={value}
           onChange={(e) => onChange(e.target.value)}
           maxLength={300}
-          placeholder="type it or say it..."
+          placeholder={placeholder ?? "type it or say it..."}
+          type="text"
+          enterKeyHint="send"
+          autoComplete="off"
           className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-[var(--mono-soft-ink)]"
         />
         {value.trim().length >= 2 && (

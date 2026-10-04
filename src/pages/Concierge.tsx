@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface SearchMeta { tool: string; durationMs: number; count?: number }
 type Status = "idle" | "loading" | "done" | "error";
 interface PlanPiece { label: string; query: string }
-interface Plan { note: string; aesthetic: string | null; pieces: PlanPiece[]; maxPrice?: number; budget?: number; ask?: string; options?: string[] }
+interface Plan { note: string; aesthetic: string | null; pieces: PlanPiece[]; maxPrice?: number; budget?: number; intent?: "tweak" | "restyle" | "new"; ask?: string; options?: string[] }
 interface RailGroup { label: string; products: CatalogProduct[] }
 
 const toCard = (p: ShopProduct): CatalogProduct => ({
@@ -27,7 +27,11 @@ const Bubble = ({ from, children }: { from: "me" | "you"; children: React.ReactN
   </div>
 );
 
-const REFINEMENTS = ["under $100", "more color", "dressier", "more relaxed", "different shoes"];
+const shortLabel = (label: string) => label.replace(/^the\s+/, "");
+const refinementsFor = (plan: Plan) => [
+  ...plan.pieces.map((pc) => `different ${shortLabel(pc.label)}`),
+  "under $100", "more color", "dressier", "more relaxed", "a whole new look",
+];
 const FOLLOW_UP_Q = "how's that? i can tweak it.";
 interface Turn { from: "me" | "you"; text: string }
 type RawMap = Record<string, ShopProduct[]>;
@@ -184,12 +188,12 @@ const Concierge = () => {
       setChips([`try a different ${short}`, "raise the budget", "skip it"]);
     } else {
       say({ from: "me", text: FOLLOW_UP_Q });
-      setChips(REFINEMENTS);
+      setChips(refinementsFor(next));
     }
   };
 
-  const runPlan = async (text: string) => {
-    say({ from: "you", text });
+  const runPlan = async (text: string, echo = true) => {
+    if (echo) say({ from: "you", text });
     setPlan(null); setGroups([]); setLook(null); lookRef.current = null; setProducts([]); setError(null); setStatus("loading");
     const size = readProfileSize();
     const h = [text];
@@ -248,13 +252,20 @@ const Concierge = () => {
     }
     if (!next) {
       say({ from: "me", text: "hmm, i couldn't tweak that one. try saying it another way?" });
-      setChips(REFINEMENTS);
+      setChips(refinementsFor(current));
       setStatus("done");
       return;
     }
-    const { map, changed } = await fillRaw(next, raw, size);
+    if (next.intent === "new") {
+      // a different occasion: clear the plan and look, keep the thread, plan fresh from this message
+      setPlan(null); setRaw({}); setGroups([]); setLook(null); lookRef.current = null; setStatus("idle");
+      await runPlan(instruction, false);
+      return;
+    }
+    if (next.intent === "restyle") lookRef.current = null;
+    const { map, changed } = await fillRaw(next, next.intent === "restyle" ? {} : raw, size);
     const built = finish(next, map, changed);
-    if (built.length) writeCache(key, { plan: next, raw: map, changed });
+    if (built.length && next.intent !== "restyle") writeCache(key, { plan: next, raw: map, changed });
   };
 
   const runSearch = async (q: string) => {
@@ -296,6 +307,54 @@ const Concierge = () => {
     say({ from: "you", text: a.name }, { from: "me", text: `love it. pulling a ${a.name} rail.` });
     const pieces = a.signaturePieces.split(",").slice(0, 2).map((p) => p.trim().toLowerCase());
     runSearch(`women's ${pieces.join(" ")}`);
+  };
+
+  const [moreLoading, setMoreLoading] = useState<string | null>(null);
+
+  /** Load up to 6 more verified products for one piece from 3 alternative queries. */
+  const loadMore = async (label: string) => {
+    const pc = plan?.pieces.find((x) => x.label === label);
+    if (!plan || !pc || moreLoading) return;
+    setMoreLoading(label);
+    const size = readProfileSize();
+    let alts: string[] = [];
+    try {
+      const { data } = await supabase.functions.invoke("concierge-plan", { body: { request: history[0] ?? pc.query, size: size ?? undefined, previous: plan, piece: pc } });
+      alts = Array.isArray(data?.alternatives) ? data.alternatives.slice(0, 3) : [];
+    } catch (e) { console.error("[concierge] alternatives failed", e); }
+    const cap = pieceCaps(plan)[label];
+    const res = await Promise.all(alts.map((q) => searchCatalog(`women's ${q}${sizeSuffix(size)}`)));
+    const seen = new Set<string>();
+    for (const g of groups) for (const p of g.products) { seen.add(p.productUrl); if (p.imageUrl) seen.add(p.imageUrl); }
+    const fresh: CatalogProduct[] = [];
+    const lists = res.map((r) => r.products);
+    for (let i = 0; fresh.length < 6 && lists.some((l) => i < l.length); i++) {
+      for (const l of lists) {
+        const prod = l[i];
+        if (!prod || fresh.length >= 6) continue;
+        if (cap && (!prod.price || majorAmount(prod.price) > cap)) continue;
+        if (seen.has(prod.productUrl) || seen.has(prod.imageUrl)) continue;
+        seen.add(prod.productUrl); seen.add(prod.imageUrl);
+        fresh.push(toCard(prod));
+      }
+    }
+    if (import.meta.env.DEV) console.info("[concierge] more", label, alts, fresh.length);
+    setMoreLoading(null);
+    if (!fresh.length) {
+      const short = shortLabel(label);
+      say({ from: "me", text: `that's everything i could find for this piece. want me to try a different kind of ${short}?` });
+      setAsked(null); setChips([`try a different ${short}`]);
+      return;
+    }
+    setGroups((prev) => prev.map((g) => (g.label === label ? { ...g, products: [...g.products, ...fresh] } : g)));
+  };
+
+  const swapPiece = (label: string) => {
+    const el = document.getElementById(`piece-${label.replace(/\s+/g, "-")}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const g = groups.find((x) => x.label === label);
+    const options = g ? g.products.filter((p) => p.productId !== look?.[label]?.productId).length : 0;
+    if (!g || options === 0) loadMore(label);
   };
 
   const startOver = () => {
@@ -412,7 +471,7 @@ const Concierge = () => {
               })()}
             <div className="space-y-12">
               {groups.map((g) => (
-                <div key={g.label}>
+                <div key={g.label} id={`piece-${g.label.replace(/\s+/g, "-")}`} className="scroll-mt-[96px]">
                   <p className="mono-soft mb-4 text-[11px] font-medium uppercase tracking-[1.5px]">{g.label}</p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-12 md:grid-cols-3 md:gap-x-6">
                     {g.products.map((product, index) => (
@@ -425,6 +484,11 @@ const Concierge = () => {
                       />
                     ))}
                   </div>
+                  {plan && (
+                    <button type="button" onClick={() => loadMore(g.label)} disabled={Boolean(moreLoading)} className="mono-outline mono-pill mono-press mt-6 min-h-[44px] px-5 text-sm disabled:opacity-50">
+                      {moreLoading === g.label ? "looking..." : `more ${shortLabel(g.label)}`}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -438,12 +502,12 @@ const Concierge = () => {
           )}
         </section>
         </div>
-        {slots && <LookSidebar slots={slots} budget={plan?.budget} caps={plan ? pieceCaps(plan) : {}} onRemove={removeFromLook} />}
+        {slots && <LookSidebar slots={slots} budget={plan?.budget} caps={plan ? pieceCaps(plan) : {}} onRemove={removeFromLook} onSwap={swapPiece} />}
       </main>
 
       <div className="sticky bottom-0 z-20">
-        {slots && <LookBar slots={slots} budget={plan?.budget} caps={plan ? pieceCaps(plan) : {}} onRemove={removeFromLook} />}
-        <ConciergeComposer value={query} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />
+        {slots && <LookBar slots={slots} budget={plan?.budget} caps={plan ? pieceCaps(plan) : {}} onRemove={removeFromLook} onSwap={swapPiece} />}
+        <ConciergeComposer value={query} placeholder={plan ? "change anything, or ask for a new look..." : undefined} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />
       </div>
     </div>
   );
