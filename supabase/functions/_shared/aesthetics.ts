@@ -27,6 +27,6 @@ Rules:
 - Return one primary aesthetic and at most one secondary aesthetic, each with a weight. Weights add up to 100.
 - Only add a secondary if a specific detected item clearly belongs to it, and name that item. Generic details like "structured collar" or "buttons" are not enough. If unsure, return only the primary at 100.
 - For each aesthetic, list the 1 to 3 detected items that put it there, using the item names.
-- Also write \`aestheticSummary\`: one warm, specific sentence about THIS outfit, naming its key pieces, e.g. "Your leopard coat over cobalt and red is classic Broadway Maximalist: print, color clash and a bold bag." No em dashes.
+- Also write \`aestheticSummary\`: one warm sentence about THIS outfit that names 2 or 3 of its actual detected items and says what makes them fit the primary aesthetic. Write it fresh for every outfit; never reuse a stock phrase. No em dashes.
 - If the photo has no clear outfit, return an empty aesthetics list and an empty summary.`;
 }
