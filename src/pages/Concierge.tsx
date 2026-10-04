@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Navbar from "@/components/Navbar";
@@ -40,7 +40,7 @@ const readSession = (): Session | null => {
 };
 
 /** Per-piece price caps. Whole-look budget: hero (first piece) 40%, the rest split 60%. Otherwise maxPrice. */
-export function pieceCaps(plan: Plan): Record<string, number | undefined> {
+function pieceCaps(plan: Plan): Record<string, number | undefined> {
   const out: Record<string, number | undefined> = {};
   const n = plan.pieces.length;
   plan.pieces.forEach((pc, i) => {
@@ -121,6 +121,8 @@ const Concierge = () => {
   const [chips, setChips] = useState<string[] | null>(initial?.chips ?? null);
   const [asked, setAsked] = useState<string | null>(initial?.asked ?? null);
   const [look, setLook] = useState<Look | null>(initial?.look ?? null);
+  const lookRef = useRef(look);
+  lookRef.current = look;
 
   useEffect(() => {
     if (!plan && !turns.length) { try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ } return; }
@@ -163,7 +165,7 @@ const Concierge = () => {
   };
 
   const showRail = (next: Plan, map: RawMap) => {
-    const { look: nextLook, groups: built } = reconcileLook(next, buildGroups(next, map), look, map);
+    const { look: nextLook, groups: built } = reconcileLook(next, buildGroups(next, map), lookRef.current, map);
     if (import.meta.env.DEV) console.info("[concierge] rail", built.map((g) => `${g.label}: ${g.products.map((p) => p.price ? majorAmount(p.price) : "?").join(",")}`));
     setPlan(next); setRaw(map); setGroups(built); setProducts([]); setStatus("done");
     setLook(nextLook);
@@ -188,7 +190,7 @@ const Concierge = () => {
 
   const runPlan = async (text: string) => {
     say({ from: "you", text });
-    setPlan(null); setGroups([]); setLook(null); setProducts([]); setError(null); setStatus("loading");
+    setPlan(null); setGroups([]); setLook(null); lookRef.current = null; setProducts([]); setError(null); setStatus("loading");
     const size = readProfileSize();
     const h = [text];
     setHistory(h);
