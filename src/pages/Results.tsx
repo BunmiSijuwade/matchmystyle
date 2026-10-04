@@ -8,7 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import AestheticBlock from "@/components/results/AestheticBlock";
-import { useAnalysis, type DetectedItem, type ProductMatch } from "@/contexts/AnalysisContext";
+import { useAnalysis, type DetectedItem, type ProductMatch, type AestheticResult } from "@/contexts/AnalysisContext";
 import { getSizeRecommendation, type UserMeasurements, type SizeRecommendation } from "@/services/sizingService";
 
 const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;
