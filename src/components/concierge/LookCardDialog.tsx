@@ -25,7 +25,7 @@ const LookCardDialog = ({ open, onOpenChange, input, occasion }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const canShare = Boolean(card && typeof navigator !== "undefined" && navigator.canShare?.({ files: [card.file] }));
+  const canShare = Boolean(card && typeof navigator !== "undefined" && typeof navigator.share === "function");
   const count = input.pieces.length;
   const alt = `Look card: ${input.aesthetic ?? "your"} look${occasion ? ` for ${occasion.toLowerCase().replace(/[.!]+$/, "")}` : ""}, ${count} piece${count === 1 ? "" : "s"}, total ${input.total}`;
 
@@ -35,7 +35,10 @@ const LookCardDialog = ({ open, onOpenChange, input, occasion }: Props) => {
   };
   const share = async () => {
     if (!card) return;
-    try { await navigator.share({ files: [card.file], title: "my look" }); } catch { /* cancelled */ }
+    try {
+      if (navigator.canShare?.({ files: [card.file] })) await navigator.share({ files: [card.file], title: "my look" });
+      else await navigator.share({ title: "my look", text: `my ${input.aesthetic ?? ""} look, styled on MatchMyStyle`.replace("  ", " "), url: "https://matchmystyle.lovable.app/concierge" });
+    } catch { /* cancelled or unsupported */ }
   };
 
   return (

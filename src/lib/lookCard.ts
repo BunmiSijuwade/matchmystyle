@@ -118,7 +118,7 @@ export async function renderLookCard(input: CardInput): Promise<CardResult> {
   }
 
   // footer
-  const fy = 1270;
+  const fy = 1250;
   ctx.textAlign = "left"; ctx.fillStyle = INK; ctx.font = `600 32px ${SANS}`;
   ctx.fillText(`total ${input.total}`, M, fy);
   ctx.font = `500 36px ${SANS}`;
@@ -129,6 +129,8 @@ export async function renderLookCard(input: CardInput): Promise<CardResult> {
   ctx.font = `500 36px ${SANS}`; ctx.fillStyle = INK; ctx.fillText("Match", x, fy); x += a + 2;
   ctx.font = `italic 36px ${SERIF}`; ctx.fillStyle = TAUPE; ctx.fillText("My", x, fy); x += my;
   ctx.font = `500 36px ${SANS}`; ctx.fillStyle = INK; ctx.fillText("Style", x, fy);
+  ctx.font = `400 20px ${SANS}`; ctx.fillStyle = MUTED; ctx.textAlign = "right";
+  ctx.fillText("matchmystyle.lovable.app", W - M, fy + 38);
 
   const blob = await new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("toBlob failed"))), "image/png"));
   return { blob, url: URL.createObjectURL(blob), proxied: [...new Set(proxied)], failed };
