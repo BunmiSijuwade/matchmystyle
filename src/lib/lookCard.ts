@@ -1,5 +1,5 @@
 /** Draws a 1080x1350 shareable "look card" from verified look-board products. */
-export interface CardPiece { label: string; imageUrl: string | null; price: string | null }
+export interface CardPiece { label: string; imageUrl: string | null; price: string | null; title?: string }
 export interface CardInput { aesthetic: string | null; request: string | null; total: string; pieces: CardPiece[] }
 export interface CardResult { blob: Blob; url: string; proxied: string[]; failed: string[] }
 

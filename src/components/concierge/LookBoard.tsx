@@ -73,7 +73,7 @@ const CardButton = ({ slots, aesthetic, request }: { slots: LookSlot[]; aestheti
   if (!filled.length) return null;
   const input = {
     aesthetic: aesthetic ?? null, request: request ?? null, total: lookTotal(slots).total,
-    pieces: filled.map((s) => ({ label: s.label, imageUrl: s.product!.imageUrl ?? null, price: priceText(s.product!) })),
+    pieces: filled.map((s) => ({ label: s.label, title: s.product!.title, imageUrl: s.product!.imageUrl ?? null, price: priceText(s.product!) })),
   };
   return (
     <>
