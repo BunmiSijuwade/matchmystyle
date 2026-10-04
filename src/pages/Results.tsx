@@ -9,7 +9,9 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import AestheticBlock from "@/components/results/AestheticBlock";
 import ShopAesthetic from "@/components/results/ShopAesthetic";
-import { useAnalysis, type DetectedItem, type ProductMatch, type AestheticResult } from "@/contexts/AnalysisContext";
+import { useAnalysis, type DetectedItem, type AestheticResult } from "@/contexts/AnalysisContext";
+import { useLiveMatches, PRICE_TIERS, type TieredMatches } from "@/hooks/useLiveMatches";
+import { formatPrice, type CatalogProduct } from "@/lib/shopCatalog";
 import { getSizeRecommendation, type UserMeasurements, type SizeRecommendation } from "@/services/sizingService";
 
 const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;
@@ -25,188 +27,59 @@ function pickVintagePlatform(index: number) {
   return VINTAGE_PLATFORMS[index % VINTAGE_PLATFORMS.length];
 }
 
-function discountPrice(price: string): string {
-  const num = parseFloat(price.replace(/[^0-9.]/g, ""));
-  if (isNaN(num)) return price;
-  return `$${Math.round(num * 0.55)}`;
-}
-
-const RETAILER_SEARCH_URLS: Record<string, (q: string) => string> = {
-  "asos":            (q) => `https://www.asos.com/search/?q=${q}`,
-  "h&m":             (q) => `https://www2.hm.com/en_us/search-results.html?q=${q}`,
-  "zara":            (q) => `https://www.zara.com/us/en/search?searchTerm=${q}`,
-  "mango":           (q) => `https://shop.mango.com/us/women/search?q=${q}`,
-  "& other stories": (q) => `https://www.stories.com/en/search?q=${q}`,
-  "other stories":   (q) => `https://www.stories.com/en/search?q=${q}`,
-  "toteme":          (q) => `https://toteme-studio.com/search?q=${q}`,
-  "net-a-porter":    (q) => `https://www.net-a-porter.com/en-us/shop/search?q=${q}`,
-  "farfetch":        (q) => `https://www.farfetch.com/shopping/women/search/items.aspx?q=${q}`,
-  "nordstrom":       (q) => `https://www.nordstrom.com/sr?keyword=${q}`,
-  "bershka":         (q) => `https://www.bershka.com/us/search?q=${q}`,
-  "pull&bear":       (q) => `https://www.pullandbear.com/us/search?q=${q}`,
-  "massimo dutti":   (q) => `https://www.massimodutti.com/us/search?q=${q}`,
-  "reformation":     (q) => `https://www.thereformation.com/search?q=${q}`,
-  "shopbop":         (q) => `https://www.shopbop.com/search?q=${q}`,
-  "ssense":          (q) => `https://www.ssense.com/en-us/women/search?q=${q}`,
-  "sandro":          (q) => `https://us.sandro-paris.com/en/search/?q=${q}`,
-  "iro":             (q) => `https://us.iroparis.com/search?q=${q}`,
-  "theory":          (q) => `https://www.theory.com/search?q=${q}`,
-  "topshop":         (q) => `https://www.asos.com/topshop/cat/?q=${q}`,
-  "missguided":      (q) => `https://www.asos.com/search/?q=${q}&brand=Missguided`,
-  "boohoo":          (q) => `https://www.boohoo.com/search?q=${q}`,
-  "shein":           (q) => `https://www.shein.com/Search.html?q=${q}`,
-  "amazon":          (q) => `https://www.amazon.com/s?k=${q}`,
-  "charles & keith": (q) => `https://www.charleskeith.com/us/search?q=${q}`,
-  "nanushka":        (q) => `https://www.nanushka.com/search?query=${q}`,
-  "cos":             (q) => `https://www.cos.com/en/search?q=${q}`,
-  "arket":           (q) => `https://www.arket.com/en/search?q=${q}`,
-  "reiss":           (q) => `https://www.reiss.com/us/search?q=${q}`,
-  "allsaints":       (q) => `https://www.allsaints.com/search?q=${q}`,
-  "all saints":      (q) => `https://www.allsaints.com/search?q=${q}`,
-  "acne studios":    (q) => `https://www.acnestudios.com/us/en/search?q=${q}`,
-  "levi's":          (q) => `https://www.levi.com/US/en_US/search/${q}`,
-  "levis":           (q) => `https://www.levi.com/US/en_US/search/${q}`,
-  "nike":            (q) => `https://www.nike.com/w?q=${q}`,
-  "adidas":          (q) => `https://www.adidas.com/us/search?q=${q}`,
-  "uniqlo":          (q) => `https://www.uniqlo.com/us/en/search?q=${q}`,
-  "everlane":        (q) => `https://www.everlane.com/search?q=${q}`,
-  "abercrombie":     (q) => `https://www.abercrombie.com/shop/us/search?searchTerm=${q}`,
-  "abercrombie & fitch": (q) => `https://www.abercrombie.com/shop/us/search?searchTerm=${q}`,
-  "lululemon":       (q) => `https://shop.lululemon.com/search?Ntt=${q}`,
-  "free people":     (q) => `https://www.freepeople.com/search/?q=${q}`,
-  "gap":             (q) => `https://www.gap.com/browse/search.do?searchText=${q}`,
-  "urban outfitters":(q) => `https://www.urbanoutfitters.com/search?q=${q}`,
-  "anthropologie":   (q) => `https://www.anthropologie.com/search?q=${q}`,
-  "revolve":         (q) => `https://www.revolve.com/r/search.jsp?query=${q}`,
-  "saks fifth avenue": (q) => `https://www.saksfifthavenue.com/search?q=${q}`,
-  "saks":            (q) => `https://www.saksfifthavenue.com/search?q=${q}`,
-  "neiman marcus":   (q) => `https://www.neimanmarcus.com/search?q=${q}`,
-  "bloomingdale's":  (q) => `https://www.bloomingdales.com/shop/search?keyword=${q}`,
-  "bloomingdales":   (q) => `https://www.bloomingdales.com/shop/search?keyword=${q}`,
-  "new balance":     (q) => `https://www.newbalance.com/search?q=${q}`,
-  "onitsuka tiger":  (q) => `https://www.onitsukatiger.com/us/en-us/search?q=${q}`,
-  "golden goose":    (q) => `https://www.goldengoose.com/us/en/search?q=${q}`,
-  "loewe":           (q) => `https://www.loewe.com/eur/en/search?q=${q}`,
-  "warby parker":    (q) => `https://www.warbyparker.com/eyeglasses?q=${q}`,
-  "ray-ban":         (q) => `https://www.ray-ban.com/usa/search?q=${q}`,
-  "quay":            (q) => `https://www.quayaustralia.com/search?q=${q}`,
-  "quay australia":  (q) => `https://www.quayaustralia.com/search?q=${q}`,
-  "zenni":           (q) => `https://www.zennioptical.com/b/search?q=${q}`,
-  "zenni optical":   (q) => `https://www.zennioptical.com/b/search?q=${q}`,
-  "rag & bone":      (q) => `https://www.rag-bone.com/search?q=${q}`,
-  "old navy":        (q) => `https://oldnavy.gap.com/browse/search.do?searchText=${q}`,
-  "isabel marant":   (q) => `https://www.isabelmarant.com/us/search?q=${q}`,
-  "studio nicholson":(q) => `https://www.studionicholson.com/search?q=${q}`,
-  "the frankie shop":(q) => `https://thefrankieshop.com/search?q=${q}`,
-  "frankie shop":    (q) => `https://thefrankieshop.com/search?q=${q}`,
-  "tom ford":        (q) => `https://www.tomford.com/search?q=${q}`,
-  "gucci":           (q) => `https://www.gucci.com/us/en/search?searchString=${q}`,
-  "prada":           (q) => `https://www.prada.com/us/en/search.html?query=${q}`,
-  "matches":         (q) => `https://www.matchesfashion.com/us/search?q=${q}`,
-  "matchesfashion":  (q) => `https://www.matchesfashion.com/us/search?q=${q}`,
-  "lenscrafters":    (q) => `https://www.lenscrafters.com/search?q=${q}`,
-  "sojos":           (q) => `https://www.amazon.com/s?k=SOJOS+${q}`,
-};
-
-// Fuzzy match: the AI often appends random suffixes to brand/retailer names
-// e.g. "Loewe Flow", "Net-A-Porter Pax", "Warby Parker Line"
-// This finds the longest map key that is contained within the input string.
-function fuzzyMatchRetailer(input: string): ((q: string) => string) | undefined {
-  const lower = input.toLowerCase().trim();
-  // Try exact match first
-  if (RETAILER_SEARCH_URLS[lower]) return RETAILER_SEARCH_URLS[lower];
-  // Find the longest key that the input starts with or contains
-  let bestMatch: string | null = null;
-  for (const key of Object.keys(RETAILER_SEARCH_URLS)) {
-    if (lower.includes(key) && (!bestMatch || key.length > bestMatch.length)) {
-      bestMatch = key;
-    }
-  }
-  return bestMatch ? RETAILER_SEARCH_URLS[bestMatch] : undefined;
-}
-
-function buildMatchUrl(match: ProductMatch, mode: "new" | "vintage", vintageIndex = 0): string {
-  const rawQuery = (match.searchQuery || `${match.brand} ${match.name}`).replace(/\+/g, " ").replace(/\s+/g, " ").trim();
-  const q = encodeURIComponent(rawQuery);
-  if (mode === "vintage") return pickVintagePlatform(vintageIndex).url(q);
-
-  // Helper: strip brand name from query when going to the brand's own site
-  const stripBrand = (query: string, brand: string) => {
-    if (!brand) return query;
-    const re = new RegExp(`\\b${brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, "gi");
-    return query.replace(re, "").replace(/\s+/g, " ").trim();
-  };
-
-  // Try retailer (fuzzy)
-  const retailerBuilder = fuzzyMatchRetailer(match.retailer || "");
-  if (retailerBuilder) {
-    // If retailer is also the brand (e.g. ASOS, H&M), strip brand from query
-    const retailerIsBrand = match.retailer && match.brand &&
-      match.retailer.toLowerCase().replace(/[^a-z]/g, "") === match.brand.toLowerCase().replace(/[^a-z]/g, "");
-    const rq = retailerIsBrand ? encodeURIComponent(stripBrand(rawQuery, match.brand || "")) : q;
-    return retailerBuilder(rq);
-  }
-  // Try brand (fuzzy) — strip brand from query since we're on their site
-  const brandBuilder = fuzzyMatchRetailer(match.brand || "");
-  if (brandBuilder) {
-    const cleanQ = encodeURIComponent(stripBrand(rawQuery, match.brand || ""));
-    return brandBuilder(cleanQ);
-  }
-  // Fallback to Nordstrom
-  return `https://www.nordstrom.com/sr?keyword=${q}`;
-}
-
 const CONFIDENCE_COLORS: Record<string, string> = {
   high: "bg-green-500",
   medium: "bg-yellow-500",
   low: "bg-orange-500",
 };
 
-const ProductRow = ({ match, shopMode, vintageIndex = 0, sizeRec }: { match: ProductMatch; shopMode: "new" | "vintage"; vintageIndex?: number; sizeRec?: SizeRecommendation | null }) => {
-  const platform = pickVintagePlatform(vintageIndex);
-  const isVintage = shopMode === "vintage";
+const TIER_LABELS = [
+  { key: "budget", label: "Budget", range: `Under $${PRICE_TIERS.budgetMax}` },
+  { key: "midRange", label: "Mid-Range", range: `$${PRICE_TIERS.budgetMax}–$${PRICE_TIERS.luxuryMin}` },
+  { key: "luxury", label: "Luxury", range: `$${PRICE_TIERS.luxuryMin}+` },
+] as const;
 
-  const displaySizeNote = sizeRec
-    ? `Order size ${sizeRec.recommendedSize}${sizeRec.brandRunsSmall ? " (runs small)" : sizeRec.brandRunsLarge ? " (runs large)" : ""}`
-    : match.sizeNote;
-
-  return (
-    <a
-      href={buildMatchUrl(match, shopMode, vintageIndex)}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center justify-between p-3 sm:p-4 rounded-xl border border-border hover:border-primary bg-card transition-all duration-300 ease-out group min-h-[56px] hover:shadow-brand"
-    >
-      <div className="min-w-0 flex-1 mr-3">
+const LiveProductRow = ({ product, sizeRec }: { product: CatalogProduct; sizeRec?: SizeRecommendation | null }) => (
+  <a
+    href={product.productUrl}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="flex items-center gap-3 p-2 sm:p-3 rounded-xl border border-border hover:border-primary bg-card transition-all duration-300 ease-out group min-h-[56px] hover:shadow-brand"
+  >
+    <img src={product.imageUrl} alt={product.title} loading="lazy" className="w-14 h-[74px] rounded-lg object-cover flex-shrink-0 bg-muted" />
+    <div className="min-w-0 flex-1">
+      {product.merchantName && (
+        <p className="text-[9px] text-muted-foreground uppercase tracking-[0.5px] font-medium truncate">{product.merchantName}</p>
+      )}
+      <p className="font-medium text-[12px] leading-snug line-clamp-2 group-hover:text-primary transition-colors">{product.title}</p>
+      {sizeRec && (
         <div className="flex items-center gap-1.5">
-          <p className="font-medium text-[11px] truncate group-hover:text-primary transition-colors">{match.name}</p>
-          {isVintage && (
-            <Badge className="bg-vintage-bg text-vintage border-vintage-border text-[8px] px-1.5 py-0 flex-shrink-0 uppercase tracking-[0.5px] font-semibold">
-              Vintage
-            </Badge>
-          )}
+          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${CONFIDENCE_COLORS[sizeRec.confidence]}`} title={`${sizeRec.confidence} confidence`} />
+          <p className="text-[9px] text-primary font-medium">
+            Order size {sizeRec.recommendedSize}{sizeRec.brandRunsSmall ? " (runs small)" : sizeRec.brandRunsLarge ? " (runs large)" : ""}
+          </p>
         </div>
-        {displaySizeNote && (
-          <div className="flex items-center gap-1.5">
-            {sizeRec && (
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${CONFIDENCE_COLORS[sizeRec.confidence]}`} title={`${sizeRec.confidence} confidence`} />
-            )}
-            <p className="text-[9px] text-primary font-medium">{displaySizeNote}</p>
-          </div>
-        )}
-        <p className="text-[9px] text-muted-foreground uppercase tracking-[0.5px] font-medium">
-          {isVintage ? `${platform.name} · Pre-loved` : `${match.brand} · ${match.retailer}`}
-        </p>
-      </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="font-semibold text-primary text-[13px]">{isVintage ? discountPrice(match.price) : match.price}</span>
-        <span className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center group-hover:shadow-brand transition-all">
-          <ExternalLink className="w-3.5 h-3.5 text-background" />
-        </span>
-      </div>
-    </a>
-  );
-};
+      )}
+    </div>
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <span className="font-semibold text-primary text-[13px]">{formatPrice(product.price)}</span>
+      <span className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center">
+        <ExternalLink className="w-3.5 h-3.5 text-background" />
+      </span>
+    </div>
+  </a>
+);
+
+const SkeletonRow = () => (
+  <div className="flex items-center gap-3 p-2 sm:p-3 rounded-xl border border-border bg-card animate-pulse min-h-[56px]">
+    <div className="w-14 h-[74px] rounded-lg bg-muted" />
+    <div className="flex-1 space-y-2">
+      <div className="h-2.5 w-1/3 rounded bg-muted" />
+      <div className="h-3 w-3/4 rounded bg-muted" />
+    </div>
+    <div className="h-3 w-12 rounded bg-muted" />
+  </div>
+);
 
 const normalize = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
 function aestheticTagsFor(item: DetectedItem, list: AestheticResult[]): string[] {
@@ -262,23 +135,12 @@ const Results = () => {
     return { bust, waist, hips };
   }, [profileData, useProfile]);
 
-  // Build a map of match id -> SizeRecommendation for all current items
-  const sizeRecMap = useMemo(() => {
-    const map = new Map<string, SizeRecommendation>();
-    if (!userMeasurements || !items) return map;
-    for (const item of items) {
-      const allMatches = [item.bestMatch, ...(item.budget ?? []), ...(item.midRange ?? []), ...(item.luxury ?? [])].filter(Boolean) as ProductMatch[];
-      for (const match of allMatches) {
-        const rec = getSizeRecommendation(
-          `${match.brand} ${match.name}`,
-          item.description,
-          userMeasurements
-        );
-        if (rec) map.set(match.id, rec);
-      }
-    }
-    return map;
-  }, [userMeasurements, items]);
+  const { state: liveState } = useLiveMatches(items);
+  const sizeRecFor = useCallback(
+    (p: CatalogProduct, item: DetectedItem) =>
+      userMeasurements ? getSizeRecommendation(`${p.merchantName ?? ""} ${p.title}`, item.description, userMeasurements) : null,
+    [userMeasurements],
+  );
 
   useEffect(() => {
     if (!items || items.length === 0) {
@@ -472,7 +334,7 @@ const Results = () => {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{item.category}</span>
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
-                            {[item.bestMatch, ...(item.budget ?? []), ...(item.midRange ?? []), ...(item.luxury ?? [])].filter(Boolean).length} matches
+                            {(() => { const st = liveState[item.id]; if (!st || st.status === "loading") return "…"; const n = st.matches.budget.length + st.matches.midRange.length + st.matches.luxury.length; return `${n} match${n === 1 ? "" : "es"}`; })()}
                           </span>
                           {aestheticTagsFor(item, aesthetics).map((name) => (
                             <span key={name} className="inline-flex items-center px-2 py-0.5 rounded-full text-[12px]" style={{ color: "#7A6F68", border: "1px solid #E8DFD5" }}>
@@ -500,61 +362,72 @@ const Results = () => {
                       ))}
                     </div>
 
-                    {/* AI disclaimer */}
-                    <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-muted border border-border">
-                      <span className="text-primary text-xs flex-shrink-0">✨</span>
-                      <p className="text-[10px] text-muted-foreground font-medium">
-                        {shopMode === "vintage"
-                          ? "AI suggestions — prices are estimates for pre-loved items. Click to search on vintage platforms."
-                          : "AI suggestions — prices are estimates. Click any item to search on retailers."}
-                      </p>
-                    </div>
+                    {item.sizeNote && (
+                      <p className="mb-3 text-[11px] text-primary font-medium">{item.sizeNote}</p>
+                    )}
 
-                    {/* Tiered product sections */}
-                    <div className="space-y-4">
-                      {item.bestMatch && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground">Best Match</span>
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary text-primary-foreground">★</span>
+                    {shopMode === "vintage" ? (
+                      <div className="space-y-2">
+                        <p className="text-[10px] text-muted-foreground font-medium">Searches on pre-loved marketplaces, not specific products.</p>
+                        {VINTAGE_PLATFORMS.map((pl) => (
+                          <a
+                            key={pl.name}
+                            href={pl.url(encodeURIComponent(item.description))}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-3 rounded-xl border border-border bg-card hover:border-primary transition-all duration-300 ease-out min-h-[48px]"
+                          >
+                            <span className="text-[12px] font-medium">Search {pl.name} for “{item.description}”</span>
+                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                          </a>
+                        ))}
+                      </div>
+                    ) : (() => {
+                      const st = liveState[item.id];
+                      if (st?.status === "loading") {
+                        return (
+                          <div className="space-y-4" aria-busy="true">
+                            {TIER_LABELS.map((t) => (
+                              <div key={t.key}>
+                                <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">{t.label}</p>
+                                <div className="space-y-2"><SkeletonRow /><SkeletonRow /></div>
+                              </div>
+                            ))}
                           </div>
-                          <ProductRow match={item.bestMatch} shopMode={shopMode} vintageIndex={0} sizeRec={sizeRecMap.get(item.bestMatch.id)} />
-                        </div>
-                      )}
-
-                      {item.budget?.length > 0 && (
-                        <div>
-                          <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
-                            Budget <span className="normal-case font-normal">· Under $50</span>
-                          </p>
-                          <div className="space-y-2">
-                            {item.budget.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 1} sizeRec={sizeRecMap.get(match.id)} />)}
+                        );
+                      }
+                      const m: TieredMatches = st?.matches ?? { budget: [], midRange: [], luxury: [] };
+                      const total = m.budget.length + m.midRange.length + m.luxury.length;
+                      if (total === 0) {
+                        return (
+                          <div className="rounded-xl border border-border bg-card p-4">
+                            <p className="text-[12px] text-muted-foreground">We couldn't find a live match for this piece yet.</p>
+                            <a
+                              href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(item.description)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-2 inline-flex items-center gap-1.5 min-h-[44px] text-[12px] font-medium underline underline-offset-4"
+                            >
+                              Search the web <ExternalLink className="w-3 h-3" />
+                            </a>
                           </div>
+                        );
+                      }
+                      return (
+                        <div className="space-y-4">
+                          {TIER_LABELS.map((t) => m[t.key].length > 0 && (
+                            <div key={t.key}>
+                              <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
+                                {t.label} <span className="normal-case font-normal">· {t.range}</span>
+                              </p>
+                              <div className="space-y-2">
+                                {m[t.key].map((p) => <LiveProductRow key={p.key} product={p} sizeRec={sizeRecFor(p, item)} />)}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      )}
-
-                      {item.midRange?.length > 0 && (
-                        <div>
-                          <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
-                            Mid-Range <span className="normal-case font-normal">· $50–$150</span>
-                          </p>
-                          <div className="space-y-2">
-                            {item.midRange.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 3} sizeRec={sizeRecMap.get(match.id)} />)}
-                          </div>
-                        </div>
-                      )}
-
-                      {item.luxury?.length > 0 && (
-                        <div>
-                          <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
-                            Luxury <span className="normal-case font-normal">· $150+</span>
-                          </p>
-                          <div className="space-y-2">
-                            {item.luxury.map((match, i) => <ProductRow key={match.id} match={match} shopMode={shopMode} vintageIndex={i + 5} sizeRec={sizeRecMap.get(match.id)} />)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                      );
+                    })()}
                   </AccordionContent>
                 </AccordionItem>
               ))}
