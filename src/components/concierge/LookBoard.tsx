@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import type { CatalogProduct } from "./EditorialProductCard";
+import LookCardDialog from "./LookCardDialog";
 
 export interface LookSlot { label: string; product: CatalogProduct | null }
 
@@ -51,7 +52,7 @@ const Polaroid = ({ slot, index, maxPrice, onRemove, onSwap, compact }: { slot: 
   );
 };
 
-interface BoardProps { slots: LookSlot[]; budget?: number; caps: Record<string, number | undefined>; onRemove: (label: string) => void; onSwap: (label: string) => void }
+interface BoardProps { slots: LookSlot[]; budget?: number; caps: Record<string, number | undefined>; onRemove: (label: string) => void; onSwap: (label: string) => void; aesthetic?: string | null; request?: string | null }
 
 const TotalLine = ({ slots, budget }: { slots: LookSlot[]; budget?: number }) => {
   const sum = slots.reduce((t, s) => t + (s.product?.price ? s.product.price.amount / 100 : 0), 0);
@@ -64,8 +65,26 @@ const TotalLine = ({ slots, budget }: { slots: LookSlot[]; budget?: number }) =>
   );
 };
 
+const priceText = (p: CatalogProduct) => (p.price ? usd(p.price.amount, p.price.currency) : null);
+
+const CardButton = ({ slots, aesthetic, request }: { slots: LookSlot[]; aesthetic?: string | null; request?: string | null }) => {
+  const [open, setOpen] = useState(false);
+  const filled = slots.filter((s) => s.product);
+  if (!filled.length) return null;
+  const input = {
+    aesthetic: aesthetic ?? null, request: request ?? null, total: lookTotal(slots).total,
+    pieces: filled.map((s) => ({ label: s.label, imageUrl: s.product!.imageUrl ?? null, price: priceText(s.product!) })),
+  };
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className="mono-outline mono-pill mono-press mt-3 min-h-[44px] px-5 text-sm">make a look card</button>
+      <LookCardDialog open={open} onOpenChange={setOpen} input={input} occasion={request ?? null} />
+    </>
+  );
+};
+
 /** Desktop sticky sidebar: compact 2x2 grid so the whole look is visible without scrolling. */
-export const LookSidebar = ({ slots, budget, caps, onRemove, onSwap }: BoardProps) => (
+export const LookSidebar = ({ slots, budget, caps, onRemove, onSwap, aesthetic, request }: BoardProps) => (
   <aside aria-label="the look" className="sticky top-[88px] hidden w-[300px] shrink-0 self-start px-2 pb-6 lg:block">
     <h2 className="mono-display mb-4 text-[28px] leading-tight">the look</h2>
     <div className="grid grid-cols-2 gap-4">
@@ -75,13 +94,13 @@ export const LookSidebar = ({ slots, budget, caps, onRemove, onSwap }: BoardProp
         </div>
       ))}
     </div>
-    <div className="mt-4"><TotalLine slots={slots} budget={budget} /></div>
+    <div className="mt-4"><TotalLine slots={slots} budget={budget} /><CardButton slots={slots} aesthetic={aesthetic} request={request} /></div>
     <p className="mono-soft mt-2 text-xs">each piece opens at its own shop.</p>
   </aside>
 );
 
 /** Mobile/tablet bar + bottom sheet. */
-export const LookBar = ({ slots, budget, caps, onRemove, onSwap }: BoardProps) => {
+export const LookBar = ({ slots, budget, caps, onRemove, onSwap, aesthetic, request }: BoardProps) => {
   const [open, setOpen] = useState(false);
   const { count, total } = lookTotal(slots);
   return (
@@ -97,7 +116,7 @@ export const LookBar = ({ slots, budget, caps, onRemove, onSwap }: BoardProps) =
           <div className="flex items-start justify-between">
             <div>
               <SheetTitle className="mono-display text-[28px] font-normal leading-tight">the look</SheetTitle>
-              <SheetDescription asChild><div><TotalLine slots={slots} budget={budget} /></div></SheetDescription>
+              <SheetDescription asChild><div><TotalLine slots={slots} budget={budget} /><CardButton slots={slots} aesthetic={aesthetic} request={request} /></div></SheetDescription>
             </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="close" className="mono-outline mono-pill flex h-11 w-11 items-center justify-center">
               <X className="h-4 w-4" />
