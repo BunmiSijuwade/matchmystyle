@@ -507,7 +507,7 @@ const Concierge = () => {
 
       <div className="sticky bottom-0 z-20">
         {slots && <LookBar slots={slots} budget={plan?.budget} caps={plan ? pieceCaps(plan) : {}} onRemove={removeFromLook} onSwap={swapPiece} />}
-        <ConciergeComposer value={query} placeholder={plan ? "change anything, or ask for a new look..." : undefined} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />
+        <ConciergeComposer value={query} placeholder={plan ? "change anything, or start fresh" : undefined} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />
       </div>
     </div>
   );
