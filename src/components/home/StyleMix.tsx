@@ -14,8 +14,8 @@ export default function StyleMix({ ctaHref = "/analyzer" }: { ctaHref?: string }
       <div className="mms-mix__copy">
         <h2 className="mms-h2" id="mix-title">Your style is rarely just one thing</h2>
         <p className="mms-body">
-          Upload a few looks and we'll show you your mix, like {a.name} with a streak of {b.name}. Your profile keeps
-          the pieces and colors that define each side, so new finds match how you actually dress.
+          Upload a look and we'll show you its mix, like {a.name} with a streak of {b.name}. Most people lean toward
+          more than one aesthetic.
         </p>
         <Link className="mms-btn mms-btn--ghost" to={ctaHref}>
           Find your mix
@@ -23,7 +23,7 @@ export default function StyleMix({ ctaHref = "/analyzer" }: { ctaHref?: string }
       </div>
 
       <div className="mms-mix__card">
-        <span className="mms-mix__label">Example profile</span>
+        <span className="mms-mix__label">Example result</span>
         {pair.map((x, i) => (
           <div key={x.slug} className="mms-mix__row">
             {i > 0 && <span className="mms-mix__plus" aria-hidden="true">+</span>}
