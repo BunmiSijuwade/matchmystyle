@@ -28,7 +28,7 @@ Refinement mode (when a previous plan and an instruction are given):
 - If the instruction sets a budget (e.g. "under $100"), set maxPrice to that number. If the previous plan had a maxPrice, keep it unless the instruction changes it. Otherwise omit maxPrice.
 - A budget alone does not require changing any piece queries.
 - Write a fresh note about the change, same lowercase playful voice, no em dashes.
-- If the shopper gives a budget for the whole look, set maxPrice to that budget divided by the number of pieces, rounded, and mention the per-piece amount in the note.
+- If the shopper gives a budget for the whole look (e.g. "under $250" answering a whole-look budget question, or "$300 total"), set budget to the full number, do not divide it, omit maxPrice, and mention the total budget in the note (never a per-piece amount). Per-piece limits like "under $100" chips stay maxPrice. If the previous plan had a budget, keep it unless the instruction changes it.
 - If the instruction names one of the aesthetics, re-plan the same occasion in that aesthetic.
 - Clear, actionable instructions ("under $100", "make the shoes flats", "more color") get an updated plan.
 - Vague instructions or ones missing key info get a clarifying question instead: set ask (one short lowercase question) and options (2 to 5 short lowercase answer chips), and copy the previous pieces unchanged. Examples:
@@ -50,10 +50,11 @@ serve(async (req) => {
     const prevPieces = Array.isArray(previous?.pieces)
       ? previous.pieces.slice(0, 4).map((p: any) => ({ label: clean(p?.label, 40), query: clean(p?.query, 60) })).filter((p: any) => p.label && p.query)
       : [];
+    const prevBudget = typeof previous?.budget === "number" && previous.budget > 0 ? previous.budget : undefined;
     const prevMax = typeof previous?.maxPrice === "number" && previous.maxPrice > 0 ? previous.maxPrice : undefined;
     const isRefine = Boolean(refineText && prevPieces.length);
     const userContent = isRefine
-      ? `Original request: ${text}\nPrevious plan: ${JSON.stringify({ aesthetic: previous?.aesthetic ?? null, maxPrice: prevMax ?? null, pieces: prevPieces })}\n${answered ? "This is the shopper's answer to your question. " : ""}Instruction: ${refineText}${sz ? `\nShopper size: ${sz}` : ""}`
+      ? `Original request: ${text}\nPrevious plan: ${JSON.stringify({ aesthetic: previous?.aesthetic ?? null, maxPrice: prevMax ?? null, budget: prevBudget ?? null, pieces: prevPieces })}\n${answered ? "This is the shopper's answer to your question. " : ""}Instruction: ${refineText}${sz ? `\nShopper size: ${sz}` : ""}`
       : `Request: ${text}${sz ? `\nShopper size: ${sz}` : ""}`;
 
     const started = Date.now();
@@ -79,7 +80,8 @@ serve(async (req) => {
                 aesthetic: { type: "string", enum: AESTHETIC_NAMES },
                 ask: { type: "string", description: "Optional clarifying question, refinement mode only." },
                 options: { type: "array", items: { type: "string" }, description: "2 to 5 answer chips for ask." },
-                maxPrice: { type: "number", description: "Budget ceiling in dollars, only when the shopper set one." },
+                maxPrice: { type: "number", description: "Per-piece price ceiling in dollars, only when the shopper set one." },
+                budget: { type: "number", description: "Whole-look budget in dollars (full amount), only when the shopper set one for the whole outfit." },
                 pieces: {
                   type: "array",
                   items: {
@@ -121,14 +123,17 @@ serve(async (req) => {
     const ask = isRefine && !answered ? clean(parsed.ask, 120).toLowerCase() : "";
     const options = Array.isArray(parsed.options) ? parsed.options.map((o: unknown) => clean(o, 40).toLowerCase()).filter(Boolean).slice(0, 5) : [];
     if (ask && options.length >= 2) {
-      return json({ ask, options, note: "", aesthetic: previous?.aesthetic ?? null, pieces: prevPieces, ...(prevMax ? { maxPrice: prevMax } : {}) });
+      return json({ ask, options, note: "", aesthetic: previous?.aesthetic ?? null, pieces: prevPieces, ...(prevMax ? { maxPrice: prevMax } : {}), ...(prevBudget ? { budget: prevBudget } : {}) });
     }
     const aesthetic = AESTHETIC_NAMES.includes(parsed.aesthetic) ? parsed.aesthetic : null;
     const note = clean(parsed.note, 200).toLowerCase() || "here's how i'd put it together.";
     console.log(`concierge-plan ${Date.now() - started}ms`, pieces.length, "pieces");
     let maxPrice: number | undefined = typeof parsed.maxPrice === "number" && parsed.maxPrice > 0 ? Math.round(parsed.maxPrice) : undefined;
-    if (isRefine && maxPrice === undefined) maxPrice = prevMax;
-    return json({ note, aesthetic, pieces, ...(maxPrice ? { maxPrice } : {}) });
+    let budget: number | undefined = typeof parsed.budget === "number" && parsed.budget > 0 ? Math.round(parsed.budget) : undefined;
+    if (isRefine && budget === undefined) budget = prevBudget;
+    if (isRefine && maxPrice === undefined && !(typeof parsed.budget === "number")) maxPrice = prevMax;
+    if (budget && maxPrice && maxPrice >= budget) maxPrice = undefined; // model copied the total into maxPrice
+    return json({ note, aesthetic, pieces, ...(maxPrice ? { maxPrice } : {}), ...(budget ? { budget } : {}) });
   } catch (e) {
     console.error("concierge-plan error", e);
     return json({ error: "server_error", message: "An unexpected error occurred." }, 500);
