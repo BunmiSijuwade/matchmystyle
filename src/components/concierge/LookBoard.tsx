@@ -60,7 +60,7 @@ const Header = ({ slots }: { slots: LookSlot[] }) => (
 
 /** Desktop sticky sidebar. */
 export const LookSidebar = ({ slots, maxPrice, onRemove }: BoardProps) => (
-  <aside aria-label="the look" className="sticky top-[88px] hidden w-[300px] self-start lg:block">
+  <aside aria-label="the look" className="sticky top-[88px] hidden max-h-[calc(100vh-104px)] w-[300px] shrink-0 self-start overflow-y-auto px-2 pb-6 lg:block">
     <Header slots={slots} />
     <div className="look-stack">
       {slots.map((s, i) => <Polaroid key={s.label} slot={s} index={i} maxPrice={maxPrice} onRemove={() => onRemove(s.label)} />)}
