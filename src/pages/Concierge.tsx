@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import ConciergeHeader from "@/components/concierge/ConciergeHeader";
+import Navbar from "@/components/Navbar";
+import type { AestheticInfo } from "@/data/aesthetics";
 import ConciergeStart, { CHOICES, FOLLOW_UPS, type ChoiceId } from "@/components/concierge/ConciergeStart";
 import ConciergeComposer from "@/components/concierge/ConciergeComposer";
 import EditorialProductCard, { type CatalogProduct } from "@/components/concierge/EditorialProductCard";
@@ -18,6 +19,7 @@ const Bubble = ({ from, children }: { from: "me" | "you"; children: React.ReactN
 
 const Concierge = () => {
   const [query, setQuery] = useState("");
+  const [aesthetic, setAesthetic] = useState<string | null>(null);
   const [choice, setChoice] = useState<ChoiceId | null>(null);
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
@@ -51,22 +53,30 @@ const Concierge = () => {
   const send = (text: string) => {
     const q = text.trim();
     if (q.length < 2 || status === "loading") return;
+    setAesthetic(null);
     setQuery("");
     runSearch(q);
+  };
+
+  const startAesthetic = (a: AestheticInfo) => {
+    if (status === "loading") return;
+    setAesthetic(a.name);
+    const pieces = a.signaturePieces.split(",").slice(0, 2).map((p) => p.trim().toLowerCase());
+    runSearch(`women's ${pieces.join(" ")}`);
   };
 
   const handleSubmit = (e: FormEvent) => { e.preventDefault(); send(query); };
 
   const chosen = CHOICES.find((c) => c.id === choice);
   const followUp = choice ? FOLLOW_UPS[choice] : null;
-  const started = choice || submitted;
+  const started = choice || submitted || aesthetic;
 
   return (
     <div className="theme-concierge flex min-h-screen flex-col">
-      <ConciergeHeader fittingRoomCount={0} />
+      <Navbar />
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-10 pt-10 sm:px-6 sm:pt-14">
-        {!started && <ConciergeStart onChoose={setChoice} />}
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-10 pt-[104px] sm:px-6 sm:pt-[120px]">
+        {!started && <ConciergeStart onChoose={setChoice} onAesthetic={startAesthetic} />}
 
         {started && (
           <section aria-label="conversation" className="mx-auto max-w-2xl space-y-3">
@@ -81,13 +91,15 @@ const Concierge = () => {
                 ))}
               </div>
             )}
-            {submitted && <Bubble from="you">{submitted}</Bubble>}
+            {aesthetic && <Bubble from="you">{aesthetic}</Bubble>}
+            {aesthetic && <Bubble from="me">love it. pulling a {aesthetic} rail.</Bubble>}
+            {submitted && !aesthetic && <Bubble from="you">{submitted}</Bubble>}
             {submitted && status !== "error" && (
               <Bubble from="me">{status === "loading" ? "pulling a rail..." : products.length ? `here's a first rail: ${products.length} pieces.` : "hmm, nothing came back for that."}</Bubble>
             )}
             <button
               type="button"
-              onClick={() => { setChoice(null); setSubmitted(null); setStatus("idle"); setProducts([]); }}
+              onClick={() => { setChoice(null); setAesthetic(null); setSubmitted(null); setStatus("idle"); setProducts([]); }}
               className="mono-soft min-h-[44px] text-sm underline underline-offset-4"
             >
               start over

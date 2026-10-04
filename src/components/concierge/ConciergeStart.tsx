@@ -1,4 +1,5 @@
 import { ArrowRight } from "lucide-react";
+import { AESTHETICS, type AestheticInfo } from "@/data/aesthetics";
 
 export type ChoiceId = "occasion" | "piece" | "inspire";
 
@@ -23,11 +24,9 @@ export const FOLLOW_UPS: Record<ChoiceId, { question: string; examples: string[]
   },
 };
 
-const WORLDS = ["sculptural", "vintage designer", "bold color", "tailored", "street", "experimental"];
-
-const ConciergeStart = ({ onChoose }: { onChoose: (id: ChoiceId) => void }) => (
+const ConciergeStart = ({ onChoose, onAesthetic }: { onChoose: (id: ChoiceId) => void; onAesthetic: (a: AestheticInfo) => void }) => (
   <div>
-    <h1 className="mono-display text-[2.6rem] leading-[1.02] sm:text-6xl">hi! what are we dressing for?</h1>
+    <h1 className="mono-display text-[2.6rem] leading-[1.02] sm:text-6xl">hi! what are we <em className="italic">dressing for?</em></h1>
     <p className="mono-soft mt-4 text-base">pick one, or just tell me. i'll pull a rail.</p>
 
     <div className="mt-8 grid gap-3 md:grid-cols-3 md:gap-5">
@@ -52,12 +51,14 @@ const ConciergeStart = ({ onChoose }: { onChoose: (id: ChoiceId) => void }) => (
       <span className="mono-ink-bg mono-pill px-2.5 py-0.5 text-xs font-semibold">soon</span>
     </div>
 
-    <p className="mt-8 text-sm font-medium">or wander into a world →</p>
-    <ul className="mt-3 flex flex-wrap gap-2" aria-label="style worlds, coming soon">
-      {WORLDS.map((w) => (
-        <li key={w} className="mono-outline mono-pill flex min-h-[44px] items-center px-4 text-sm">{w}</li>
+    <p className="mt-8 text-sm font-medium">or wander into an aesthetic →</p>
+    <div className="mt-3 flex flex-wrap gap-2">
+      {AESTHETICS.map((a) => (
+        <button key={a.slug} type="button" onClick={() => onAesthetic(a)} className="mono-outline mono-pill mono-press flex min-h-[44px] items-center px-4 text-sm">
+          {a.name}
+        </button>
       ))}
-    </ul>
+    </div>
   </div>
 );
 
