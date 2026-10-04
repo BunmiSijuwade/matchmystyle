@@ -502,11 +502,11 @@ const Concierge = () => {
           )}
         </section>
         </div>
-        {slots && <LookSidebar slots={slots} budget={plan?.budget} caps={plan ? pieceCaps(plan) : {}} onRemove={removeFromLook} onSwap={swapPiece} />}
+        {slots && <LookSidebar slots={slots} budget={plan?.budget} caps={plan ? pieceCaps(plan) : {}} onRemove={removeFromLook} onSwap={swapPiece} aesthetic={plan?.aesthetic} request={history[0] ?? null} />}
       </main>
 
       <div className="sticky bottom-0 z-20">
-        {slots && <LookBar slots={slots} budget={plan?.budget} caps={plan ? pieceCaps(plan) : {}} onRemove={removeFromLook} onSwap={swapPiece} />}
+        {slots && <LookBar slots={slots} budget={plan?.budget} caps={plan ? pieceCaps(plan) : {}} onRemove={removeFromLook} onSwap={swapPiece} aesthetic={plan?.aesthetic} request={history[0] ?? null} />}
         <ConciergeComposer value={query} placeholder={plan ? "change anything, or start fresh" : undefined} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />
       </div>
     </div>
