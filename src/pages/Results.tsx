@@ -8,6 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import AestheticBlock from "@/components/results/AestheticBlock";
+import ShopAesthetic from "@/components/results/ShopAesthetic";
 import { useAnalysis, type DetectedItem, type ProductMatch, type AestheticResult } from "@/contexts/AnalysisContext";
 import { getSizeRecommendation, type UserMeasurements, type SizeRecommendation } from "@/services/sizingService";
 
@@ -559,6 +560,8 @@ const Results = () => {
               ))}
             </Accordion>
           </div>
+
+          {aesthetics.length > 0 && <ShopAesthetic aesthetics={aesthetics} />}
         </div>
       </div>
     </div>
