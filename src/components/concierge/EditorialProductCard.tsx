@@ -21,9 +21,11 @@ const formatPrice = ({ amount, currency }: { amount: number; currency: string })
 interface EditorialProductCardProps {
   product: CatalogProduct;
   index?: number;
+  inLook?: boolean;
+  onAdd?: () => void;
 }
 
-const EditorialProductCard = ({ product }: EditorialProductCardProps) => {
+const EditorialProductCard = ({ product, inLook, onAdd }: EditorialProductCardProps) => {
   const body = (
     <>
       <div className="aspect-[3/4] overflow-hidden rounded-[12px] border border-border bg-muted">
@@ -58,6 +60,13 @@ const EditorialProductCard = ({ product }: EditorialProductCardProps) => {
           {body}
         </a>
       ) : body}
+      {onAdd && (
+        inLook ? (
+          <span className="mono-ink-bg mono-pill mt-3 inline-flex min-h-[44px] items-center px-4 text-sm">in your look</span>
+        ) : (
+          <button type="button" onClick={onAdd} className="mono-outline mono-pill mono-press mt-3 min-h-[44px] px-4 text-sm">add to look</button>
+        )
+      )}
     </article>
   );
 };
