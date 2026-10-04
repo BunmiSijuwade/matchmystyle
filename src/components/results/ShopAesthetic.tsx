@@ -232,7 +232,7 @@ export default function ShopAesthetic({ aesthetics }: { aesthetics: AestheticRes
               )}
               <p className="mt-1 text-sm leading-snug line-clamp-2">{p.title}</p>
               <p className="mt-1 text-sm font-medium">{formatPrice(p.price)}</p>
-              <p className="mt-1 text-[11px]" style={{ color: MUTED }}>{p.piece}</p>
+              <p className="mt-1 text-[11px]" style={{ color: MUTED }}>{p.piece.charAt(0).toUpperCase() + p.piece.slice(1)}</p>
             </a>
           ))}
         </div>
