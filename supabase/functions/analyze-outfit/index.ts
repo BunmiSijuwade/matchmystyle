@@ -7,42 +7,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const productShape = {
-  type: "object",
-  properties: {
-    name:        { type: "string", description: "Product description e.g. Oversized Linen Blazer" },
-    brand:       { type: "string", description: "Realistic brand name e.g. H&M" },
-    price:       { type: "string", description: "Estimated price e.g. $34.99" },
-    retailer:    { type: "string", description: "Retailer name e.g. H&M" },
-    searchQuery: { type: "string", description: "Plain-text search phrase e.g. oversized linen blazer women" },
-    sizeNote:    { type: "string", description: "Sizing advice for this user e.g. Order size M or Runs small - try L" },
-  },
-  required: ["name", "brand", "price", "retailer", "searchQuery"],
-};
-
 function sanitizeText(text: string): string {
   if (!text) return text;
   return text.replace(/[^\x20-\x7E]/g, "").replace(/\s+/g, " ").trim();
-}
-
-function mapMatches(arr: any[], itemIndex: number, prefix: string) {
-  return (arr ?? []).map((match: any, mIndex: number) => ({
-    id: `${itemIndex + 1}-${prefix}-${mIndex}`,
-    name: sanitizeText(match.name),
-    brand: sanitizeText(match.brand),
-    price: match.price,
-    retailer: sanitizeText(match.retailer),
-    searchQuery: sanitizeText(
-      [match.brand, match.name]
-        .filter(Boolean)
-        .join(" ")
-        .replace(/\+/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-    ),
-    available: true,
-    ...(match.sizeNote ? { sizeNote: match.sizeNote } : {}),
-  }));
 }
 
 function sanitizeAesthetics(raw: any): { name: string; role: "primary" | "secondary"; weight: number; evidence: string[] }[] {
@@ -118,12 +85,7 @@ serve(async (req) => {
       );
     }
 
-    let systemPrompt = `You are a fashion expert AI. Analyze the clothing in the image and identify every visible clothing item or accessory. For each item return: category, description, color, style, estimatedPrice, searchKeywords. Then generate 4 groups of shopping suggestions:
-- bestMatch: the single most visually similar product to the detected item (any price tier, most important field)
-- budget: exactly 2 products realistically priced under $50 (e.g. SHEIN, H&M, ASOS own-brand, Boohoo, Missguided)
-- midRange: exactly 2 products realistically priced $50–$150 (e.g. Zara, Mango, & Other Stories, Topshop, ASOS Premium)
-- luxury: exactly 2 products realistically priced over $150 (e.g. Theory, Toteme, Reformation, Sandro, IRO)
-Use realistic brand names that actually sell in each price range. Use the suggest_outfit_items tool to return structured output.
+    let systemPrompt = `You are a fashion expert AI. Analyze the clothing in the image and identify every visible clothing item or accessory. For each item return: category, description, color, style, estimatedPrice, searchKeywords. Do NOT suggest products, brands, retailers, prices of specific products or URLs; real products are sourced separately. Use the suggest_outfit_items tool to return structured output.
 All output must be in English only. Do not use Chinese, Japanese, Korean, or any non-Latin characters in any field.
 Keep all field values short and concise. Do not repeat instructions or field names in values.`;
 
@@ -144,7 +106,7 @@ Keep all field values short and concise. Do not repeat instructions or field nam
           systemPrompt += `\nPreferred currency: ${profile.currency}.`;
           systemPrompt += `\nUse ${profile.currency} for all prices.`;
         }
-        systemPrompt += `\nFor each product, include a "sizeNote" with sizing advice (e.g. "Order size M", "Runs small - try L").`;
+        systemPrompt += `\nFor each item, include a short "sizeNote" with sizing advice for this user (e.g. "Order size M", "Size up for an oversized fit").`;
       }
     }
 
@@ -181,7 +143,7 @@ Keep all field values short and concise. Do not repeat instructions or field nam
             type: "function",
             function: {
               name: "suggest_outfit_items",
-              description: "Return a structured list of detected clothing items with tiered product suggestions.",
+              description: "Return a structured list of detected clothing items .",
               parameters: {
                 type: "object",
                 properties: {
@@ -196,33 +158,9 @@ Keep all field values short and concise. Do not repeat instructions or field nam
                         style:         { type: "string", description: "Style occasion e.g. Smart casual, Streetwear" },
                         estimatedPrice:{ type: "string", description: "Estimated retail price range e.g. $80–$200" },
                         searchKeywords:{ type: "string", description: "Comma-separated keywords e.g. oversized camel blazer women" },
-                        bestMatch: {
-                          ...productShape,
-                          description: "Single most visually similar product, any price tier",
-                        },
-                        budget: {
-                          type: "array",
-                          description: "2 products priced under $50",
-                          items: productShape,
-                          minItems: 2,
-                          maxItems: 2,
-                        },
-                        midRange: {
-                          type: "array",
-                          description: "2 products priced $50–$150",
-                          items: productShape,
-                          minItems: 2,
-                          maxItems: 2,
-                        },
-                        luxury: {
-                          type: "array",
-                          description: "2 products priced over $150",
-                          items: productShape,
-                          minItems: 2,
-                          maxItems: 2,
-                        },
+                        sizeNote:      { type: "string", description: "Optional sizing advice for this user e.g. Order size M" },
                       },
-                      required: ["category", "description", "color", "style", "estimatedPrice", "searchKeywords", "bestMatch", "budget", "midRange", "luxury"],
+                      required: ["category", "description", "color", "style", "estimatedPrice", "searchKeywords"],
                     },
                   },
                   aesthetics: {
@@ -302,12 +240,7 @@ Keep all field values short and concise. Do not repeat instructions or field nam
         style: sanitizeText(item.style),
         estimatedPrice: item.estimatedPrice,
         searchQuery: sanitizeText(rawQuery),
-        bestMatch: item.bestMatch
-          ? mapMatches([item.bestMatch], index, "best")[0]
-          : null,
-        budget:   mapMatches(item.budget,   index, "budget"),
-        midRange: mapMatches(item.midRange,  index, "mid"),
-        luxury:   mapMatches(item.luxury,    index, "luxury"),
+        ...(item.sizeNote ? { sizeNote: sanitizeText(item.sizeNote) } : {}),
       };
     });
 
