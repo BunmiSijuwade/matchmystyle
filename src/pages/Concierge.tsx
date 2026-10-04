@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Navbar from "@/components/Navbar";
@@ -7,6 +7,7 @@ import { readProfileSize, searchCatalog, readCache, writeCache, majorAmount, typ
 import ConciergeStart, { CHOICES, FOLLOW_UPS, type ChoiceId } from "@/components/concierge/ConciergeStart";
 import ConciergeComposer from "@/components/concierge/ConciergeComposer";
 import EditorialProductCard, { type CatalogProduct } from "@/components/concierge/EditorialProductCard";
+import { LookSidebar, LookBar, type LookSlot } from "@/components/concierge/LookBoard";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SearchMeta { tool: string; durationMs: number; count?: number }
@@ -30,7 +31,25 @@ const REFINEMENTS = ["under $100", "more color", "dressier", "more relaxed", "di
 const FOLLOW_UP_Q = "how's that? i can tweak it.";
 interface Turn { from: "me" | "you"; text: string }
 type RawMap = Record<string, ShopProduct[]>;
-interface CachedRail { plan: Plan; raw: RawMap; changed: string[] }
+interface CachedRail { plan: Plan; raw: RawMap; changed: string[]; look?: Record<string, CatalogProduct | null> }
+type Look = Record<string, CatalogProduct | null>;
+const SESSION_KEY = "mms_concierge_session";
+interface Session { turns: Turn[]; plan: Plan | null; raw: RawMap; groups: RailGroup[]; history: string[]; chips: string[] | null; asked: string | null; look: Look | null }
+const readSession = (): Session | null => {
+  try { const r = localStorage.getItem(SESSION_KEY); return r ? (JSON.parse(r) as Session) : null; } catch { return null; }
+};
+
+/** Keep each slot's product if it's still in that piece's group, otherwise take the group's first. */
+function reconcileLook(plan: Plan, groups: RailGroup[], prev: Look | null): Look {
+  const out: Look = {};
+  for (const pc of plan.pieces) {
+    const g = groups.find((x) => x.label === pc.label);
+    if (!g) { out[pc.label] = null; continue; }
+    const keep = prev?.[pc.label] && g.products.find((p) => p.productId === prev[pc.label]!.productId);
+    out[pc.label] = keep ?? g.products[0];
+  }
+  return out;
+}
 
 const sizeSuffix = (size: string | null) => (size ? ` size ${size}` : "");
 
@@ -53,21 +72,31 @@ function buildGroups(plan: Plan, raw: RawMap): RailGroup[] {
 }
 
 const Concierge = () => {
+  const [initial] = useState(readSession);
   const [query, setQuery] = useState("");
   const [choice, setChoice] = useState<ChoiceId | null>(null);
-  const [turns, setTurns] = useState<Turn[]>([]);
+  const [turns, setTurns] = useState<Turn[]>(initial?.turns ?? []);
   const [pending, setPending] = useState<string | null>(null);
   const [lastSearch, setLastSearch] = useState<string | null>(null);
-  const [status, setStatus] = useState<Status>("idle");
+  const [status, setStatus] = useState<Status>(initial?.groups?.length ? "done" : "idle");
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState<SearchMeta | null>(null);
-  const [plan, setPlan] = useState<Plan | null>(null);
-  const [raw, setRaw] = useState<RawMap>({});
-  const [groups, setGroups] = useState<RailGroup[]>([]);
-  const [history, setHistory] = useState<string[]>([]); // [request, ...refinements]
-  const [chips, setChips] = useState<string[] | null>(null);
-  const [asked, setAsked] = useState<string | null>(null);
+  const [plan, setPlan] = useState<Plan | null>(initial?.plan ?? null);
+  const [raw, setRaw] = useState<RawMap>(initial?.raw ?? {});
+  const [groups, setGroups] = useState<RailGroup[]>(initial?.groups ?? []);
+  const [history, setHistory] = useState<string[]>(initial?.history ?? []); // [request, ...refinements]
+  const [chips, setChips] = useState<string[] | null>(initial?.chips ?? null);
+  const [asked, setAsked] = useState<string | null>(initial?.asked ?? null);
+  const [look, setLook] = useState<Look | null>(initial?.look ?? null);
+
+  useEffect(() => {
+    if (!plan && !turns.length) { try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ } return; }
+    if (status === "loading") return;
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ turns, plan, raw, groups, history, chips, asked, look } satisfies Session));
+    } catch { /* storage full */ }
+  }, [turns, plan, raw, groups, history, chips, asked, look, status]);
 
   const say = (...t: Turn[]) => setTurns((prev) => [...prev, ...t]);
   const cacheKeyFor = (h: string[], size: string | null) => `mms_concierge_plan:${h.join(" >> ").toLowerCase()}|${size ?? ""}`;
@@ -105,6 +134,7 @@ const Concierge = () => {
     const built = buildGroups(next, map);
     if (import.meta.env.DEV) console.info("[concierge] rail", built.map((g) => `${g.label}: ${g.products.map((p) => p.price ? majorAmount(p.price) : "?").join(",")}`));
     setPlan(next); setRaw(map); setGroups(built); setProducts([]); setStatus("done");
+    setLook((prev) => reconcileLook(next, built, prev));
     return built;
   };
 
@@ -125,7 +155,7 @@ const Concierge = () => {
 
   const runPlan = async (text: string) => {
     say({ from: "you", text });
-    setPlan(null); setGroups([]); setProducts([]); setError(null); setStatus("loading");
+    setPlan(null); setGroups([]); setLook(null); setProducts([]); setError(null); setStatus("loading");
     const size = readProfileSize();
     const h = [text];
     setHistory(h);
@@ -194,6 +224,7 @@ const Concierge = () => {
 
   const runSearch = async (q: string) => {
     setLastSearch(q);
+    setLook(null);
     setPlan(null);
     setGroups([]);
     setStatus("loading");
@@ -234,7 +265,7 @@ const Concierge = () => {
 
   const startOver = () => {
     setChoice(null); setTurns([]); setPending(null); setLastSearch(null); setStatus("idle");
-    setProducts([]); setPlan(null); setRaw({}); setGroups([]); setHistory([]); setChips(null); setAsked(null);
+    setProducts([]); setPlan(null); setRaw({}); setGroups([]); setHistory([]); setChips(null); setAsked(null); setLook(null);
   };
 
   const handleSubmit = (e: FormEvent) => { e.preventDefault(); send(query); };
@@ -275,7 +306,7 @@ const Concierge = () => {
                     </button>
                   ))}
                 </div>
-                <button type="button" onClick={() => { setPlan(null); setHistory([]); setChips(null); setAsked(null); }} className="mono-soft min-h-[44px] text-sm underline underline-offset-4">
+                <button type="button" onClick={() => { setPlan(null); setHistory([]); setChips(null); setAsked(null); setLook(null); }} className="mono-soft min-h-[44px] text-sm underline underline-offset-4">
                   new request
                 </button>
               </div>
