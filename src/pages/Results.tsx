@@ -372,7 +372,7 @@ const Results = () => {
           </button>
 
           {/* Image preview */}
-          {imageUrl && aesthetics.length === 0 && (
+          {imageUrl && (
             <div className="bg-card border border-border rounded-2xl overflow-hidden">
               <img src={imageUrl} alt="Analyzed outfit" className="w-full object-cover max-h-[250px] sm:max-h-[300px]" />
             </div>
@@ -401,7 +401,7 @@ const Results = () => {
             </div>
           )}
 
-          <AestheticBlock aesthetics={aesthetics} summary={aestheticSummary} userImage={imageUrl} />
+          <AestheticBlock aesthetics={aesthetics} summary={aestheticSummary} />
 
           {/* Results header + toggle */}
           <div id="detected-items" className="scroll-mt-24 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
