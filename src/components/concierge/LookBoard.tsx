@@ -18,7 +18,7 @@ export const lookTotal = (slots: LookSlot[]) => {
   return { count: slots.filter((s) => s.product).length, total: usd(minor, filled[0]?.product?.price?.currency ?? "USD") };
 };
 
-const Polaroid = ({ slot, index, maxPrice, onRemove, compact }: { slot: LookSlot; index: number; maxPrice?: number; onRemove: () => void; compact?: boolean }) => {
+const Polaroid = ({ slot, index, maxPrice, onRemove, onSwap, compact }: { slot: LookSlot; index: number; maxPrice?: number; onRemove: () => void; onSwap: () => void; compact?: boolean }) => {
   const tilt = TILTS[index % TILTS.length];
   if (!slot.product) {
     return (
@@ -27,6 +27,7 @@ const Polaroid = ({ slot, index, maxPrice, onRemove, compact }: { slot: LookSlot
           <span className="mono-soft text-xs">{maxPrice ? `nothing under $${maxPrice} yet` : "empty for now"}</span>
         </div>
         <p className="look-polaroid__label">{slot.label}</p>
+        <button type="button" onClick={onSwap} aria-label={`swap ${slot.label}`} className="mono-soft mx-auto block min-h-[44px] px-2 text-xs underline underline-offset-4">swap</button>
       </div>
     );
   }
@@ -42,27 +43,35 @@ const Polaroid = ({ slot, index, maxPrice, onRemove, compact }: { slot: LookSlot
         <p className="look-polaroid__label">{slot.label}</p>
         {p.price && <p className="look-polaroid__price">{usd(p.price.amount, p.price.currency)}</p>}
       </figcaption>
-      <button type="button" onClick={onRemove} className="mono-soft mx-auto block min-h-[44px] px-3 text-xs underline underline-offset-4">
-        remove
-      </button>
+      <div className="flex justify-center gap-1">
+        <button type="button" onClick={onSwap} aria-label={`swap ${slot.label}`} className="mono-soft min-h-[44px] px-2 text-xs underline underline-offset-4">swap</button>
+        <button type="button" onClick={onRemove} aria-label={`remove ${slot.label}`} className="mono-soft min-h-[44px] px-2 text-xs underline underline-offset-4">remove</button>
+      </div>
     </figure>
   );
 };
 
-interface BoardProps { slots: LookSlot[]; budget?: number; caps: Record<string, number | undefined>; onRemove: (label: string) => void }
+interface BoardProps { slots: LookSlot[]; budget?: number; caps: Record<string, number | undefined>; onRemove: (label: string) => void; onSwap: (label: string) => void }
 
-const TotalLine = ({ slots, budget }: { slots: LookSlot[]; budget?: number }) => (
-  <p className="text-sm">total {lookTotal(slots).total}{budget ? <span className="mono-soft"> of ${budget}</span> : null}</p>
-);
+const TotalLine = ({ slots, budget }: { slots: LookSlot[]; budget?: number }) => {
+  const sum = slots.reduce((t, s) => t + (s.product?.price ? s.product.price.amount / 100 : 0), 0);
+  const over = budget ? Math.ceil(sum - budget) : 0;
+  return (
+    <>
+      <p className="text-sm">total {lookTotal(slots).total}{budget ? <span className="mono-soft"> of ${budget}</span> : null}</p>
+      {over > 0 && <p className="mono-soft text-xs">over budget by ${over}</p>}
+    </>
+  );
+};
 
 /** Desktop sticky sidebar: compact 2x2 grid so the whole look is visible without scrolling. */
-export const LookSidebar = ({ slots, budget, caps, onRemove }: BoardProps) => (
+export const LookSidebar = ({ slots, budget, caps, onRemove, onSwap }: BoardProps) => (
   <aside aria-label="the look" className="sticky top-[88px] hidden w-[300px] shrink-0 self-start px-2 pb-6 lg:block">
     <h2 className="mono-display mb-4 text-[28px] leading-tight">the look</h2>
     <div className="grid grid-cols-2 gap-4">
       {slots.map((s, i) => (
         <div key={s.label} className={slots.length % 2 === 1 && i === slots.length - 1 ? "col-span-2 mx-auto w-[calc(50%-8px)]" : ""}>
-          <Polaroid compact slot={s} index={i} maxPrice={caps[s.label]} onRemove={() => onRemove(s.label)} />
+          <Polaroid compact slot={s} index={i} maxPrice={caps[s.label]} onRemove={() => onRemove(s.label)} onSwap={() => onSwap(s.label)} />
         </div>
       ))}
     </div>
@@ -72,7 +81,7 @@ export const LookSidebar = ({ slots, budget, caps, onRemove }: BoardProps) => (
 );
 
 /** Mobile/tablet bar + bottom sheet. */
-export const LookBar = ({ slots, budget, caps, onRemove }: BoardProps) => {
+export const LookBar = ({ slots, budget, caps, onRemove, onSwap }: BoardProps) => {
   const [open, setOpen] = useState(false);
   const { count, total } = lookTotal(slots);
   return (
@@ -95,7 +104,7 @@ export const LookBar = ({ slots, budget, caps, onRemove }: BoardProps) => {
             </button>
           </div>
           <div className="mt-6 grid grid-cols-2 gap-5">
-            {slots.map((s, i) => <Polaroid key={s.label} slot={s} index={i} maxPrice={caps[s.label]} onRemove={() => onRemove(s.label)} />)}
+            {slots.map((s, i) => <Polaroid key={s.label} slot={s} index={i} maxPrice={caps[s.label]} onRemove={() => onRemove(s.label)} onSwap={() => { setOpen(false); setTimeout(() => onSwap(s.label), 350); }} />)}
           </div>
           <p className="mono-soft mt-6 text-xs">each piece opens at its own shop.</p>
         </SheetContent>

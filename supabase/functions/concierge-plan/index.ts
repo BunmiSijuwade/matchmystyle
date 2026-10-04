@@ -35,12 +35,13 @@ Refinement mode (when a previous plan and an instruction are given):
   - "this isn't the look" / "i don't like it" -> ask "got it. what feels off?" options ["too dressy", "too casual", "wrong colors", "not my style", "the shapes"]
   - "i have a budget" / "too expensive" with no number -> ask "what's your budget for the whole look?" options ["under $100", "under $250", "under $500", "no limit"]
   - "not my style" -> ask "which feels more like you?" options: 3 or 4 aesthetic names from the list that differ from the current aesthetic.
+- Set intent: "tweak" when changing some pieces of this look (including "different {piece}": replace just that piece with a new query for the same role); "restyle" when the shopper wants a whole new look for the same occasion ("a whole new look", "something completely different", "not this vibe at all", "show me another option"): keep the occasion and budget but return a fully new set of pieces with new labels and queries, ideally in a different aesthetic from the current one; "new" when the shopper describes a different occasion or need (e.g. "actually i need something for a beach wedding"): plan for that new need.
 - If the instruction is an answer to your previous question, never ask again: make a reasonable plan and say what you assumed in the note.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    const { request, size, previous, refine, answered } = await req.json().catch(() => ({}));
+    const { request, size, previous, refine, answered, piece } = await req.json().catch(() => ({}));
     const text = clean(request, 300);
     if (text.length < 2) return json({ error: "invalid_request", message: "Request is required." }, 400);
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -53,7 +54,10 @@ serve(async (req) => {
     const prevBudget = typeof previous?.budget === "number" && previous.budget > 0 ? previous.budget : undefined;
     const prevMax = typeof previous?.maxPrice === "number" && previous.maxPrice > 0 ? previous.maxPrice : undefined;
     const isRefine = Boolean(refineText && prevPieces.length);
-    const userContent = isRefine
+    const altPiece = piece && clean(piece.label, 40) && clean(piece.query, 60) ? { label: clean(piece.label, 40), query: clean(piece.query, 60) } : null;
+    const userContent = altPiece
+      ? `Alternatives mode. Original request: ${text}\nCurrent plan: ${JSON.stringify({ aesthetic: previous?.aesthetic ?? null, pieces: prevPieces })}\nPiece: ${JSON.stringify(altPiece)}\nReturn alternatives: exactly 3 different, specific search queries (2 to 5 words each) for this same role that still fit the occasion and aesthetic, each different from the current query and from each other. Copy the plan's pieces unchanged and set intent "tweak".${sz ? `\nShopper size: ${sz}` : ""}`
+      : isRefine
       ? `Original request: ${text}\nPrevious plan: ${JSON.stringify({ aesthetic: previous?.aesthetic ?? null, maxPrice: prevMax ?? null, budget: prevBudget ?? null, pieces: prevPieces })}\n${answered ? "This is the shopper's answer to your question. " : ""}Instruction: ${refineText}${sz ? `\nShopper size: ${sz}` : ""}`
       : `Request: ${text}${sz ? `\nShopper size: ${sz}` : ""}`;
 
@@ -81,6 +85,8 @@ serve(async (req) => {
                 ask: { type: "string", description: "Optional clarifying question, refinement mode only." },
                 options: { type: "array", items: { type: "string" }, description: "2 to 5 answer chips for ask." },
                 maxPrice: { type: "number", description: "Per-piece price ceiling in dollars, only when the shopper set one." },
+                intent: { type: "string", enum: ["tweak", "restyle", "new"], description: "Refinement mode only." },
+                alternatives: { type: "array", items: { type: "string" }, description: "Alternatives mode only: 3 search queries for the given piece." },
                 budget: { type: "number", description: "Whole-look budget in dollars (full amount), only when the shopper set one for the whole outfit." },
                 pieces: {
                   type: "array",
@@ -118,8 +124,13 @@ serve(async (req) => {
       .map((p: any) => ({ label: clean(p?.label, 40).toLowerCase(), query: clean(p?.query, 60).toLowerCase() }))
       .filter((p: { label: string; query: string }) => p.label && p.query && !seen.has(p.query) && seen.add(p.query))
       .slice(0, 4);
-    if (!pieces.length) return json({ error: "no_plan", message: "Couldn't plan that right now." }, 500);
+    if (!pieces.length && !altPiece) return json({ error: "no_plan", message: "Couldn't plan that right now." }, 500);
 
+    if (altPiece) {
+      const alts = (Array.isArray(parsed.alternatives) ? parsed.alternatives : [])
+        .map((q: unknown) => clean(q, 60).toLowerCase()).filter((q: string) => q && q !== altPiece.query.toLowerCase()).slice(0, 3);
+      return json({ alternatives: [...new Set(alts)] });
+    }
     const ask = isRefine && !answered ? clean(parsed.ask, 120).toLowerCase() : "";
     const options = Array.isArray(parsed.options) ? parsed.options.map((o: unknown) => clean(o, 40).toLowerCase()).filter(Boolean).slice(0, 5) : [];
     if (ask && options.length >= 2) {
@@ -133,7 +144,8 @@ serve(async (req) => {
     if (isRefine && budget === undefined) budget = prevBudget;
     if (isRefine && maxPrice === undefined && !(typeof parsed.budget === "number")) maxPrice = prevMax;
     if (budget && maxPrice && maxPrice >= budget) maxPrice = undefined; // model copied the total into maxPrice
-    return json({ note, aesthetic, pieces, ...(maxPrice ? { maxPrice } : {}), ...(budget ? { budget } : {}) });
+    const intent = isRefine && ["tweak", "restyle", "new"].includes(parsed.intent) ? parsed.intent : "tweak";
+    return json({ note, aesthetic, pieces, intent, ...(maxPrice ? { maxPrice } : {}), ...(budget ? { budget } : {}) });
   } catch (e) {
     console.error("concierge-plan error", e);
     return json({ error: "server_error", message: "An unexpected error occurred." }, 500);
