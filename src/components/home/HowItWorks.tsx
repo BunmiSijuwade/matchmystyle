@@ -1,7 +1,7 @@
 const steps = [
   {
     title: "Upload a look you love",
-    body: "A screenshot, a photo from your camera roll or a link from Instagram, TikTok or Pinterest.",
+    body: "A screenshot, a photo from your camera roll or a direct image link.",
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <rect className="mms-icon-fill" x="3" y="15" width="18" height="6" rx="1" />
@@ -11,7 +11,7 @@ const steps = [
   },
   {
     title: "See your aesthetic",
-    body: "We break down every piece and tell you which aesthetics you lean toward. Usually it's two or three.",
+    body: "We break down every piece and tell you which aesthetics you lean toward. Often it's a mix of two.",
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <circle className="mms-icon-fill" cx="12" cy="12" r="10" />
@@ -22,7 +22,7 @@ const steps = [
   },
   {
     title: "Find it in your size",
-    body: "Shop matching pieces new or vintage, from investment buys to budget finds, filtered to what fits you.",
+    body: "Shop real pieces at budget, mid-range and luxury prices, with sizing advice for you.",
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path className="mms-icon-fill" d="M6 6h17l-2 8H8z" />

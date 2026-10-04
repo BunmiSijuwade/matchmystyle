@@ -3,15 +3,15 @@ import { Link } from "react-router-dom";
 const points = [
   {
     title: "In your size",
-    body: "We compare brand size charts against your measurements, so results fit the way you actually measure, not just the size on the tag.",
+    body: "Add your measurements and we'll suggest what size to order for each piece.",
   },
   {
     title: "New or vintage",
-    body: "Switch between new retail and secondhand from Poshmark, Depop, ThredUp and Vestiaire Collective with one tap.",
+    body: "Shop new pieces, or search Poshmark, Depop, ThredUp and Vestiaire Collective for pre-loved versions in one tap.",
   },
   {
     title: "Any budget",
-    body: "See investment pieces next to budget finds that get the look right, so you choose where to spend.",
+    body: "See budget, mid-range and luxury options side by side, so you choose where to spend.",
   },
 ];
 
