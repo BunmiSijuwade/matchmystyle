@@ -24,8 +24,9 @@ export function aestheticPromptBlock(): string {
 ${list}
 
 Rules:
-- Return one primary aesthetic and up to two secondary aesthetics, each with a weight. Weights add up to 100.
-- Only add a secondary if it is clearly visible in the outfit. One aesthetic at 100 is fine.
-- For each aesthetic you return, name the 1 to 3 detected items that put it there.
-- If the photo has no clear outfit, return an empty aesthetics list.`;
+- Return one primary aesthetic and at most one secondary aesthetic, each with a weight. Weights add up to 100.
+- Only add a secondary if a specific detected item clearly belongs to it, and name that item. Generic details like "structured collar" or "buttons" are not enough. If unsure, return only the primary at 100.
+- For each aesthetic, list the 1 to 3 detected items that put it there, using the item names.
+- Also write \`aestheticSummary\`: one warm, specific sentence about THIS outfit, naming its key pieces, e.g. "Your leopard coat over cobalt and red is classic Broadway Maximalist: print, color clash and a bold bag." No em dashes.
+- If the photo has no clear outfit, return an empty aesthetics list and an empty summary.`;
 }

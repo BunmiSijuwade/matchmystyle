@@ -207,10 +207,22 @@ const ProductRow = ({ match, shopMode, vintageIndex = 0, sizeRec }: { match: Pro
   );
 };
 
+const normalize = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+function aestheticTagsFor(item: DetectedItem, list: AestheticResult[]): string[] {
+  const names = [item.description, item.category].filter(Boolean).map(normalize);
+  return list
+    .filter((a) => a.evidence.some((e) => {
+      const ev = normalize(e);
+      return !!ev && names.some((n) => n === ev || n.includes(ev) || ev.includes(n));
+    }))
+    .map((a) => a.name);
+}
+
 const Results = () => {
   const navigate = useNavigate();
-  const { items, imageUrl, imagePayload, setAnalysis, aesthetics } = useAnalysis();
+  const { items, imageUrl, imagePayload, setAnalysis, aesthetics, aestheticSummary } = useAnalysis();
   const [originalAesthetics, setOriginalAesthetics] = useState(aesthetics);
+  const [originalSummary, setOriginalSummary] = useState(aestheticSummary);
   const { toast } = useToast();
   const [shopMode, setShopMode] = useState<"new" | "vintage">("new");
   const [openAccordionItem, setOpenAccordionItem] = useState<string>("");
@@ -312,9 +324,10 @@ const Results = () => {
       if (withProfile && !originalItems) {
         setOriginalItems(items);
         setOriginalAesthetics(aesthetics);
+        setOriginalSummary(aestheticSummary);
       }
 
-      setAnalysis(newItems, imageUrl, imagePayload, null, null, data.aesthetics ?? []);
+      setAnalysis(newItems, imageUrl, imagePayload, null, null, data.aesthetics ?? [], data.aestheticSummary ?? "");
       toast({
         title: withProfile ? "Matches personalized" : "Matches updated",
         description: withProfile
@@ -328,18 +341,18 @@ const Results = () => {
     } finally {
       setReanalyzing(false);
     }
-  }, [imagePayload, profileData, items, aesthetics, originalItems, imageUrl, setAnalysis, toast]);
+  }, [imagePayload, profileData, items, aesthetics, aestheticSummary, originalItems, imageUrl, setAnalysis, toast]);
 
   const handleToggleProfile = useCallback((checked: boolean) => {
     setUseProfile(checked);
     if (!checked && originalItems) {
       // Revert to cached original results without API call
-      setAnalysis(originalItems, imageUrl, imagePayload, null, null, originalAesthetics);
+      setAnalysis(originalItems, imageUrl, imagePayload, null, null, originalAesthetics, originalSummary);
       toast({ title: "Matches updated", description: "Reverted to standard sizing" });
       return;
     }
     reanalyze(checked);
-  }, [originalItems, originalAesthetics, imageUrl, imagePayload, setAnalysis, toast, reanalyze]);
+  }, [originalItems, originalAesthetics, originalSummary, imageUrl, imagePayload, setAnalysis, toast, reanalyze]);
 
   if (!items || items.length === 0) return null;
 
@@ -359,7 +372,7 @@ const Results = () => {
           </button>
 
           {/* Image preview */}
-          {imageUrl && (
+          {imageUrl && aesthetics.length === 0 && (
             <div className="bg-card border border-border rounded-2xl overflow-hidden">
               <img src={imageUrl} alt="Analyzed outfit" className="w-full object-cover max-h-[250px] sm:max-h-[300px]" />
             </div>
@@ -388,10 +401,10 @@ const Results = () => {
             </div>
           )}
 
-          <AestheticBlock aesthetics={aesthetics} />
+          <AestheticBlock aesthetics={aesthetics} summary={aestheticSummary} userImage={imageUrl} />
 
           {/* Results header + toggle */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div id="detected-items" className="scroll-mt-24 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <h3 className="text-xl sm:text-2xl font-medium tracking-[-0.3px]">
               {items.length} Item{items.length !== 1 ? "s" : ""} Detected
             </h3>
@@ -460,6 +473,11 @@ const Results = () => {
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
                             {[item.bestMatch, ...(item.budget ?? []), ...(item.midRange ?? []), ...(item.luxury ?? [])].filter(Boolean).length} matches
                           </span>
+                          {aestheticTagsFor(item, aesthetics).map((name) => (
+                            <span key={name} className="inline-flex items-center px-2 py-0.5 rounded-full text-[12px]" style={{ color: "#7A6F68", border: "1px solid #E8DFD5" }}>
+                              {name}
+                            </span>
+                          ))}
                         </div>
                         <p className="text-sm font-medium text-foreground truncate">{item.description}</p>
                       </div>
