@@ -254,7 +254,6 @@ var list_aesthetics_default = defineTool2({
 import { defineTool as defineTool3, ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@3.0.4";
 import { z as z2 } from "npm:zod@^3.25.76";
 var TTL_MS = 24 * 60 * 60 * 1e3;
-var memory = /* @__PURE__ */ new Map();
 var env2 = (n) => globalThis.Deno?.env?.get?.(n);
 function pieceCaps(plan) {
   const out = {};
@@ -273,7 +272,8 @@ async function getPlan(request, size, signal) {
       apikey: key,
       Authorization: `Bearer ${key}`,
       // MCP calls are already limited per caller IP; this lets concierge-plan skip its per-IP check.
-      ...env2("MCP_INTERNAL_KEY") ? { "x-mms-internal": env2("MCP_INTERNAL_KEY") } : {}
+      // style_me counts against concierge-plan per-IP + global caps and the global AI budget, as the caller.
+      ...env2("MCP_INTERNAL_KEY") ? { "x-mms-internal": env2("MCP_INTERNAL_KEY"), "x-mms-client-ip": currentIp() } : {}
     },
     body: JSON.stringify({ request, size }),
     signal
@@ -285,8 +285,6 @@ async function getPlan(request, size, signal) {
 }
 var card = ({ title, price, currency, merchant, url, imageUrl }) => ({ title, price, currency, merchant, url, imageUrl });
 async function readCache(key) {
-  const mem = memory.get(key);
-  if (mem && Date.now() - mem.at < TTL_MS) return mem.data;
   try {
     const since = new Date(Date.now() - TTL_MS).toISOString();
     const res = await serviceFetch(`mcp_style_cache?key=eq.${encodeURIComponent(key)}&created_at=gt.${since}&select=data`);
@@ -297,7 +295,6 @@ async function readCache(key) {
   }
 }
 async function writeCache(key, data) {
-  memory.set(key, { at: Date.now(), data });
   try {
     await serviceFetch("mcp_style_cache?on_conflict=key", {
       method: "POST",

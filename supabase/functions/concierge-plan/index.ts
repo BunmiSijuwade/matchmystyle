@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { AESTHETIC_NAMES } from "../_shared/aesthetics.ts";
-import { rateLimitResponse } from "../_shared/rateLimit.ts";
+import { INPUT_LIMITS, rateLimitResponse } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,12 +45,12 @@ serve(async (req) => {
   if (limited) return limited;
   try {
     const { request, size, previous, refine, answered, piece } = await req.json().catch(() => ({}));
-    const text = clean(request, 300);
+    const text = clean(request, INPUT_LIMITS.maxConciergeChars);
     if (text.length < 2) return json({ error: "invalid_request", message: "Request is required." }, 400);
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) return json({ error: "LOVABLE_API_KEY is not configured" }, 500);
     const sz = clean(size, 20);
-    const refineText = clean(refine, 200);
+    const refineText = clean(refine, INPUT_LIMITS.maxConciergeChars);
     const prevPieces = Array.isArray(previous?.pieces)
       ? previous.pieces.slice(0, 4).map((p: any) => ({ label: clean(p?.label, 40), query: clean(p?.query, 60) })).filter((p: any) => p.label && p.query)
       : [];
@@ -71,6 +71,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         temperature: 0.4,
+        max_tokens: INPUT_LIMITS.maxOutputTokens["concierge-plan"],
         messages: [
           { role: "system", content: SYSTEM },
           { role: "user", content: userContent },
