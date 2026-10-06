@@ -42,7 +42,7 @@ export function isInternalCall(headers: Headers): boolean {
 }
 
 /** Count one call. Returns true if allowed. Fails open (allows) if the database can't be reached. */
-export async function checkRateLimit(fn: LimitedFunction, ip: string): Promise<boolean> {
+export async function checkRateLimit(fn: LimitedFunction, ip: string, skipIp = false): Promise<boolean> {
   const cfg = RATE_LIMITS[fn];
   const url = env("SUPABASE_URL");
   const key = serviceKey();
@@ -52,7 +52,7 @@ export async function checkRateLimit(fn: LimitedFunction, ip: string): Promise<b
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        _ip_key: `${fn}:ip:${ip}`, _ip_window_s: cfg.perIp.windowS, _ip_limit: cfg.perIp.limit,
+        _ip_key: `${fn}:ip:${ip}`, _ip_window_s: cfg.perIp.windowS, _ip_limit: skipIp ? 2147483647 : cfg.perIp.limit,
         _global_key: `${fn}:global`, _global_window_s: cfg.global.windowS, _global_limit: cfg.global.limit,
       }),
     });
@@ -68,8 +68,8 @@ export async function checkRateLimit(fn: LimitedFunction, ip: string): Promise<b
 
 /** For HTTP functions: returns a 429 Response when limited, otherwise null. Internal MCP calls skip per-IP. */
 export async function rateLimitResponse(fn: LimitedFunction, req: Request, headers: Record<string, string>): Promise<Response | null> {
-  const ip = isInternalCall(req.headers) ? "mcp-internal" : clientIp(req.headers);
-  const ok = await checkRateLimit(fn, ip);
+  const internal = isInternalCall(req.headers);
+  const ok = await checkRateLimit(fn, internal ? "mcp-internal" : clientIp(req.headers), internal);
   if (ok) return null;
   return new Response(JSON.stringify({ error: "rate_limited", message: RATE_LIMIT_MESSAGE }), {
     status: 429, headers: { ...headers, "Content-Type": "application/json" },
