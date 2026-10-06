@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { renderLookCard, type CardInput } from "@/lib/lookCard";
 // AI image previews are off unless VITE_STYLE_LOOK_ENABLED=true (the backend also needs STYLE_LOOK_ENABLED=true).
 const STYLE_LOOK_ENABLED = import.meta.env.VITE_STYLE_LOOK_ENABLED === "true";
+const TABS = [["card", "look card"], ["styled", "see it styled (ai)"]] as const;
 import LookStyledTab, { type StylePiece } from "./LookStyledTab"; // PROTOTYPE: ai-styled tab
 
 interface Props { open: boolean; onOpenChange: (o: boolean) => void; input: CardInput; occasion: string | null }
@@ -66,7 +67,7 @@ const LookCardDialog = ({ open, onOpenChange, input, occasion }: Props) => {
           </button>
         </div>
         <div role="tablist" aria-label="card type" className="mono-outline mono-pill flex p-1">
-          {([["card", "look card"], ...(STYLE_LOOK_ENABLED ? [["styled", "see it styled (ai)"]] : [])] as const).map(([id, label]) => (
+          {(STYLE_LOOK_ENABLED ? TABS : TABS.slice(0, 1)).map(([id, label]) => (
             <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
               className={`mono-pill min-h-[44px] flex-1 px-3 text-sm transition-colors duration-300 ${tab === id ? "mono-ink-bg" : ""}`}>
               {label}
