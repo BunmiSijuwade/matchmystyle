@@ -300,6 +300,21 @@ const Concierge = () => {
     say({ from: "me", text: data.products.length ? `here's a first rail: ${data.products.length} pieces.` : "hmm, nothing came back for that." });
   };
 
+  // ?q= link (e.g. from AI assistants): start a fresh plan from it on load, then drop it from the URL.
+  const qStarted = useRef(false);
+  useEffect(() => {
+    if (qStarted.current) return;
+    qStarted.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q")?.trim().slice(0, 300);
+    if (!q || q.length < 2) return;
+    params.delete("q");
+    const rest = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (rest ? `?${rest}` : "") + window.location.hash);
+    runPlan(q);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const send = (text: string) => {
     const q = text.trim();
     if (q.length < 2 || status === "loading") return;
