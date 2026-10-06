@@ -7,16 +7,25 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 // supabase/functions/_shared/rateLimit.ts
 var RATE_LIMITS = {
-  mcp: { perIp: { limit: 30, windowS: 3600 }, global: { limit: 500, windowS: 86400 } },
-  "style-look": { perIp: { limit: 3, windowS: 86400 }, global: { limit: 30, windowS: 86400 } },
-  "concierge-plan": { perIp: { limit: 40, windowS: 3600 }, global: { limit: 1e3, windowS: 86400 } },
-  "analyze-outfit": { perIp: { limit: 20, windowS: 3600 }, global: { limit: 500, windowS: 86400 } }
+  mcp: { ai: false, perIp: { limit: 30, windowS: 3600 }, global: { limit: 300, windowS: 86400 } },
+  "style-look": { ai: true, perIp: { limit: 3, windowS: 86400 }, global: { limit: 20, windowS: 86400 } },
+  "concierge-plan": { ai: true, perIp: { limit: 40, windowS: 3600 }, global: { limit: 400, windowS: 86400 } },
+  "analyze-outfit": { ai: true, perIp: { limit: 20, windowS: 3600 }, global: { limit: 250, windowS: 86400 } },
+  "image-proxy": { ai: false, perIp: { limit: 60, windowS: 3600 }, global: { limit: 2e4, windowS: 86400 } }
+};
+var GLOBAL_AI_CALLS_PER_DAY = 600;
+var INPUT_LIMITS = {
+  maxImageBytes: 5 * 1024 * 1024,
+  maxConciergeChars: 500,
+  maxHistoryTurns: 6,
+  maxOutputTokens: { "analyze-outfit": 4096, "concierge-plan": 1500 }
 };
 var RATE_LIMIT_MESSAGE = "too many requests, try again later";
 var env = (n) => {
   const g = globalThis;
   return g.Deno?.env?.get?.(n) ?? g.process?.env?.[n];
 };
+var aiEnabled = () => (env("AI_ENABLED") ?? "true").trim().toLowerCase() !== "false";
 function serviceKey() {
   const legacy = env("SUPABASE_SERVICE_ROLE_KEY");
   if (legacy) return legacy;
@@ -41,37 +50,40 @@ function clientIp(headers) {
   const xff = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   return headers.get("cf-connecting-ip") ?? xff ?? headers.get("x-real-ip") ?? "unknown";
 }
-async function checkRateLimit(fn, ip, skipIp = false) {
+async function checkRateLimit(fn, ip) {
   const cfg = RATE_LIMITS[fn];
-  const url = env("SUPABASE_URL");
-  const key = serviceKey();
-  if (!url || !key) {
-    console.error("rateLimit: missing config, allowing");
-    return true;
+  if (cfg.ai && !aiEnabled()) {
+    console.warn(JSON.stringify({ rateLimited: fn, scope: "ai_disabled" }));
+    return false;
   }
   try {
-    const res = await fetch(`${url}/rest/v1/rpc/hit_rate_limit`, {
+    const res = await serviceFetch("rpc/hit_rate_limit_v2", {
       method: "POST",
-      headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
       body: JSON.stringify({
         _ip_key: `${fn}:ip:${ip}`,
         _ip_window_s: cfg.perIp.windowS,
-        _ip_limit: skipIp ? 2147483647 : cfg.perIp.limit,
+        _ip_limit: cfg.perIp.limit,
         _global_key: `${fn}:global`,
         _global_window_s: cfg.global.windowS,
-        _global_limit: cfg.global.limit
+        _global_limit: cfg.global.limit,
+        _ai_key: cfg.ai ? "ai:global" : null,
+        _ai_limit: GLOBAL_AI_CALLS_PER_DAY
       })
     });
+    if (!res) {
+      console.error("rateLimit: missing config, blocking");
+      return false;
+    }
     if (!res.ok) {
-      console.error("rateLimit: rpc failed", res.status, (await res.text()).slice(0, 200));
-      return true;
+      console.error("rateLimit: rpc failed, blocking", res.status, (await res.text()).slice(0, 200));
+      return false;
     }
     const verdict = await res.json();
     if (verdict !== "ok") console.warn(JSON.stringify({ rateLimited: fn, scope: verdict }));
     return verdict === "ok";
   } catch (e) {
-    console.error("rateLimit: error, allowing", String(e));
-    return true;
+    console.error("rateLimit: error, blocking", String(e));
+    return false;
   }
 }
 
@@ -242,7 +254,6 @@ var list_aesthetics_default = defineTool2({
 import { defineTool as defineTool3, ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@3.0.4";
 import { z as z2 } from "npm:zod@^3.25.76";
 var TTL_MS = 24 * 60 * 60 * 1e3;
-var memory = /* @__PURE__ */ new Map();
 var env2 = (n) => globalThis.Deno?.env?.get?.(n);
 function pieceCaps(plan) {
   const out = {};
@@ -261,7 +272,8 @@ async function getPlan(request, size, signal) {
       apikey: key,
       Authorization: `Bearer ${key}`,
       // MCP calls are already limited per caller IP; this lets concierge-plan skip its per-IP check.
-      ...env2("MCP_INTERNAL_KEY") ? { "x-mms-internal": env2("MCP_INTERNAL_KEY") } : {}
+      // style_me counts against concierge-plan per-IP + global caps and the global AI budget, as the caller.
+      ...env2("MCP_INTERNAL_KEY") ? { "x-mms-internal": env2("MCP_INTERNAL_KEY"), "x-mms-client-ip": currentIp() } : {}
     },
     body: JSON.stringify({ request, size }),
     signal
@@ -273,8 +285,6 @@ async function getPlan(request, size, signal) {
 }
 var card = ({ title, price, currency, merchant, url, imageUrl }) => ({ title, price, currency, merchant, url, imageUrl });
 async function readCache(key) {
-  const mem = memory.get(key);
-  if (mem && Date.now() - mem.at < TTL_MS) return mem.data;
   try {
     const since = new Date(Date.now() - TTL_MS).toISOString();
     const res = await serviceFetch(`mcp_style_cache?key=eq.${encodeURIComponent(key)}&created_at=gt.${since}&select=data`);
@@ -285,7 +295,6 @@ async function readCache(key) {
   }
 }
 async function writeCache(key, data) {
-  memory.set(key, { at: Date.now(), data });
   try {
     await serviceFetch("mcp_style_cache?on_conflict=key", {
       method: "POST",

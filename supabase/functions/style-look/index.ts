@@ -1,5 +1,5 @@
 // PROTOTYPE: AI-styled preview of a Concierge look. Isolated; delete this folder + LookStyledTab to remove.
-import { rateLimitResponse } from "../_shared/rateLimit.ts";
+import { rateLimitResponse, styleLookEnabled } from "../_shared/rateLimit.ts";
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const MODEL = "google/gemini-3.1-flash-image";
@@ -24,6 +24,7 @@ async function toDataUrl(url: string): Promise<string | null> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  if (!styleLookEnabled()) return json({ error: "disabled", message: "not available yet" }, 403);
   const limited = await rateLimitResponse("style-look", req, cors);
   if (limited) return limited;
   try {

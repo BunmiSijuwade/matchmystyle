@@ -66,6 +66,19 @@ export type Database = {
         }
         Returns: string
       }
+      hit_rate_limit_v2: {
+        Args: {
+          _ai_key: string
+          _ai_limit: number
+          _global_key: string
+          _global_limit: number
+          _global_window_s: number
+          _ip_key: string
+          _ip_limit: number
+          _ip_window_s: number
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

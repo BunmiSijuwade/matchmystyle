@@ -2,13 +2,13 @@ import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { RATE_LIMIT_MESSAGE, serviceFetch } from "../../../../supabase/functions/_shared/rateLimit";
 import { supabaseProjectUrl, supabasePublishableKey } from "../supabase";
+import { currentIp } from "../request";
 import { guardMcpCall, matchmystyleUrl, searchCatalog, type McpProduct } from "../shop";
 
 interface PlanPiece { label: string; query: string }
 interface Plan { note: string; aesthetic: string | null; pieces: PlanPiece[]; maxPrice?: number; budget?: number }
 
 const TTL_MS = 24 * 60 * 60 * 1000;
-const memory = new Map<string, { at: number; data: StyleResult }>(); // fallback if the DB is unreachable
 
 const env = (n: string) => (globalThis as { Deno?: { env?: { get?: (k: string) => string | undefined } } }).Deno?.env?.get?.(n);
 
@@ -31,7 +31,8 @@ async function getPlan(request: string, size: string | undefined, signal: AbortS
     headers: {
       "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}`,
       // MCP calls are already limited per caller IP; this lets concierge-plan skip its per-IP check.
-      ...(env("MCP_INTERNAL_KEY") ? { "x-mms-internal": env("MCP_INTERNAL_KEY")! } : {}),
+      // style_me counts against concierge-plan per-IP + global caps and the global AI budget, as the caller.
+      ...(env("MCP_INTERNAL_KEY") ? { "x-mms-internal": env("MCP_INTERNAL_KEY")!, "x-mms-client-ip": currentIp() } : {}),
     },
     body: JSON.stringify({ request, size }),
     signal,
@@ -49,8 +50,6 @@ type StyleResult = {
 };
 
 async function readCache(key: string): Promise<StyleResult | null> {
-  const mem = memory.get(key);
-  if (mem && Date.now() - mem.at < TTL_MS) return mem.data;
   try {
     const since = new Date(Date.now() - TTL_MS).toISOString();
     const res = await serviceFetch(`mcp_style_cache?key=eq.${encodeURIComponent(key)}&created_at=gt.${since}&select=data`);
@@ -60,14 +59,13 @@ async function readCache(key: string): Promise<StyleResult | null> {
 }
 
 async function writeCache(key: string, data: StyleResult) {
-  memory.set(key, { at: Date.now(), data });
   try {
     await serviceFetch("mcp_style_cache?on_conflict=key", {
       method: "POST",
       headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
       body: JSON.stringify({ key, data, created_at: new Date().toISOString() }),
     });
-  } catch { /* memory cache still works */ }
+  } catch { /* cache write is best-effort */ }
 }
 
 export default defineTool({

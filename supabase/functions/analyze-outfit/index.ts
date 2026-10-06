@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { AESTHETIC_NAMES, aestheticPromptBlock } from "../_shared/aesthetics.ts";
-import { rateLimitResponse } from "../_shared/rateLimit.ts";
+import { INPUT_LIMITS, rateLimitResponse } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,7 +64,13 @@ serve(async (req) => {
       }
       const contentType = imgResponse.headers.get("content-type") || "image/jpeg";
       mimeType = contentType.split(";")[0].trim();
+      if (Number(imgResponse.headers.get("content-length") ?? 0) > INPUT_LIMITS.maxImageBytes) {
+        return new Response(JSON.stringify({ error: "image_too_large", message: "Image is too large (max 5 MB)." }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       const arrayBuffer = await imgResponse.arrayBuffer();
+      if (arrayBuffer.byteLength > INPUT_LIMITS.maxImageBytes) {
+        return new Response(JSON.stringify({ error: "image_too_large", message: "Image is too large (max 5 MB)." }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       const uint8Array = new Uint8Array(arrayBuffer);
       let binary = "";
       for (let i = 0; i < uint8Array.length; i++) {
@@ -73,6 +79,12 @@ serve(async (req) => {
       imageBase64 = btoa(binary);
     }
 
+    if (typeof imageBase64 === "string" && Math.floor(imageBase64.length * 3 / 4) > INPUT_LIMITS.maxImageBytes) {
+      return new Response(JSON.stringify({ error: "image_too_large", message: "Image is too large (max 5 MB)." }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (typeof mimeType === "string" && !mimeType.startsWith("image/")) {
+      return new Response(JSON.stringify({ error: "invalid_image", message: "Please upload an image." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     if (!imageBase64 || !mimeType) {
       return new Response(
         JSON.stringify({ error: "Either imageUrl or imageBase64+mimeType are required" }),
@@ -123,7 +135,7 @@ Keep all field values short and concise. Do not repeat instructions or field nam
       },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        max_tokens: 4096,
+        max_tokens: INPUT_LIMITS.maxOutputTokens["analyze-outfit"],
         temperature: 0.2,
         messages: [
           { role: "system", content: systemPrompt },
