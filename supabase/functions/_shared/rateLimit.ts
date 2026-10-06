@@ -5,15 +5,15 @@
 /** All limits in one place. windowS is in seconds. `ai: true` = the call costs AI credits and also
  *  counts against GLOBAL_AI_CALLS_PER_DAY (shared across every function, resets at midnight UTC). */
 export const RATE_LIMITS = {
-  mcp: { ai: false, perIp: { limit: 30, windowS: 3600 }, global: { limit: 300, windowS: 86400 } },
+  mcp: { ai: false, perIp: { limit: 30, windowS: 3600 }, global: { limit: 150, windowS: 86400 } },
   "style-look": { ai: true, perIp: { limit: 3, windowS: 86400 }, global: { limit: 20, windowS: 86400 } },
-  "concierge-plan": { ai: true, perIp: { limit: 40, windowS: 3600 }, global: { limit: 400, windowS: 86400 } },
-  "analyze-outfit": { ai: true, perIp: { limit: 20, windowS: 3600 }, global: { limit: 250, windowS: 86400 } },
+  "concierge-plan": { ai: true, perIp: { limit: 40, windowS: 3600 }, global: { limit: 150, windowS: 86400 } },
+  "analyze-outfit": { ai: true, perIp: { limit: 20, windowS: 3600 }, global: { limit: 100, windowS: 86400 } },
   "image-proxy": { ai: false, perIp: { limit: 60, windowS: 3600 }, global: { limit: 20000, windowS: 86400 } },
 } as const;
 
 /** Kill switch: total AI-credit calls per UTC day across all functions (MCP style_me counts via concierge-plan). */
-export const GLOBAL_AI_CALLS_PER_DAY = 600;
+export const GLOBAL_AI_CALLS_PER_DAY = 200;
 
 /** Input / output size limits so one call can't be expensive. */
 export const INPUT_LIMITS = {

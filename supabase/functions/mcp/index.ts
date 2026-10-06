@@ -7,13 +7,13 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 // supabase/functions/_shared/rateLimit.ts
 var RATE_LIMITS = {
-  mcp: { ai: false, perIp: { limit: 30, windowS: 3600 }, global: { limit: 300, windowS: 86400 } },
+  mcp: { ai: false, perIp: { limit: 30, windowS: 3600 }, global: { limit: 150, windowS: 86400 } },
   "style-look": { ai: true, perIp: { limit: 3, windowS: 86400 }, global: { limit: 20, windowS: 86400 } },
-  "concierge-plan": { ai: true, perIp: { limit: 40, windowS: 3600 }, global: { limit: 400, windowS: 86400 } },
-  "analyze-outfit": { ai: true, perIp: { limit: 20, windowS: 3600 }, global: { limit: 250, windowS: 86400 } },
+  "concierge-plan": { ai: true, perIp: { limit: 40, windowS: 3600 }, global: { limit: 150, windowS: 86400 } },
+  "analyze-outfit": { ai: true, perIp: { limit: 20, windowS: 3600 }, global: { limit: 100, windowS: 86400 } },
   "image-proxy": { ai: false, perIp: { limit: 60, windowS: 3600 }, global: { limit: 2e4, windowS: 86400 } }
 };
-var GLOBAL_AI_CALLS_PER_DAY = 600;
+var GLOBAL_AI_CALLS_PER_DAY = 200;
 var INPUT_LIMITS = {
   maxImageBytes: 5 * 1024 * 1024,
   maxConciergeChars: 500,
