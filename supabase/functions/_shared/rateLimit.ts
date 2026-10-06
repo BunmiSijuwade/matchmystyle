@@ -29,6 +29,17 @@ function serviceKey(): string | undefined {
   } catch { return undefined; }
 }
 
+/** Server-side REST call with the service key (rate limits / caches only). */
+export async function serviceFetch(path: string, init: RequestInit = {}): Promise<Response | null> {
+  const url = env("SUPABASE_URL");
+  const key = serviceKey();
+  if (!url || !key) return null;
+  return fetch(`${url}/rest/v1/${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}`, ...(init.headers as Record<string, string> | undefined) },
+  });
+}
+
 /** Best-effort client IP from proxy headers. */
 export function clientIp(headers: Headers): string {
   const xff = headers.get("x-forwarded-for")?.split(",")[0]?.trim();

@@ -8,8 +8,8 @@ import { clientIp } from "../../../supabase/functions/_shared/rateLimit";
 const store = new AsyncLocalStorage<string>();
 
 type ServeHandler = (req: Request, info?: unknown) => Response | Promise<Response>;
-type DenyServe = { serve?: (...args: unknown[]) => unknown; __mmsWrapped?: boolean };
-const deno = (globalThis as { Deno?: DenyServe }).Deno;
+type DenoServe = { serve?: (...args: unknown[]) => unknown; __mmsWrapped?: boolean };
+const deno = (globalThis as { Deno?: DenoServe }).Deno;
 if (deno?.serve && !deno.__mmsWrapped) {
   const original = deno.serve.bind(deno);
   deno.__mmsWrapped = true;
