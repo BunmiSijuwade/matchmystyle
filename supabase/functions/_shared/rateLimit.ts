@@ -6,7 +6,7 @@
 export const RATE_LIMITS = {
   mcp: { perIp: { limit: 30, windowS: 3600 }, global: { limit: 500, windowS: 86400 } },
   "style-look": { perIp: { limit: 3, windowS: 86400 }, global: { limit: 30, windowS: 86400 } },
-  "concierge-plan": { perIp: { limit: 1, windowS: 3600 }, global: { limit: 1000, windowS: 86400 } },
+  "concierge-plan": { perIp: { limit: 40, windowS: 3600 }, global: { limit: 1000, windowS: 86400 } },
   "analyze-outfit": { perIp: { limit: 20, windowS: 3600 }, global: { limit: 500, windowS: 86400 } },
 } as const;
 
