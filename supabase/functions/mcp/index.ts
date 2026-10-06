@@ -9,7 +9,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 var RATE_LIMITS = {
   mcp: { perIp: { limit: 30, windowS: 3600 }, global: { limit: 500, windowS: 86400 } },
   "style-look": { perIp: { limit: 3, windowS: 86400 }, global: { limit: 30, windowS: 86400 } },
-  "concierge-plan": { perIp: { limit: 40, windowS: 3600 }, global: { limit: 1e3, windowS: 86400 } },
+  "concierge-plan": { perIp: { limit: 1, windowS: 3600 }, global: { limit: 1e3, windowS: 86400 } },
   "analyze-outfit": { perIp: { limit: 20, windowS: 3600 }, global: { limit: 500, windowS: 86400 } }
 };
 var RATE_LIMIT_MESSAGE = "too many requests, try again later";
