@@ -228,7 +228,8 @@ var list_aesthetics_default = defineTool2({
   description: "List the 12 MatchMyStyle New York style aesthetics with short definitions.",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: () => {
+  handler: async () => {
+    await guardMcpCall();
     const aesthetics = AESTHETICS.map((a) => ({ name: a.name, definition: a.definition }));
     return {
       content: [{ type: "text", text: aesthetics.map((a) => `${a.name}: ${a.definition}`).join("\n") }],

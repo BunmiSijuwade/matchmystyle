@@ -143,8 +143,10 @@ const Analyzer = () => {
       });
 
       if (response.status === 429) {
-        setAnalyzeError("Rate limit reached. Please wait a moment and try again.");
-        toast({ title: "Rate limit reached", description: "Too many requests. Please wait a moment and try again.", variant: "destructive" });
+        const err = await response.json().catch(() => ({}));
+        const msg = err.message || "too many requests, try again later";
+        setAnalyzeError(msg);
+        toast({ title: "Rate limit reached", description: msg, variant: "destructive" });
         return;
       }
 

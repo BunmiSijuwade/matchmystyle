@@ -139,11 +139,15 @@ const Concierge = () => {
   const say = (...t: Turn[]) => setTurns((prev) => [...prev, ...t]);
   const cacheKeyFor = (h: string[], size: string | null) => `mms_concierge_plan:${h.join(" >> ").toLowerCase()}|${size ?? ""}`;
 
+  const limitedRef = useRef<string | null>(null);
   const invokePlan = async (body: Record<string, unknown>): Promise<Plan | null> => {
+    limitedRef.current = null;
     try {
       const { data, error: fnError } = await supabase.functions.invoke("concierge-plan", { body });
       if (import.meta.env.DEV) console.info("[concierge] plan", data, fnError);
       if (!fnError && data && Array.isArray(data.pieces) && data.pieces.length) return data as Plan;
+      const ctx = (fnError as { context?: Response } | null)?.context;
+      if (ctx?.status === 429) limitedRef.current = (await ctx.json().catch(() => null))?.message ?? "too many requests, try again later";
     } catch (e) { console.error("[concierge] plan failed", e); }
     return null;
   };
@@ -208,6 +212,7 @@ const Concierge = () => {
     setPending("give me a sec, styling it...");
     const next = await invokePlan({ request: text, size: size ?? undefined });
     setPending(null);
+    if (!next && limitedRef.current) { setError(limitedRef.current); setStatus("error"); return; }
     if (!next) { await runSearch(text); return; }
     say({ from: "me", text: next.note }, { from: "me", text: `pulling a rail: ${next.pieces.map((p) => p.label).join(", ")}.` });
     const { map, changed } = await fillRaw(next, {}, size);
@@ -251,7 +256,7 @@ const Concierge = () => {
       return;
     }
     if (!next) {
-      say({ from: "me", text: "hmm, i couldn't tweak that one. try saying it another way?" });
+      say({ from: "me", text: limitedRef.current ?? "hmm, i couldn't tweak that one. try saying it another way?" });
       setChips(refinementsFor(current));
       setStatus("done");
       return;
