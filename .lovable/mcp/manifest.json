@@ -8,14 +8,52 @@
   "mcp": {
     "server": {
       "name": "style-matcher-pro",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "Style Matcher Pro"
     },
     "tools": [
       {
+        "name": "style_me",
+        "title": "Style me",
+        "description": "Plan a complete outfit with MatchMyStyle's stylist and return real, in-stock products for each piece (US dollars), plus a MatchMyStyle link to see and refine the look.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 300,
+              "description": "What the outfit is for, e.g. 'a gallery opening. sculptural and unexpected.'"
+            },
+            "size": {
+              "type": "string",
+              "maxLength": 20,
+              "description": "Clothing size, e.g. 'M' or '8'."
+            },
+            "budget": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 100000,
+              "description": "Whole-look budget in US dollars."
+            }
+          },
+          "required": [
+            "request"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "search_products",
         "title": "Search products",
-        "description": "Search real, in-stock fashion products from Shopify stores that ship to the US.",
+        "description": "Search MatchMyStyle for real, in-stock fashion products (US dollars, ships to the US). Results come from MatchMyStyle's verified Shopify catalog search, each with a MatchMyStyle link.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
