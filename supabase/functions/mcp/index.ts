@@ -2,12 +2,107 @@
 // To take ownership, delete this banner line; the plugin then leaves the file alone.
 // supabase function: mcp
 // Bundled from src/lib/mcp/index.ts by @lovable.dev/mcp-js.
+// src/lib/mcp/request.ts
+import { AsyncLocalStorage } from "node:async_hooks";
+
+// supabase/functions/_shared/rateLimit.ts
+var RATE_LIMITS = {
+  mcp: { perIp: { limit: 30, windowS: 3600 }, global: { limit: 500, windowS: 86400 } },
+  "style-look": { perIp: { limit: 3, windowS: 86400 }, global: { limit: 30, windowS: 86400 } },
+  "concierge-plan": { perIp: { limit: 40, windowS: 3600 }, global: { limit: 1e3, windowS: 86400 } },
+  "analyze-outfit": { perIp: { limit: 20, windowS: 3600 }, global: { limit: 500, windowS: 86400 } }
+};
+var RATE_LIMIT_MESSAGE = "too many requests, try again later";
+var env = (n) => {
+  const g = globalThis;
+  return g.Deno?.env?.get?.(n) ?? g.process?.env?.[n];
+};
+function serviceKey() {
+  const legacy = env("SUPABASE_SERVICE_ROLE_KEY");
+  if (legacy) return legacy;
+  try {
+    const keys = JSON.parse(env("SUPABASE_SECRET_KEYS") ?? "");
+    const k = [keys.default, ...Object.values(keys)].find((v) => typeof v === "string");
+    return typeof k === "string" ? k : void 0;
+  } catch {
+    return void 0;
+  }
+}
+async function serviceFetch(path, init = {}) {
+  const url = env("SUPABASE_URL");
+  const key = serviceKey();
+  if (!url || !key) return null;
+  return fetch(`${url}/rest/v1/${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}`, ...init.headers }
+  });
+}
+function clientIp(headers) {
+  const xff = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return headers.get("cf-connecting-ip") ?? xff ?? headers.get("x-real-ip") ?? "unknown";
+}
+async function checkRateLimit(fn, ip, skipIp = false) {
+  const cfg = RATE_LIMITS[fn];
+  const url = env("SUPABASE_URL");
+  const key = serviceKey();
+  if (!url || !key) {
+    console.error("rateLimit: missing config, allowing");
+    return true;
+  }
+  try {
+    const res = await fetch(`${url}/rest/v1/rpc/hit_rate_limit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        _ip_key: `${fn}:ip:${ip}`,
+        _ip_window_s: cfg.perIp.windowS,
+        _ip_limit: skipIp ? 2147483647 : cfg.perIp.limit,
+        _global_key: `${fn}:global`,
+        _global_window_s: cfg.global.windowS,
+        _global_limit: cfg.global.limit
+      })
+    });
+    if (!res.ok) {
+      console.error("rateLimit: rpc failed", res.status, (await res.text()).slice(0, 200));
+      return true;
+    }
+    const verdict = await res.json();
+    if (verdict !== "ok") console.warn(JSON.stringify({ rateLimited: fn, scope: verdict }));
+    return verdict === "ok";
+  } catch (e) {
+    console.error("rateLimit: error, allowing", String(e));
+    return true;
+  }
+}
+
+// src/lib/mcp/request.ts
+var store = new AsyncLocalStorage();
+var deno = globalThis.Deno;
+if (deno?.serve && !deno.__mmsWrapped) {
+  const original = deno.serve.bind(deno);
+  deno.__mmsWrapped = true;
+  deno.serve = (...args) => {
+    const i = args.findIndex((a) => typeof a === "function");
+    if (i >= 0) {
+      const h = args[i];
+      args[i] = (req, info) => {
+        return store.run(clientIp(req.headers), () => h(req, info));
+      };
+    }
+    return original(...args);
+  };
+}
+var currentIp = () => store.getStore() ?? "unknown";
+
 // src/lib/mcp/index.ts
 import { defineMcp } from "npm:@lovable.dev/mcp-js@3.0.4";
 
 // src/lib/mcp/tools/search-products.ts
-import { defineTool, ToolError } from "npm:@lovable.dev/mcp-js@3.0.4";
+import { defineTool } from "npm:@lovable.dev/mcp-js@3.0.4";
 import { z } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/shop.ts
+import { ToolError } from "npm:@lovable.dev/mcp-js@3.0.4";
 
 // src/lib/mcp/supabase.ts
 function runtimeEnv(name) {
@@ -46,37 +141,62 @@ function supabasePublishableKey() {
   throw new Error("Supabase publishable key is required");
 }
 
+// src/lib/mcp/shop.ts
+async function guardMcpCall() {
+  if (!await checkRateLimit("mcp", currentIp())) throw new ToolError(RATE_LIMIT_MESSAGE);
+}
+var matchmystyleUrl = (q) => `https://matchmystyle.lovable.app/concierge?q=${encodeURIComponent(q)}&utm_source=mcp&utm_medium=agent`;
+function toProduct(p) {
+  const amount = (p.price?.amount ?? 0) / 100;
+  return {
+    id: p.productId ?? p.productUrl ?? "",
+    title: p.title ?? "",
+    price: amount.toFixed(2),
+    priceValue: amount,
+    currency: "USD",
+    merchant: p.merchantName ?? "",
+    url: p.productUrl ?? "",
+    imageUrl: p.imageUrl ?? ""
+  };
+}
+async function searchCatalog(query, signal) {
+  const key = supabasePublishableKey();
+  const res = await fetch(`${supabaseProjectUrl()}/functions/v1/shopify-catalog`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+    body: JSON.stringify({ query }),
+    signal
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok || !Array.isArray(body?.products)) throw new ToolError(body?.error ?? `Product search failed (${res.status}).`);
+  return body.products.filter((p) => p.title && p.productUrl && p.imageUrl && p.price && String(p.price.currency).toUpperCase() === "USD").map(toProduct);
+}
+
 // src/lib/mcp/tools/search-products.ts
 var search_products_default = defineTool({
   name: "search_products",
   title: "Search products",
-  description: "Search real, in-stock fashion products from Shopify stores that ship to the US.",
+  description: "Search MatchMyStyle for real, in-stock fashion products (US dollars, ships to the US). Results come from MatchMyStyle's verified Shopify catalog search, each with a MatchMyStyle link.",
   inputSchema: {
     query: z.string().trim().min(2).max(300).describe("What to shop for, e.g. 'cream linen midi dress'."),
     limit: z.number().int().min(1).max(20).optional().describe("Max products to return (default 10).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   handler: async ({ query, limit }, ctx) => {
-    const key = supabasePublishableKey();
-    const res = await fetch(`${supabaseProjectUrl()}/functions/v1/shopify-catalog`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ query }),
-      signal: ctx.signal
-    });
-    const body = await res.json().catch(() => null);
-    if (!res.ok || !Array.isArray(body?.products)) {
-      throw new ToolError(body?.error ?? `Product search failed (${res.status}).`);
-    }
-    const products = body.products.filter((p) => p.title && p.productUrl && p.price).slice(0, limit ?? 10).map((p) => ({
-      title: p.title ?? "",
-      price: p.price ? (p.price.amount / 100).toFixed(2) : "",
-      currency: p.price?.currency ?? "",
-      merchant: p.merchantName ?? "",
-      url: p.productUrl ?? "",
-      imageUrl: p.imageUrl ?? ""
+    await guardMcpCall();
+    const link = matchmystyleUrl(query);
+    const products = (await searchCatalog(query, ctx.signal)).slice(0, limit ?? 10).map((p) => ({
+      title: p.title,
+      price: p.price,
+      currency: p.currency,
+      merchant: p.merchant,
+      url: p.url,
+      imageUrl: p.imageUrl,
+      matchmystyle_url: link
     }));
-    const text = products.length ? products.map((p) => `- ${p.title} \u2014 ${p.price} ${p.currency} at ${p.merchant}: ${p.url}`).join("\n") : "No products found.";
+    const text = products.length ? products.map((p) => `- ${p.title}: $${p.price} at ${p.merchant}: ${p.url}`).join("\n") + `
+
+See and refine on MatchMyStyle: ${link}` : "No products found.";
     return { content: [{ type: "text", text }], structuredContent: { products } };
   }
 });
@@ -108,7 +228,8 @@ var list_aesthetics_default = defineTool2({
   description: "List the 12 MatchMyStyle New York style aesthetics with short definitions.",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: () => {
+  handler: async () => {
+    await guardMcpCall();
     const aesthetics = AESTHETICS.map((a) => ({ name: a.name, definition: a.definition }));
     return {
       content: [{ type: "text", text: aesthetics.map((a) => `${a.name}: ${a.definition}`).join("\n") }],
@@ -117,13 +238,143 @@ var list_aesthetics_default = defineTool2({
   }
 });
 
+// src/lib/mcp/tools/style-me.ts
+import { defineTool as defineTool3, ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@3.0.4";
+import { z as z2 } from "npm:zod@^3.25.76";
+var TTL_MS = 24 * 60 * 60 * 1e3;
+var memory = /* @__PURE__ */ new Map();
+var env2 = (n) => globalThis.Deno?.env?.get?.(n);
+function pieceCaps(plan) {
+  const out = {};
+  const n = plan.pieces.length;
+  plan.pieces.forEach((pc, i) => {
+    out[pc.label] = plan.budget ? Math.floor(n === 1 ? plan.budget : i === 0 ? plan.budget * 0.4 : plan.budget * 0.6 / (n - 1)) : plan.maxPrice;
+  });
+  return out;
+}
+async function getPlan(request, size, signal) {
+  const key = supabasePublishableKey();
+  const res = await fetch(`${supabaseProjectUrl()}/functions/v1/concierge-plan`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      // MCP calls are already limited per caller IP; this lets concierge-plan skip its per-IP check.
+      ...env2("MCP_INTERNAL_KEY") ? { "x-mms-internal": env2("MCP_INTERNAL_KEY") } : {}
+    },
+    body: JSON.stringify({ request, size }),
+    signal
+  });
+  const body = await res.json().catch(() => null);
+  if (res.status === 429) throw new ToolError2(RATE_LIMIT_MESSAGE);
+  if (!res.ok || !body || !Array.isArray(body.pieces) || !body.pieces.length) throw new ToolError2(body?.message ?? "Couldn't plan that look right now.");
+  return body;
+}
+var card = ({ title, price, currency, merchant, url, imageUrl }) => ({ title, price, currency, merchant, url, imageUrl });
+async function readCache(key) {
+  const mem = memory.get(key);
+  if (mem && Date.now() - mem.at < TTL_MS) return mem.data;
+  try {
+    const since = new Date(Date.now() - TTL_MS).toISOString();
+    const res = await serviceFetch(`mcp_style_cache?key=eq.${encodeURIComponent(key)}&created_at=gt.${since}&select=data`);
+    const rows = res?.ok ? await res.json() : [];
+    return rows[0]?.data ?? null;
+  } catch {
+    return null;
+  }
+}
+async function writeCache(key, data) {
+  memory.set(key, { at: Date.now(), data });
+  try {
+    await serviceFetch("mcp_style_cache?on_conflict=key", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({ key, data, created_at: (/* @__PURE__ */ new Date()).toISOString() })
+    });
+  } catch {
+  }
+}
+var style_me_default = defineTool3({
+  name: "style_me",
+  title: "Style me",
+  description: "Plan a complete outfit with MatchMyStyle's stylist and return real, in-stock products for each piece (US dollars), plus a MatchMyStyle link to see and refine the look.",
+  inputSchema: {
+    request: z2.string().trim().min(2).max(300).describe("What the outfit is for, e.g. 'a gallery opening. sculptural and unexpected.'"),
+    size: z2.string().trim().max(20).optional().describe("Clothing size, e.g. 'M' or '8'."),
+    budget: z2.number().positive().max(1e5).optional().describe("Whole-look budget in US dollars.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
+  handler: async ({ request, size, budget }, ctx) => {
+    await guardMcpCall();
+    const cacheKey = `${request.toLowerCase()}|${size?.toLowerCase() ?? ""}|${budget ?? ""}`;
+    let result = await readCache(cacheKey);
+    const fromCache = Boolean(result);
+    if (!result) {
+      await ctx.progress({ progress: 0, total: 2, message: "planning the look" });
+      const plan = await getPlan(request, size, ctx.signal);
+      if (budget) {
+        plan.budget = Math.round(budget);
+        plan.maxPrice = void 0;
+      }
+      const pieces = plan.pieces.slice(0, 4);
+      const caps = pieceCaps({ ...plan, pieces });
+      const sfx = size ? ` size ${size}` : "";
+      await ctx.progress({ progress: 1, total: 2, message: "finding real pieces" });
+      const raw = await Promise.all(pieces.map((pc) => searchCatalog(`women's ${pc.query}${sfx}`, ctx.signal).catch(() => [])));
+      const fits = (p, cap) => !cap || p.priceValue <= cap;
+      await Promise.all(pieces.map(async (pc, i) => {
+        const cap = caps[pc.label];
+        if (cap && !raw[i].some((p) => fits(p, cap))) {
+          const more = await searchCatalog(`women's ${pc.query} under $${cap}${sfx}`, ctx.signal).catch(() => []);
+          raw[i] = [...more, ...raw[i]];
+        }
+      }));
+      const seen = /* @__PURE__ */ new Set();
+      const rail = pieces.map((pc, i) => {
+        const picked = [];
+        for (const p of raw[i]) {
+          if (picked.length >= 3) break;
+          if (!fits(p, caps[pc.label]) || seen.has(p.url) || seen.has(p.imageUrl)) continue;
+          seen.add(p.url);
+          seen.add(p.imageUrl);
+          picked.push(p);
+        }
+        return { label: pc.label, products: picked.map(card) };
+      }).filter((g) => g.products.length);
+      const link = matchmystyleUrl(request);
+      result = {
+        note: plan.note,
+        aesthetic: plan.aesthetic ?? "",
+        budget: plan.budget ?? null,
+        rail,
+        matchmystyle_url: link,
+        next_step: `Offer the user this MatchMyStyle link to see the look, build it on a look board and refine it: ${link}`
+      };
+      if (rail.length) await writeCache(cacheKey, result);
+    }
+    const text = [
+      result.note,
+      result.aesthetic ? `aesthetic: ${result.aesthetic}` : "",
+      ...result.rail.map((g) => `
+${g.label}
+` + g.products.map((p) => `- ${p.title}: $${p.price} at ${p.merchant}: ${p.url}`).join("\n")),
+      result.rail.length ? "" : "\nNo matching products found.",
+      `
+${result.next_step}`
+    ].filter(Boolean).join("\n");
+    if (fromCache) console.log(JSON.stringify({ tool: "style_me", cache: "hit" }));
+    return { content: [{ type: "text", text }], structuredContent: { ...result, cached: fromCache } };
+  }
+});
+
 // src/lib/mcp/index.ts
 var mcp_default = defineMcp({
   name: "style-matcher-pro",
   title: "Style Matcher Pro",
-  version: "0.1.0",
-  instructions: "MatchMyStyle fashion tools. Use `list_aesthetics` to see the 12 style aesthetics, and `search_products` to find real in-stock products from Shopify stores (prices and links are verified catalog data).",
-  tools: [search_products_default, list_aesthetics_default]
+  version: "0.2.0",
+  instructions: "MatchMyStyle fashion tools. `style_me` plans a complete outfit for a request (optional size and whole-look budget in USD) and returns real in-stock products per piece plus a MatchMyStyle link; always offer the user that link to see and refine the look. `search_products` finds real in-stock products from MatchMyStyle's verified Shopify catalog search. `list_aesthetics` lists the 12 MatchMyStyle New York style aesthetics. Prices are US dollars from verified catalog data; never invent products or links.",
+  tools: [style_me_default, search_products_default, list_aesthetics_default]
 });
 
 // lovable-mcp-supabase-entry.ts

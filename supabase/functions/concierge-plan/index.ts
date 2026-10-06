@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { AESTHETIC_NAMES } from "../_shared/aesthetics.ts";
+import { rateLimitResponse } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,6 +41,8 @@ Refinement mode (when a previous plan and an instruction are given):
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const limited = await rateLimitResponse("concierge-plan", req, corsHeaders);
+  if (limited) return limited;
   try {
     const { request, size, previous, refine, answered, piece } = await req.json().catch(() => ({}));
     const text = clean(request, 300);

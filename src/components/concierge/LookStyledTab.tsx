@@ -14,6 +14,7 @@ const LookStyledTab = ({ pieces, aesthetic, occasion, onImage }: Props) => {
   const [src, setSrc] = useState<string | null>(cache.get(key) ?? null);
   const [state, setState] = useState<"loading" | "done" | "error">(cache.has(key) ? "done" : "loading");
   const [attempt, setAttempt] = useState(0);
+  const [limited, setLimited] = useState<string | null>(null);
 
   useEffect(() => {
     const hit = cache.get(key);
@@ -21,10 +22,15 @@ const LookStyledTab = ({ pieces, aesthetic, occasion, onImage }: Props) => {
     let live = true;
     setState("loading"); onImage(null);
     const t0 = performance.now();
-    supabase.functions.invoke("style-look", { body: { pieces, aesthetic, occasion } }).then(({ data, error }) => {
+    supabase.functions.invoke("style-look", { body: { pieces, aesthetic, occasion } }).then(async ({ data, error }) => {
       if (import.meta.env.DEV) console.info("[style-look]", { ms: Math.round(performance.now() - t0), error, usage: data?.usage });
       if (!live) return;
-      if (error || !data?.image) { setState("error"); return; }
+      if (error || !data?.image) {
+        let msg: string | null = null;
+        try { const ctx = (error as { context?: Response })?.context; if (ctx?.status === 429) msg = (await ctx.json())?.message ?? "too many requests, try again later"; } catch { /* ignore */ }
+        if (!live) return;
+        setLimited(msg); setState("error"); return;
+      }
       cache.set(key, data.image); setSrc(data.image); setState("done"); onImage(data.image);
     });
     return () => { live = false; };
@@ -38,7 +44,7 @@ const LookStyledTab = ({ pieces, aesthetic, occasion, onImage }: Props) => {
           <img src={src} alt={`AI-styled preview of the ${aesthetic ?? ""} look: ${pieces.map((p) => p.label).join(", ")}`} className="h-full w-full object-cover" />
         ) : state === "error" ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-            <p className="text-sm">couldn't style this one. try again?</p>
+            <p className="text-sm">{limited ?? "couldn't style this one. try again?"}</p>
             <button type="button" onClick={() => setAttempt((a) => a + 1)} className="mono-outline mono-pill mono-press min-h-[44px] px-5 text-sm">try again</button>
           </div>
         ) : (

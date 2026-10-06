@@ -14,13 +14,58 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      mcp_style_cache: {
+        Row: {
+          created_at: string
+          data: Json
+          key: string
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          key: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          key?: string
+        }
+        Relationships: []
+      }
+      rate_limits: {
+        Row: {
+          bucket: string
+          count: number
+          key: string
+        }
+        Insert: {
+          bucket: string
+          count?: number
+          key: string
+        }
+        Update: {
+          bucket?: string
+          count?: number
+          key?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      hit_rate_limit: {
+        Args: {
+          _global_key: string
+          _global_limit: number
+          _global_window_s: number
+          _ip_key: string
+          _ip_limit: number
+          _ip_window_s: number
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
