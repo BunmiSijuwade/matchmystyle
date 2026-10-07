@@ -7,11 +7,12 @@ interface Props {
   onChange: (v: string) => void;
   onSubmit: (e: FormEvent) => void;
   placeholder?: string;
+  inline?: boolean;
 }
 
-const ConciergeComposer = ({ value, loading, onChange, onSubmit, placeholder }: Props) => (
-  <form onSubmit={onSubmit} className="mono-bg sticky bottom-0 z-20 border-t border-transparent px-4 pb-4 pt-3 sm:px-6">
-    <div className="mx-auto flex max-w-6xl items-center gap-3">
+const ConciergeComposer = ({ value, loading, onChange, onSubmit, placeholder, inline }: Props) => (
+  <form onSubmit={onSubmit} className={inline ? "mt-3 md:mt-5" : "mono-bg sticky bottom-0 z-20 border-t border-transparent px-4 pb-4 pt-3 sm:px-6"}>
+    <div className={inline ? "flex items-center gap-3" : "mx-auto flex max-w-6xl items-center gap-3"}>
       <label htmlFor="concierge-input" className="sr-only">tell the concierge what you want</label>
       <div className="mono-outline mono-pill mono-panel flex min-h-[52px] flex-1 items-center pl-5 pr-1.5">
         <input

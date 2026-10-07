@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { AESTHETICS, type AestheticInfo } from "@/data/aesthetics";
 
@@ -24,7 +25,14 @@ export const FOLLOW_UPS: Record<ChoiceId, { question: string; examples: string[]
   },
 };
 
-const ConciergeStart = ({ onChoose, onAesthetic }: { onChoose: (id: ChoiceId) => void; onAesthetic: (a: AestheticInfo) => void }) => (
+export const PhotoSoon = ({ className = "" }: { className?: string }) => (
+  <div aria-disabled="true" className={`mono-dashed mono-tile mono-soft flex min-h-[52px] items-center justify-between px-5 ${className}`}>
+    <span className="text-sm">i have a photo</span>
+    <span className="mono-ink-bg mono-pill px-2.5 py-0.5 text-xs font-semibold">soon</span>
+  </div>
+);
+
+const ConciergeStart = ({ onChoose, onAesthetic, composer }: { onChoose: (id: ChoiceId) => void; onAesthetic: (a: AestheticInfo) => void; composer: ReactNode }) => (
   <div>
     <h1 className="mono-display text-[2.6rem] leading-[1.02] sm:text-6xl">hi! what are we <em className="italic">dressing for?</em></h1>
     <p className="mono-soft mt-4 text-base">pick one, or just tell me. i'll pull a rail.</p>
@@ -46,10 +54,7 @@ const ConciergeStart = ({ onChoose, onAesthetic }: { onChoose: (id: ChoiceId) =>
       ))}
     </div>
 
-    <div aria-disabled="true" className="mono-dashed mono-tile mono-soft mt-3 flex min-h-[52px] items-center justify-between px-5 md:mt-5">
-      <span className="text-sm">i have a photo</span>
-      <span className="mono-ink-bg mono-pill px-2.5 py-0.5 text-xs font-semibold">soon</span>
-    </div>
+    {composer}
 
     <p className="mt-8 text-sm font-medium">or wander into an aesthetic →</p>
     <div className="mt-3 flex flex-wrap gap-2">
