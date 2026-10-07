@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Navbar from "@/components/Navbar";
 import { AESTHETICS, type AestheticInfo } from "@/data/aesthetics";
 import { readProfileSize, searchCatalog, readCache, writeCache, majorAmount, type CatalogProduct as ShopProduct } from "@/lib/shopCatalog";
-import ConciergeStart, { CHOICES, FOLLOW_UPS, type ChoiceId } from "@/components/concierge/ConciergeStart";
+import ConciergeStart, { CHOICES, FOLLOW_UPS, PhotoSoon, type ChoiceId } from "@/components/concierge/ConciergeStart";
 import ConciergeComposer from "@/components/concierge/ConciergeComposer";
 import EditorialProductCard, { type CatalogProduct } from "@/components/concierge/EditorialProductCard";
 import { LookSidebar, LookBar, type LookSlot } from "@/components/concierge/LookBoard";
@@ -399,7 +399,7 @@ const Concierge = () => {
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-10 pt-[104px] sm:px-6 sm:pt-[120px] lg:flex lg:gap-10">
         <div className="min-w-0 flex-1">
-        {!started && <ConciergeStart onChoose={setChoice} onAesthetic={startAesthetic} />}
+        {!started && <ConciergeStart onChoose={setChoice} onAesthetic={startAesthetic} composer={<ConciergeComposer inline value={query} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />} />}
 
         {started && (
           <section aria-label="conversation" className="mx-auto max-w-2xl space-y-3">
@@ -527,7 +527,11 @@ const Concierge = () => {
 
       <div className="sticky bottom-0 z-20">
         {slots && <LookBar slots={slots} budget={plan?.budget} caps={plan ? pieceCaps(plan) : {}} onRemove={removeFromLook} onSwap={swapPiece} aesthetic={plan?.aesthetic} request={history[0] ?? null} />}
-        <ConciergeComposer value={query} placeholder={plan ? "change anything, or start fresh" : undefined} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />
+        {started ? (
+          <ConciergeComposer value={query} placeholder={plan ? "change anything, or start fresh" : undefined} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />
+        ) : (
+          <div className="mono-bg px-4 pb-4 pt-3 sm:px-6"><PhotoSoon className="mx-auto max-w-6xl" /></div>
+        )}
       </div>
     </div>
   );
