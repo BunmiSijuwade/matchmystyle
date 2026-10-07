@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { renderLookCard, type CardInput } from "@/lib/lookCard";
-// AI image previews are off unless VITE_STYLE_LOOK_ENABLED=true (the backend also needs STYLE_LOOK_ENABLED=true).
-const STYLE_LOOK_ENABLED = import.meta.env.VITE_STYLE_LOOK_ENABLED === "true";
+// AI image previews are on unless VITE_STYLE_LOOK_ENABLED=false (the backend kill switch STYLE_LOOK_ENABLED still decides).
+const STYLE_LOOK_ENABLED = import.meta.env.VITE_STYLE_LOOK_ENABLED !== "false";
 const TABS = [["card", "look card"], ["styled", "see it styled (ai)"]] as const;
 import LookStyledTab, { type StylePiece } from "./LookStyledTab"; // PROTOTYPE: ai-styled tab
 
