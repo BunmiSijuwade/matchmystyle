@@ -13,7 +13,7 @@ import { buildLookHandoff } from "@/lib/buildLookRequest";
 import { alternativesFor, assembleLook, lookReady, TIER_NAMES, type LookPiece, type ShopTier } from "@/lib/assembleLook";
 import { useAnalysis, type DetectedItem, type LookTier } from "@/contexts/AnalysisContext";
 import { useLiveMatches } from "@/hooks/useLiveMatches";
-import { formatPrice, majorAmount, readProfileSize, type CatalogProduct } from "@/lib/shopCatalog";
+import { CATALOG_GENDER, formatPrice, majorAmount, readProfileSize, searchCatalog, type CatalogProduct } from "@/lib/shopCatalog";
 import { getSizeRecommendation, brandFitNote, type UserMeasurements } from "@/services/sizingService";
 
 const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;
@@ -45,6 +45,7 @@ const Results = () => {
   const [shopOpen, setShopOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
   const [ask, setAsk] = useState("");
+  const [more, setMore] = useState<Record<string, { status: "loading" | "done" | "error"; products: CatalogProduct[] }>>({});
   useEffect(() => setOverrides({}), [items]);
 
   // Original items (without profile) for reverting
@@ -192,6 +193,15 @@ const Results = () => {
 
   const swapPiece = swapId && current ? current.find((p) => p.item.id === swapId) : undefined;
   const swapAlts = swapPiece ? alternativesFor(liveState[swapPiece.item.id]?.matches, swapPiece.product?.key ?? null) : [];
+  const moreForSwap = swapPiece ? more[swapPiece.item.id] : undefined;
+  const loadMore = async (item: DetectedItem) => {
+    setMore((m) => ({ ...m, [item.id]: { status: "loading", products: [] } }));
+    const q = `${CATALOG_GENDER} ${[item.color, item.style, item.category].filter(Boolean).join(" ")}${size ? ` size ${size}` : ""}`.slice(0, 300);
+    const { ok, products } = await searchCatalog(q);
+    const seen = new Set<string>([swapPiece?.product?.key ?? "", ...swapAlts.map((a) => a.product.key)]);
+    const fresh = products.filter((p) => !seen.has(p.key) && (seen.add(p.key), true)).slice(0, 6);
+    setMore((m) => ({ ...m, [item.id]: { status: ok ? "done" : "error", products: fresh } }));
+  };
   const setOverride = (itemId: string, v: Override) => {
     if (tier === "vintage") return;
     setOverrides((o) => ({ ...o, [`${tier}:${itemId}`]: v }));
@@ -210,12 +220,50 @@ const Results = () => {
     pieces: bought.slice(0, 4).map((p) => ({ label: p.item.category, imageUrl: p.product!.imageUrl, price: formatPrice(p.product!.price), title: p.product!.title })),
   };
 
+  const submitAsk = (e: React.FormEvent) => { e.preventDefault(); if (ask.trim()) handoff(ask); };
+  const askField = (
+    <>
+      <input value={ask} onChange={(e) => setAsk(e.target.value)} maxLength={120} placeholder="change anything, or say it" aria-label="Change anything about this look"
+        className="flex-1 min-w-0 min-h-[48px] rounded-full border border-border bg-card px-5 text-[16px] sm:text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+      <button type="submit" aria-label="Send" disabled={!ask.trim()} className="w-12 h-12 rounded-full bg-foreground text-background flex items-center justify-center disabled:opacity-40 flex-shrink-0">
+        <ArrowUp className="w-5 h-5" />
+      </button>
+    </>
+  );
+  const btn = "min-h-[48px] px-5 rounded-full text-[12px] font-medium uppercase tracking-[1px] disabled:opacity-50 transition-opacity duration-300";
+  const actionButtons = (
+    <>
+      <button onClick={() => setShopOpen(true)} disabled={!bought.length} className={`${btn} bg-foreground text-background`}>Shop the look</button>
+      <button onClick={() => setCardOpen(true)} disabled={!bought.length} className={`${btn} border border-border bg-card`}>Save look card</button>
+      <button onClick={() => setCardOpen(true)} disabled={!bought.length} className={`${btn} border border-border bg-card`}>See it styled (AI)</button>
+    </>
+  );
+
+  const renderOption = (product: CatalogProduct, label: string, inLook: boolean) => {
+    const note = swapPiece ? sizeNoteFor(product, swapPiece.item) : null;
+    return (
+      <div key={product.key} className="flex items-center gap-3 rounded-xl border border-border bg-card p-2">
+        <img src={product.imageUrl} alt={product.title} className="w-14 h-[72px] rounded-lg object-cover bg-muted flex-shrink-0" loading="lazy" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{label}</p>
+          <p className="text-[12px] font-medium leading-snug line-clamp-2">{product.title}</p>
+          <p className="text-[12px] font-semibold">{formatPrice(product.price)}{note && <span className="font-normal text-muted-foreground"> · {note}</span>}</p>
+        </div>
+        {inLook ? (
+          <span className="min-h-[44px] px-3 flex items-center text-[12px] text-muted-foreground flex-shrink-0">In your look</span>
+        ) : (
+          <button onClick={() => swapPiece && setOverride(swapPiece.item.id, product)} className="min-h-[44px] px-4 rounded-full bg-foreground text-background text-[12px] font-medium flex-shrink-0">Use this</button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <Toaster />
-      <div className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-36">
-        <div className="max-w-2xl mx-auto space-y-5">
+      <div className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-44 md:pb-16">
+        <div className="max-w-2xl md:max-w-5xl mx-auto space-y-5">
           <button
             onClick={() => navigate("/analyzer")}
             className="inline-flex items-center gap-2 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors duration-300 ease-out min-h-[44px] uppercase tracking-[1px]"
@@ -252,8 +300,9 @@ const Results = () => {
             </div>
           )}
 
-          {/* Tier tabs */}
-          <div role="tablist" aria-label="Price tier" className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-muted">
+          {/* Tier tabs + desktop look actions */}
+          <div className="md:flex md:flex-wrap md:items-center md:gap-4">
+          <div role="tablist" aria-label="Price tier" className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-muted md:flex-1 md:min-w-[380px]">
             {TABS.map(([id, label]) => {
               const on = tier === id;
               const total = totalLabel(id);
@@ -266,6 +315,16 @@ const Results = () => {
                 </button>
               );
             })}
+          </div>
+          {tier !== "vintage" && (
+            <div className="hidden md:flex flex-wrap items-center gap-2">
+              <p className="text-sm mr-2 whitespace-nowrap">
+                <span className="font-semibold">{totalLabel(tier) ?? "…"}</span>
+                <span className="text-muted-foreground"> for {bought.length}{size ? `, size ${size}` : ""}</span>
+              </p>
+              {actionButtons}
+            </div>
+          )}
           </div>
 
           <div className="relative">
@@ -304,7 +363,7 @@ const Results = () => {
                 </div>
               </>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {visible.map((p) => (
                   <PieceCard key={p.item.id} piece={p} lookTier={tier} sizeNote={p.product ? sizeNoteFor(p.product, p.item) : null} onSwap={() => setSwapId(p.item.id)} />
                 ))}
@@ -313,39 +372,40 @@ const Results = () => {
           </div>
 
           {tier !== "vintage" && (
-            <div className="grid gap-2 sm:grid-cols-3">
-              <button onClick={() => setShopOpen(true)} disabled={!bought.length} className="min-h-[48px] rounded-full bg-foreground text-background text-[12px] font-medium uppercase tracking-[1px] disabled:opacity-50 transition-opacity duration-300">Shop the look</button>
-              <button onClick={() => setCardOpen(true)} disabled={!bought.length} className="min-h-[48px] rounded-full border border-border bg-card text-[12px] font-medium uppercase tracking-[1px] disabled:opacity-50">Save look card</button>
-              <button onClick={() => setCardOpen(true)} disabled={!bought.length} className="min-h-[48px] rounded-full border border-border bg-card text-[12px] font-medium uppercase tracking-[1px] disabled:opacity-50">See it styled (AI)</button>
+            <div className="grid gap-2 sm:grid-cols-3 md:hidden">
+              {actionButtons}
             </div>
           )}
 
-          <div>
-            <p className="text-[18px] mb-2" style={SERIF}>Not quite it?</p>
-            <div className="flex flex-wrap gap-2">
-              {QUICK_CHIPS.map((c) => (
-                <button key={c} onClick={() => handoff(c)} className="min-h-[44px] px-4 rounded-full border border-border bg-card text-[13px] hover:border-primary transition-colors duration-300">{c}</button>
-              ))}
+          <div className="md:flex md:items-center md:gap-6 md:rounded-2xl md:border md:border-border md:bg-card md:p-4">
+            <div className="md:flex-1">
+              <p className="text-[18px] mb-2" style={SERIF}>Not quite it?</p>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_CHIPS.map((c) => (
+                  <button key={c} onClick={() => handoff(c)} className="min-h-[44px] px-4 rounded-full border border-border bg-card text-[13px] hover:border-primary transition-colors duration-300">{c}</button>
+                ))}
+              </div>
             </div>
+            <form onSubmit={submitAsk} className="hidden md:flex md:w-[340px] items-center gap-2">{askField}</form>
           </div>
 
           {aesthetics.length > 0 && <ShopAesthetic aesthetics={aesthetics} />}
         </div>
       </div>
 
-      {/* Pinned bottom bar */}
+      {/* Pinned bottom bar (phones) */}
       <form
-        onSubmit={(e) => { e.preventDefault(); if (ask.trim()) handoff(ask); }}
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-4 pt-3"
+        onSubmit={submitAsk}
+        className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-4 pt-3"
         style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
       >
-        <div className="max-w-2xl mx-auto flex items-center gap-2">
-          <input value={ask} onChange={(e) => setAsk(e.target.value)} maxLength={120} placeholder="change anything, or say it" aria-label="Change anything about this look"
-            className="flex-1 min-w-0 min-h-[48px] rounded-full border border-border bg-card px-5 text-[16px] sm:text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
-          <button type="submit" aria-label="Send" disabled={!ask.trim()} className="w-12 h-12 rounded-full bg-foreground text-background flex items-center justify-center disabled:opacity-40 flex-shrink-0">
-            <ArrowUp className="w-5 h-5" />
-          </button>
-        </div>
+        {tier !== "vintage" && (
+          <div className="max-w-2xl mx-auto flex items-center justify-between mb-2 text-[12px]">
+            <span className="text-muted-foreground">Look total{size ? `, size ${size}` : ""}</span>
+            <span className="font-semibold">{totalLabel(tier) ?? "…"}</span>
+          </div>
+        )}
+        <div className="max-w-2xl mx-auto flex items-center gap-2">{askField}</div>
       </form>
 
       {/* Swap sheet */}
@@ -368,23 +428,23 @@ const Results = () => {
                 </div>
               </div>
               <div className="mt-4 space-y-2">
-                {swapAlts.length === 0 && <p className="text-sm text-muted-foreground">No other matches for this piece yet.</p>}
-                {swapAlts.map(({ tier: t, product }) => {
-                  const note = sizeNoteFor(product, swapPiece.item);
-                  return (
-                    <div key={product.key} className="flex items-center gap-3 rounded-xl border border-border bg-card p-2">
-                      <img src={product.imageUrl} alt={product.title} className="w-14 h-[72px] rounded-lg object-cover bg-muted flex-shrink-0" loading="lazy" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{TIER_NAMES[t]}</p>
-                        <p className="text-[12px] font-medium leading-snug line-clamp-2">{product.title}</p>
-                        <p className="text-[12px] font-semibold">{formatPrice(product.price)}{note && <span className="font-normal text-muted-foreground"> · {note}</span>}</p>
-                      </div>
-                      <button onClick={() => setOverride(swapPiece.item.id, product)} className="min-h-[44px] px-4 rounded-full bg-foreground text-background text-[12px] font-medium flex-shrink-0">Use this</button>
-                    </div>
-                  );
-                })}
+                {swapPiece.product && renderOption(swapPiece.product, swapPiece.fromTier ? TIER_NAMES[swapPiece.fromTier] : "Your pick", true)}
+                {swapAlts.length === 0 && !swapPiece.product && <p className="text-sm text-muted-foreground">No other matches for this piece yet.</p>}
+                {swapAlts.map(({ tier: t, product }) => renderOption(product, TIER_NAMES[t], false))}
+                {moreForSwap?.status === "done" && moreForSwap.products.map((product) => renderOption(product, "More options", false))}
+                {moreForSwap?.status === "done" && moreForSwap.products.length === 0 && <p className="text-sm text-muted-foreground">No more matches found right now.</p>}
+                {moreForSwap?.status === "error" && <p className="text-sm text-muted-foreground">Couldn't load more options. Please try again.</p>}
               </div>
-              <button onClick={() => setOverride(swapPiece.item.id, "removed")} className="mt-4 w-full min-h-[44px] rounded-full border border-border text-[13px] text-muted-foreground hover:text-foreground">Remove from look</button>
+              {moreForSwap?.status !== "done" && (
+                <button onClick={() => loadMore(swapPiece.item)} disabled={moreForSwap?.status === "loading"}
+                  className="mt-4 w-full min-h-[44px] rounded-full border border-foreground text-[13px] font-medium inline-flex items-center justify-center gap-2 disabled:opacity-60">
+                  {moreForSwap?.status === "loading" ? <><Loader2 className="w-4 h-4 animate-spin" />Finding more</> : "Show more options"}
+                </button>
+              )}
+              <button onClick={() => handoff(`just the ${swapPiece.item.description}`)} className="mt-2 w-full min-h-[44px] rounded-full border border-border text-[13px] inline-flex items-center justify-center gap-2 hover:border-primary">
+                <Search className="w-4 h-4" />Search this piece in the Concierge
+              </button>
+              <button onClick={() => setOverride(swapPiece.item.id, "removed")} className="mt-2 w-full min-h-[44px] rounded-full border border-border text-[13px] text-muted-foreground hover:text-foreground">Remove from look</button>
             </div>
           )}
         </DrawerContent>

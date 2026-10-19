@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { ChevronUp, ChevronDown, Search, Copy, ClipboardPaste, Lightbulb } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const STORAGE_KEY = "mms_paste_tip_dismissed";
 
 const steps = [
-  { icon: "🔍", title: "Find a look", desc: "Any photo open in your browser" },
-  { icon: "📋", title: "Copy it", desc: "Right-click the photo, then Copy Image" },
-  { icon: "✨", title: "Paste here", desc: "Press Ctrl+V (or ⌘V on a Mac)" },
+  { Icon: Search, title: "Find a look", desc: "Any photo open in your browser" },
+  { Icon: Copy, title: "Copy it", desc: "Right-click the photo, then Copy Image" },
+  { Icon: ClipboardPaste, title: "Paste here", desc: "Press Ctrl+V (or ⌘V on a Mac)" },
 ];
 
 const platforms = ["Pinterest", "Google Images", "Shop sites", "Screenshots"];
