@@ -823,3 +823,17 @@ export function getSizeRecommendation(
   const category = detectCategory(detectedItemName);
   return findBestSize(brandKey, category, measurements);
 }
+
+const SIZE_LADDER = ["XS", "S", "M", "L", "XL", "XXL"];
+
+/** Short fit line from brand chart flags plus a chosen letter size, e.g. "Runs small, order L". */
+export function brandFitNote(productTitle: string, size: string | null): string | null {
+  const key = detectBrandFromTitle(productTitle);
+  const chart = key ? BRAND_SIZE_CHARTS[key] : null;
+  if (!chart) return null;
+  const base = size ? size.toUpperCase().replace("+", "") : null;
+  const i = base ? SIZE_LADDER.indexOf(base) : -1;
+  if (chart.runsSmall) return i >= 0 ? `Runs small, order ${SIZE_LADDER[Math.min(i + 1, SIZE_LADDER.length - 1)]}` : "Runs small, size up";
+  if (chart.runsLarge) return i >= 0 ? `Runs large, order ${SIZE_LADDER[Math.max(i - 1, 0)]}` : "Runs large, size down";
+  return i >= 0 ? `True to size, order ${SIZE_LADDER[i]}` : "True to size";
+}

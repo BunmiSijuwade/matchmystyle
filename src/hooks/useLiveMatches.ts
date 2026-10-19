@@ -35,9 +35,10 @@ function bucket(products: CatalogProduct[]): TieredMatches {
   return out;
 }
 
-export function useLiveMatches(items: DetectedItem[] | null) {
+/** sizeOverride: a size picked on the Analyzer; used in queries exactly like the saved profile size. */
+export function useLiveMatches(items: DetectedItem[] | null, sizeOverride?: string | null) {
   const [state, setState] = useState<Record<string, LiveMatchState>>({});
-  const size = readProfileSize();
+  const size = sizeOverride ?? readProfileSize();
   const signature = (items ?? []).map((i) => i.id + i.description).join("|") + size;
 
   useEffect(() => {
