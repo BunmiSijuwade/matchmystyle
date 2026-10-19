@@ -28,7 +28,7 @@ const PasteTipStrip = () => {
         <div className="bg-card border border-border rounded-xl px-3.5 py-3">
           <CollapsibleTrigger asChild>
             <button className="w-full flex items-center justify-between text-left group">
-              <span className="text-xs font-medium text-foreground">💡 Skip the download: paste a photo</span>
+              <span className="text-xs font-medium text-foreground inline-flex items-center gap-1.5"><Lightbulb className="w-3.5 h-3.5" strokeWidth={1.5} />Skip the download: paste a photo</span>
               <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 group-hover:text-foreground transition-colors">
                 {open ? (
                   <>hide <ChevronUp className="w-3 h-3" /></>
@@ -47,7 +47,7 @@ const PasteTipStrip = () => {
                   <div key={step.title} className="flex items-start gap-2">
                     <div className="flex flex-col items-center text-center min-w-[100px]">
                       <div className="w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center text-sm mb-1.5">
-                        {step.icon}
+                        <step.Icon className="w-4 h-4 text-foreground" strokeWidth={1.5} />
                       </div>
                       <span className="text-[11px] font-medium text-foreground">{step.title}</span>
                       <span className="text-[10px] text-muted-foreground leading-tight mt-0.5">{step.desc}</span>
