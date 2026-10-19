@@ -9,6 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import AestheticBlock from "@/components/results/AestheticBlock";
 import ShopAesthetic from "@/components/results/ShopAesthetic";
+import GradientButton from "@/components/GradientButton";
+import { buildLookRequest } from "@/lib/buildLookRequest";
 import { useAnalysis, type DetectedItem, type AestheticResult } from "@/contexts/AnalysisContext";
 import { useLiveMatches, PRICE_TIERS, type TieredMatches } from "@/hooks/useLiveMatches";
 import { formatPrice, type CatalogProduct } from "@/lib/shopCatalog";
@@ -224,6 +226,10 @@ const Results = () => {
 
   if (!items || items.length === 0) return null;
 
+  const handleBuildLook = () => {
+    navigate(`/concierge?q=${encodeURIComponent(buildLookRequest(aesthetics, items))}`);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -270,6 +276,9 @@ const Results = () => {
           )}
 
           <AestheticBlock aesthetics={aesthetics} summary={aestheticSummary} />
+          <GradientButton onClick={handleBuildLook} className="w-full sm:w-auto">
+            Build My Look
+          </GradientButton>
 
           {/* Results header + toggle */}
           <div id="detected-items" className="scroll-mt-24 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
@@ -440,6 +449,9 @@ const Results = () => {
           </div>
 
           {aesthetics.length > 0 && <ShopAesthetic aesthetics={aesthetics} />}
+          <GradientButton onClick={handleBuildLook} className="w-full sm:w-auto">
+            Build My Look
+          </GradientButton>
         </div>
       </div>
     </div>
