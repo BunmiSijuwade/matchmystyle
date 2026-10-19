@@ -212,8 +212,9 @@ Keep all field values short and concise. Do not repeat instructions or field nam
         );
       }
       if (response.status === 402) {
+        console.error("AI gateway payment_required: AI credits exhausted", response.status);
         return new Response(
-          JSON.stringify({ error: "payment_required", message: "AI usage limit reached. Please add credits in Settings → Workspace → Usage." }),
+          JSON.stringify({ error: "payment_required", title: "We're at capacity", message: "The style analyzer is busy right now. Please try again a little later." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
