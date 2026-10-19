@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { AESTHETIC_NAMES, aestheticPromptBlock } from "../_shared/aesthetics.ts";
-import { INPUT_LIMITS, rateLimitResponse } from "../_shared/rateLimit.ts";
+import { INPUT_LIMITS, rateLimitResponse, limitedResponse } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -206,10 +206,8 @@ Keep all field values short and concise. Do not repeat instructions or field nam
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "rate_limit", message: "Rate limit exceeded. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        console.error("AI gateway rate limited:", response.status, await response.text());
+        return limitedResponse("analyze-outfit", "unavailable", corsHeaders);
       }
       if (response.status === 402) {
         console.error("AI gateway payment_required: AI credits exhausted", response.status);

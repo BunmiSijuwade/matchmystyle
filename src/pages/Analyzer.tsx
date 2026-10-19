@@ -154,7 +154,7 @@ const Analyzer = () => {
         const err = await response.json().catch(() => ({}));
         const msg = err.message || "too many requests, try again later";
         setAnalyzeError(msg);
-        toast({ title: "Rate limit reached", description: msg, variant: "destructive" });
+        toast({ title: err.title || "Rate limit reached", description: msg, variant: "destructive" });
         return;
       }
 

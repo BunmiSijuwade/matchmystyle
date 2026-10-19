@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { AESTHETIC_NAMES } from "../_shared/aesthetics.ts";
-import { INPUT_LIMITS, rateLimitResponse } from "../_shared/rateLimit.ts";
+import { INPUT_LIMITS, rateLimitResponse, limitedResponse } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,7 +112,7 @@ serve(async (req) => {
     if (!response.ok) {
       const errText = await response.text();
       console.error("concierge-plan gateway error:", response.status, errText);
-      if (response.status === 429) return json({ error: "rate_limited", message: "Too many requests, try again shortly." }, 429);
+      if (response.status === 429) return limitedResponse("concierge-plan", "unavailable", corsHeaders);
       if (response.status === 402) return json({ error: "credits_exhausted", message: "AI credits are used up." }, 402);
       return json({ error: "ai_error", message: "Couldn't plan that right now." }, 500);
     }

@@ -1,12 +1,13 @@
 // Shared helpers for MCP tools: usage limits, catalog search, price formatting, MatchMyStyle links.
 import { ToolError } from "@lovable.dev/mcp-js";
-import { checkRateLimit, RATE_LIMIT_MESSAGE } from "../../../supabase/functions/_shared/rateLimit";
+import { checkRateLimit, rateLimitNotice } from "../../../supabase/functions/_shared/rateLimit";
 import { supabaseProjectUrl, supabasePublishableKey } from "./supabase";
 import { currentIp } from "./request";
 
 /** Count one MCP tool call against the shared limits; throws a friendly ToolError when hit. */
 export async function guardMcpCall() {
-  if (!(await checkRateLimit("mcp", currentIp()))) throw new ToolError(RATE_LIMIT_MESSAGE);
+  const reason = await checkRateLimit("mcp", currentIp());
+  if (reason !== "ok") throw new ToolError(rateLimitNotice("mcp", reason).message);
 }
 
 export const matchmystyleUrl = (q: string) =>

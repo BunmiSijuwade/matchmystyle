@@ -21,6 +21,26 @@ var INPUT_LIMITS = {
   maxOutputTokens: { "analyze-outfit": 4096, "concierge-plan": 1500 }
 };
 var RATE_LIMIT_MESSAGE = "too many requests, try again later";
+function rateLimitNotice(fn, reason) {
+  if (reason === "ip") {
+    const { limit, windowS } = RATE_LIMITS[fn].perIp;
+    const daily = windowS === 86400;
+    const period = daily ? "a day" : windowS === 3600 ? "an hour" : `every ${windowS} seconds`;
+    const action = {
+      "analyze-outfit": `analyze up to ${limit} photos`,
+      "concierge-plan": `make up to ${limit} styling requests`,
+      "image-proxy": `load up to ${limit} images`,
+      "style-look": `make up to ${limit} styled previews`,
+      mcp: `make up to ${limit} assistant requests`
+    };
+    return {
+      scope: "personal",
+      title: "You've reached your limit",
+      message: `You can ${action[fn]} ${period}. ${daily ? "Please try again tomorrow." : "Please try again in a little while."}`
+    };
+  }
+  return reason === "global" || reason === "ai" ? { scope: "capacity", title: "We've hit today's limit", message: "MatchMyStyle is very popular today. Please try again later." } : { scope: "capacity", title: "We're at capacity", message: "This feature is busy right now. Please try again a little later." };
+}
 var env = (n) => {
   const g = globalThis;
   return g.Deno?.env?.get?.(n) ?? g.process?.env?.[n];
@@ -54,7 +74,7 @@ async function checkRateLimit(fn, ip) {
   const cfg = RATE_LIMITS[fn];
   if (cfg.ai && !aiEnabled()) {
     console.warn(JSON.stringify({ rateLimited: fn, scope: "ai_disabled" }));
-    return false;
+    return "unavailable";
   }
   try {
     const res = await serviceFetch("rpc/hit_rate_limit_v2", {
@@ -72,18 +92,18 @@ async function checkRateLimit(fn, ip) {
     });
     if (!res) {
       console.error("rateLimit: missing config, blocking");
-      return false;
+      return "unavailable";
     }
     if (!res.ok) {
       console.error("rateLimit: rpc failed, blocking", res.status, (await res.text()).slice(0, 200));
-      return false;
+      return "unavailable";
     }
     const verdict = await res.json();
     if (verdict !== "ok") console.warn(JSON.stringify({ rateLimited: fn, scope: verdict }));
-    return verdict === "ok";
+    return verdict === "ok" || verdict === "ip" || verdict === "global" || verdict === "ai" ? verdict : "unavailable";
   } catch (e) {
     console.error("rateLimit: error, blocking", String(e));
-    return false;
+    return "unavailable";
   }
 }
 
@@ -155,7 +175,8 @@ function supabasePublishableKey() {
 
 // src/lib/mcp/shop.ts
 async function guardMcpCall() {
-  if (!await checkRateLimit("mcp", currentIp())) throw new ToolError(RATE_LIMIT_MESSAGE);
+  const reason = await checkRateLimit("mcp", currentIp());
+  if (reason !== "ok") throw new ToolError(rateLimitNotice("mcp", reason).message);
 }
 var matchmystyleUrl = (q) => `https://matchmystyle.lovable.app/concierge?q=${encodeURIComponent(q)}&utm_source=mcp&utm_medium=agent`;
 function toProduct(p) {
@@ -265,21 +286,21 @@ function pieceCaps(plan) {
 }
 async function getPlan(request, size, signal) {
   const key = supabasePublishableKey();
+  const internalKey = env2("MCP_INTERNAL_KEY");
   const res = await fetch(`${supabaseProjectUrl()}/functions/v1/concierge-plan`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       apikey: key,
       Authorization: `Bearer ${key}`,
-      // MCP calls are already limited per caller IP; this lets concierge-plan skip its per-IP check.
       // style_me counts against concierge-plan per-IP + global caps and the global AI budget, as the caller.
-      ...env2("MCP_INTERNAL_KEY") ? { "x-mms-internal": env2("MCP_INTERNAL_KEY"), "x-mms-client-ip": currentIp() } : {}
+      ...internalKey ? { "x-mms-internal": internalKey, "x-mms-client-ip": currentIp() } : {}
     },
     body: JSON.stringify({ request, size }),
     signal
   });
   const body = await res.json().catch(() => null);
-  if (res.status === 429) throw new ToolError2(RATE_LIMIT_MESSAGE);
+  if (res.status === 429) throw new ToolError2(body?.message || RATE_LIMIT_MESSAGE);
   if (!res.ok || !body || !Array.isArray(body.pieces) || !body.pieces.length) throw new ToolError2(body?.message ?? "Couldn't plan that look right now.");
   return body;
 }

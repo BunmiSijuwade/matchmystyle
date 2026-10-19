@@ -26,19 +26,19 @@ function pieceCaps(plan: Plan): Record<string, number | undefined> {
 
 async function getPlan(request: string, size: string | undefined, signal: AbortSignal): Promise<Plan> {
   const key = supabasePublishableKey();
+  const internalKey = env("MCP_INTERNAL_KEY");
   const res = await fetch(`${supabaseProjectUrl()}/functions/v1/concierge-plan`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}`,
-      // MCP calls are already limited per caller IP; this lets concierge-plan skip its per-IP check.
       // style_me counts against concierge-plan per-IP + global caps and the global AI budget, as the caller.
-      ...(env("MCP_INTERNAL_KEY") ? { "x-mms-internal": env("MCP_INTERNAL_KEY")!, "x-mms-client-ip": currentIp() } : {}),
+      ...(internalKey ? { "x-mms-internal": internalKey, "x-mms-client-ip": currentIp() } : {}),
     },
     body: JSON.stringify({ request, size }),
     signal,
   });
   const body = (await res.json().catch(() => null)) as (Plan & { message?: string }) | null;
-  if (res.status === 429) throw new ToolError(RATE_LIMIT_MESSAGE);
+  if (res.status === 429) throw new ToolError(body?.message || RATE_LIMIT_MESSAGE);
   if (!res.ok || !body || !Array.isArray(body.pieces) || !body.pieces.length) throw new ToolError(body?.message ?? "Couldn't plan that look right now.");
   return body;
 }
