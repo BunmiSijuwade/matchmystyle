@@ -1,5 +1,5 @@
 // PROTOTYPE: AI-styled preview of a Concierge look. Isolated; delete this folder + LookStyledTab to remove.
-import { rateLimitResponse, styleLookEnabled } from "../_shared/rateLimit.ts";
+import { rateLimitResponse, styleLookEnabled, limitedResponse } from "../_shared/rateLimit.ts";
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const MODEL = "google/gemini-3.1-flash-image";
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       const t = await res.text();
       console.error("style-look gateway error", res.status, t.slice(0, 500));
       let msg: string | undefined; try { msg = JSON.parse(t)?.error?.message ?? JSON.parse(t)?.message; } catch { /* ignore */ }
-      if (res.status === 429) return json({ error: "rate_limited", message: "Too many requests, try again shortly." }, 429);
+      if (res.status === 429) return limitedResponse("style-look", "unavailable", cors);
       if (res.status === 402) return json({ error: "credits_exhausted", message: msg ?? "AI credits are used up." }, 402);
       if (res.status === 403) return json({ error: "forbidden", message: msg ?? "AI access was denied." }, 403);
       return json({ error: "ai_error", message: "Couldn't style this look right now." }, 500);

@@ -173,6 +173,11 @@ const Results = () => {
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
+        if (response.status === 429) {
+          toast({ title: err.title || "Re-analysis failed", description: err.message || "Re-analysis failed", variant: "destructive" });
+          setUseProfile(!withProfile);
+          return;
+        }
         throw new Error(err.message || "Re-analysis failed");
       }
 

@@ -212,7 +212,7 @@ const Concierge = () => {
     setPending("give me a sec, styling it...");
     const next = await invokePlan({ request: text, size: size ?? undefined });
     setPending(null);
-    if (!next && limitedRef.current) { setError(limitedRef.current); setStatus("error"); return; }
+    if (!next && limitedRef.current) { say({ from: "me", text: limitedRef.current }); setError(limitedRef.current); setStatus("error"); return; }
     if (!next) { await runSearch(text); return; }
     say({ from: "me", text: next.note }, { from: "me", text: `pulling a rail: ${next.pieces.map((p) => p.label).join(", ")}.` });
     const { map, changed } = await fillRaw(next, {}, size);
@@ -257,6 +257,7 @@ const Concierge = () => {
     }
     if (!next) {
       say({ from: "me", text: limitedRef.current ?? "hmm, i couldn't tweak that one. try saying it another way?" });
+      if (limitedRef.current) { setError(limitedRef.current); setStatus("error"); return; }
       setChips(refinementsFor(current));
       setStatus("done");
       return;
@@ -287,8 +288,8 @@ const Concierge = () => {
       console.info("[concierge] shopify-catalog", { ms: Math.round(performance.now() - started), meta: data?.meta, fnError });
     }
     if (fnError || !data || data.error || !Array.isArray(data.products)) {
-      let msg = data?.error as string | undefined;
-      try { msg = msg ?? (await (fnError as any)?.context?.json?.())?.error; } catch { /* ignore */ }
+      let msg = (data?.message ?? data?.error) as string | undefined;
+      try { const body = await (fnError as any)?.context?.json?.(); msg = body?.message ?? msg ?? body?.error; } catch { /* ignore */ }
       setError(msg ?? "couldn't search right now.");
       setMeta(data?.meta ?? null);
       setStatus("error");
@@ -339,7 +340,12 @@ const Concierge = () => {
     const size = readProfileSize();
     let alts: string[] = [];
     try {
-      const { data } = await supabase.functions.invoke("concierge-plan", { body: { request: history[0] ?? pc.query, size: size ?? undefined, previous: plan, piece: pc } });
+      const { data, error: fnError } = await supabase.functions.invoke("concierge-plan", { body: { request: history[0] ?? pc.query, size: size ?? undefined, previous: plan, piece: pc } });
+      const ctx = (fnError as { context?: Response } | null)?.context;
+      if (ctx?.status === 429) {
+        const msg = (await ctx.json().catch(() => null))?.message || "too many requests, try again later";
+        say({ from: "me", text: msg }); setError(msg); setStatus("error"); setMoreLoading(null); return;
+      }
       alts = Array.isArray(data?.alternatives) ? data.alternatives.slice(0, 3) : [];
     } catch (e) { console.error("[concierge] alternatives failed", e); }
     const cap = pieceCaps(plan)[label];

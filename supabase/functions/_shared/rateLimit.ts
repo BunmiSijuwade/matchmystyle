@@ -25,6 +25,32 @@ export const INPUT_LIMITS = {
 
 export type LimitedFunction = keyof typeof RATE_LIMITS;
 export const RATE_LIMIT_MESSAGE = "too many requests, try again later";
+export type RateLimitVerdict = "ok" | "ip" | "global" | "ai" | "unavailable";
+export type BlockingVerdict = Exclude<RateLimitVerdict, "ok">;
+
+/** Shopper-facing notices only. Enforcement continues to use the same config and RPC. */
+export function rateLimitNotice(fn: LimitedFunction, reason: BlockingVerdict) {
+  if (reason === "ip") {
+    const { limit, windowS } = RATE_LIMITS[fn].perIp;
+    const daily = windowS === 86400;
+    const period = daily ? "a day" : windowS === 3600 ? "an hour" : `every ${windowS} seconds`;
+    const action: Record<LimitedFunction, string> = {
+      "analyze-outfit": `analyze up to ${limit} photos`,
+      "concierge-plan": `make up to ${limit} styling requests`,
+      "image-proxy": `load up to ${limit} images`,
+      "style-look": `make up to ${limit} styled previews`,
+      mcp: `make up to ${limit} assistant requests`,
+    };
+    return {
+      scope: "personal" as const,
+      title: "You've reached your limit",
+      message: `You can ${action[fn]} ${period}. ${daily ? "Please try again tomorrow." : "Please try again in a little while."}`,
+    };
+  }
+  return reason === "global" || reason === "ai"
+    ? { scope: "capacity" as const, title: "We've hit today's limit", message: "MatchMyStyle is very popular today. Please try again later." }
+    : { scope: "capacity" as const, title: "We're at capacity", message: "This feature is busy right now. Please try again a little later." };
+}
 
 type Env = { Deno?: { env?: { get?: (n: string) => string | undefined } }; process?: { env?: Record<string, string | undefined> } };
 const env = (n: string) => {
@@ -77,9 +103,9 @@ export function callerIp(headers: Headers): string {
 }
 
 /** Count one call. Returns true only if allowed. FAILS CLOSED: storage errors or missing config block the call. */
-export async function checkRateLimit(fn: LimitedFunction, ip: string): Promise<boolean> {
+export async function checkRateLimit(fn: LimitedFunction, ip: string): Promise<RateLimitVerdict> {
   const cfg = RATE_LIMITS[fn];
-  if (cfg.ai && !aiEnabled()) { console.warn(JSON.stringify({ rateLimited: fn, scope: "ai_disabled" })); return false; }
+  if (cfg.ai && !aiEnabled()) { console.warn(JSON.stringify({ rateLimited: fn, scope: "ai_disabled" })); return "unavailable"; }
   try {
     const res = await serviceFetch("rpc/hit_rate_limit_v2", {
       method: "POST",
@@ -89,23 +115,24 @@ export async function checkRateLimit(fn: LimitedFunction, ip: string): Promise<b
         _ai_key: cfg.ai ? "ai:global" : null, _ai_limit: GLOBAL_AI_CALLS_PER_DAY,
       }),
     });
-    if (!res) { console.error("rateLimit: missing config, blocking"); return false; }
-    if (!res.ok) { console.error("rateLimit: rpc failed, blocking", res.status, (await res.text()).slice(0, 200)); return false; }
+    if (!res) { console.error("rateLimit: missing config, blocking"); return "unavailable"; }
+    if (!res.ok) { console.error("rateLimit: rpc failed, blocking", res.status, (await res.text()).slice(0, 200)); return "unavailable"; }
     const verdict = await res.json();
     if (verdict !== "ok") console.warn(JSON.stringify({ rateLimited: fn, scope: verdict }));
-    return verdict === "ok";
+    return verdict === "ok" || verdict === "ip" || verdict === "global" || verdict === "ai" ? verdict : "unavailable";
   } catch (e) {
     console.error("rateLimit: error, blocking", String(e));
-    return false;
+    return "unavailable";
   }
 }
 
-export const limitedResponse = (headers: Record<string, string>) =>
-  new Response(JSON.stringify({ error: "rate_limited", message: RATE_LIMIT_MESSAGE }), {
+export const limitedResponse = (fn: LimitedFunction, reason: BlockingVerdict, headers: Record<string, string>) =>
+  new Response(JSON.stringify({ error: "rate_limited", ...rateLimitNotice(fn, reason) }), {
     status: 429, headers: { ...headers, "Content-Type": "application/json" },
   });
 
 /** For HTTP functions: returns a 429 Response when limited (or AI is off), otherwise null. */
 export async function rateLimitResponse(fn: LimitedFunction, req: Request, headers: Record<string, string>): Promise<Response | null> {
-  return (await checkRateLimit(fn, callerIp(req.headers))) ? null : limitedResponse(headers);
+  const reason = await checkRateLimit(fn, callerIp(req.headers));
+  return reason === "ok" ? null : limitedResponse(fn, reason, headers);
 }
