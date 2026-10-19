@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useCallback } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { Camera, ShoppingBag, X, Loader2, AlertCircle } from "lucide-react";
+import { Camera, X, Loader2, AlertCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +9,7 @@ import { useAnalysis, type DetectedItem } from "@/contexts/AnalysisContext";
 import { Switch } from "@/components/ui/switch";
 import PasteTipStrip from "@/components/PasteTipStrip";
 import { useClipboardPaste } from "@/hooks/useClipboardPaste";
+import { INPUT_LIMITS } from "../../supabase/functions/_shared/rateLimit";
 
 type Tab = "url" | "file";
 
@@ -67,6 +68,7 @@ const Analyzer = () => {
   const [urlPreviewError, setUrlPreviewError] = useState(false);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
@@ -86,6 +88,11 @@ const Analyzer = () => {
 
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
+    if (file.size > INPUT_LIMITS.maxImageBytes) {
+      setFileError("This image is over 5 MB. Try a smaller photo or a screenshot.");
+      return;
+    }
+    setFileError(null);
     const url = URL.createObjectURL(file);
     setFilePreviewUrl(url);
     setUploadedFile(file);
@@ -122,8 +129,9 @@ const Analyzer = () => {
       if (activeTab === "url") {
         imagePayload = { imageUrl: pastedUrl };
       } else {
-        const imageBase64 = await fileToBase64(uploadedFile!);
-        imagePayload = { imageBase64, mimeType: uploadedFile!.type };
+        if (!uploadedFile) return;
+        const imageBase64 = await fileToBase64(uploadedFile);
+        imagePayload = { imageBase64, mimeType: uploadedFile.type };
       }
 
       const requestBody: Record<string, unknown> = { ...imagePayload };
@@ -151,8 +159,9 @@ const Analyzer = () => {
       }
 
       if (response.status === 402) {
-        setAnalyzeError("Usage limit reached. Please add credits to continue.");
-        toast({ title: "Usage limit reached", description: "Please add credits in Settings → Workspace → Usage to continue.", variant: "destructive" });
+        const message = "The style analyzer is busy right now. Please try again a little later.";
+        setAnalyzeError(message);
+        toast({ title: "We're at capacity", description: message, variant: "destructive" });
         return;
       }
 
@@ -192,6 +201,7 @@ const Analyzer = () => {
     setUrlPreviewError(false);
     setFilePreviewUrl(null);
     setUploadedFile(null);
+    setFileError(null);
   };
 
   return (
@@ -207,7 +217,7 @@ const Analyzer = () => {
             <span className="text-gradient italic font-normal">Outfit</span>
           </h1>
           <p className="text-muted-foreground text-sm sm:text-base max-w-xl mx-auto leading-[1.7]">
-            Upload a photo of an influencer's look and our AI will identify every item — then find them in your size.
+            Upload a photo of a look you love. We'll identify every piece and find similar ones to shop. Add your measurements for size-matched picks.
           </p>
         </div>
 
@@ -245,7 +255,7 @@ const Analyzer = () => {
                   type="url"
                   value={pastedUrl}
                   onChange={handleUrlChange}
-                  placeholder="https://instagram.com/p/outfit123"
+                  placeholder="https://example.com/outfit.jpg"
                   className="w-full min-h-[48px] rounded-xl border border-border bg-card px-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
                 />
                 {pastedUrl.length > 0 && !isValidUrl(pastedUrl) && (
@@ -256,7 +266,7 @@ const Analyzer = () => {
                 )}
                 {(!pastedUrl || isValidUrl(pastedUrl)) && (
                   <p className="text-xs text-muted-foreground">
-                    Paste from Instagram, TikTok, Pinterest, or any source
+                    Paste a direct image link (ending in .jpg, .png or .webp). For Instagram, TikTok or Pinterest, save or screenshot the photo and upload it instead.
                   </p>
                 )}
                 {previewSrc && !urlPreviewError && (
@@ -316,7 +326,7 @@ const Analyzer = () => {
                     </svg>
                     <h3 className="text-sm font-medium mb-1 text-foreground">Drop your photo here</h3>
                     <p className="text-muted-foreground text-xs mb-3">or click to browse files</p>
-                    <p className="text-[11px] text-muted-foreground">JPG, PNG, WEBP · Max 20MB</p>
+                    <p className="text-[11px] text-muted-foreground">JPG, PNG, WEBP · Max 5MB</p>
                     {/* Paste hint – hidden on mobile */}
                     <span className="hidden md:inline-flex items-center gap-1 mt-3 bg-card border border-border rounded-full px-2.5 py-1 text-[10px] text-primary">
                       ⌘V · Ctrl+V to paste an image
@@ -338,6 +348,12 @@ const Analyzer = () => {
                       Change image
                     </button>
                   </div>
+                )}
+                {fileError && (
+                  <p role="alert" className="text-destructive text-sm flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    {fileError}
+                  </p>
                 )}
               </>
             )}
@@ -424,26 +440,15 @@ const Analyzer = () => {
             </div>
           </div>
 
-          {/* Placeholder */}
-          {!analyzing && (
-            <div className="bg-card border border-border rounded-2xl p-12 text-center">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                <ShoppingBag className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-medium mb-2 text-muted-foreground tracking-[-0.3px]">Results will appear here</h3>
-              <p className="text-muted-foreground text-sm">Upload a photo and click Analyze to see identified items and shopping matches.</p>
-            </div>
-          )}
-
           {analyzing && (
             <div className="bg-card border border-border rounded-2xl p-12 text-center">
               <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center mx-auto mb-6 shadow-brand">
                 <span className="text-primary-foreground text-2xl">✨</span>
               </div>
               <h3 className="text-lg font-medium mb-2 tracking-[-0.3px]">AI is analyzing...</h3>
-              <p className="text-muted-foreground text-sm">Gemini is identifying clothing items, colors, and styles</p>
+              <p className="text-muted-foreground text-sm">Gemini is identifying clothing items, colors, styles, and your look's aesthetic</p>
               <div className="mt-6 space-y-2">
-                {["Detecting clothing items...", "Identifying brands & styles...", "Finding shopping matches..."].map((step, i) => (
+                {["Reading your photo...", "Spotting each piece...", "Finding your aesthetic..."].map((step, i) => (
                   <div key={step} className={`flex items-center gap-2 text-sm transition-all duration-500 ${i <= analyzeStep ? "opacity-100 text-primary" : "opacity-30 text-muted-foreground"}`}>
                     <Loader2 className={`w-3 h-3 ${i === analyzeStep ? "animate-spin" : ""}`} />
                     {step}
