@@ -5,12 +5,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 const STORAGE_KEY = "mms_paste_tip_dismissed";
 
 const steps = [
-  { icon: "🔍", title: "Find it", desc: "Search on Google Lens or open on Instagram" },
-  { icon: "📋", title: "Copy it", desc: "Right-click → Copy Image" },
-  { icon: "✨", title: "Paste here", desc: "Click the zone above & press Ctrl+V" },
+  { icon: "🔍", title: "Find a look", desc: "Any photo open in your browser" },
+  { icon: "📋", title: "Copy it", desc: "Right-click the photo, then Copy Image" },
+  { icon: "✨", title: "Paste here", desc: "Press Ctrl+V (or ⌘V on a Mac)" },
 ];
 
-const platforms = ["Google Lens", "Instagram", "Pinterest", "TikTok", "Any browser"];
+const platforms = ["Pinterest", "Google Images", "Shop sites", "Screenshots"];
 
 const PasteTipStrip = () => {
   const [open, setOpen] = useState(() => localStorage.getItem(STORAGE_KEY) !== "true");
@@ -28,7 +28,7 @@ const PasteTipStrip = () => {
         <div className="bg-card border border-border rounded-xl px-3.5 py-3">
           <CollapsibleTrigger asChild>
             <button className="w-full flex items-center justify-between text-left group">
-              <span className="text-xs font-medium text-foreground">💡 How to copy from Google Lens</span>
+              <span className="text-xs font-medium text-foreground">💡 Skip the download: paste a photo</span>
               <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 group-hover:text-foreground transition-colors">
                 {open ? (
                   <>hide <ChevronUp className="w-3 h-3" /></>
