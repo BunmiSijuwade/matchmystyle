@@ -1,108 +1,51 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ExternalLink, ArrowLeft, Leaf, Loader2 } from "lucide-react";
+import { ExternalLink, ArrowLeft, Leaf, Loader2, X, ArrowUp, Search } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { Toaster } from "@/components/ui/toaster";
-import { Badge } from "@/components/ui/badge";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Switch } from "@/components/ui/switch";
+import { Drawer, DrawerContent, DrawerTitle, DrawerDescription, DrawerClose } from "@/components/ui/drawer";
 import { useToast } from "@/hooks/use-toast";
-import AestheticBlock from "@/components/results/AestheticBlock";
 import ShopAesthetic from "@/components/results/ShopAesthetic";
-import GradientButton from "@/components/GradientButton";
-import { buildLookRequest } from "@/lib/buildLookRequest";
-import { useAnalysis, type DetectedItem, type AestheticResult } from "@/contexts/AnalysisContext";
-import { useLiveMatches, PRICE_TIERS, type TieredMatches } from "@/hooks/useLiveMatches";
-import { formatPrice, type CatalogProduct } from "@/lib/shopCatalog";
-import { getSizeRecommendation, type UserMeasurements, type SizeRecommendation } from "@/services/sizingService";
+import LookCardDialog from "@/components/concierge/LookCardDialog";
+import { getAesthetic } from "@/data/aesthetics";
+import { buildLookHandoff } from "@/lib/buildLookRequest";
+import { alternativesFor, assembleLook, lookReady, TIER_NAMES, type LookPiece, type ShopTier } from "@/lib/assembleLook";
+import { useAnalysis, type DetectedItem, type LookTier } from "@/contexts/AnalysisContext";
+import { useLiveMatches } from "@/hooks/useLiveMatches";
+import { formatPrice, majorAmount, readProfileSize, type CatalogProduct } from "@/lib/shopCatalog";
+import { getSizeRecommendation, brandFitNote, type UserMeasurements } from "@/services/sizingService";
 
 const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;
+const SERIF = { fontFamily: '"Instrument Serif", Georgia, serif', fontWeight: 400 } as const;
 
 const VINTAGE_PLATFORMS = [
-  { name: "Poshmark",             url: (q: string) => `https://poshmark.com/search?query=${q}` },
-  { name: "Depop",                url: (q: string) => `https://www.depop.com/search/?q=${q}` },
-  { name: "ThredUp",              url: (q: string) => `https://www.thredup.com/products?search_text=${q}` },
-  { name: "Vestiaire Collective", url: (q: string) => `https://www.vestiairecollective.com/search/?q=${q}` },
+  { name: "Poshmark", url: (q: string) => `https://poshmark.com/search?query=${q}` },
+  { name: "Depop", url: (q: string) => `https://www.depop.com/search/?q=${q}` },
+  { name: "ThredUp", url: (q: string) => `https://www.thredup.com/products?search_text=${q}` },
+  { name: "Vestiaire", url: (q: string) => `https://www.vestiairecollective.com/search/?q=${q}` },
 ];
-
-function pickVintagePlatform(index: number) {
-  return VINTAGE_PLATFORMS[index % VINTAGE_PLATFORMS.length];
-}
-
-const CONFIDENCE_COLORS: Record<string, string> = {
-  high: "bg-green-500",
-  medium: "bg-yellow-500",
-  low: "bg-orange-500",
-};
-
-const TIER_LABELS = [
-  { key: "budget", label: "Budget", range: `Under $${PRICE_TIERS.budgetMax}` },
-  { key: "midRange", label: "Mid-Range", range: `$${PRICE_TIERS.budgetMax}–$${PRICE_TIERS.luxuryMin}` },
-  { key: "luxury", label: "Luxury", range: `$${PRICE_TIERS.luxuryMin}+` },
-] as const;
-
-const LiveProductRow = ({ product, sizeRec }: { product: CatalogProduct; sizeRec?: SizeRecommendation | null }) => (
-  <a
-    href={product.productUrl}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="flex items-center gap-3 p-2 sm:p-3 rounded-xl border border-border hover:border-primary bg-card transition-all duration-300 ease-out group min-h-[56px] hover:shadow-brand"
-  >
-    <img src={product.imageUrl} alt={product.title} loading="lazy" className="w-14 h-[74px] rounded-lg object-cover flex-shrink-0 bg-muted" />
-    <div className="min-w-0 flex-1">
-      {product.merchantName && (
-        <p className="text-[9px] text-muted-foreground uppercase tracking-[0.5px] font-medium truncate">{product.merchantName}</p>
-      )}
-      <p className="font-medium text-[12px] leading-snug line-clamp-2 group-hover:text-primary transition-colors">{product.title}</p>
-      {sizeRec && (
-        <div className="flex items-center gap-1.5">
-          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${CONFIDENCE_COLORS[sizeRec.confidence]}`} title={`${sizeRec.confidence} confidence`} />
-          <p className="text-[9px] text-primary font-medium">
-            Order size {sizeRec.recommendedSize}{sizeRec.brandRunsSmall ? " (runs small)" : sizeRec.brandRunsLarge ? " (runs large)" : ""}
-          </p>
-        </div>
-      )}
-    </div>
-    <div className="flex items-center gap-2 flex-shrink-0">
-      <span className="font-semibold text-primary text-[13px]">{formatPrice(product.price)}</span>
-      <span className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center">
-        <ExternalLink className="w-3.5 h-3.5 text-background" />
-      </span>
-    </div>
-  </a>
-);
-
-const SkeletonRow = () => (
-  <div className="flex items-center gap-3 p-2 sm:p-3 rounded-xl border border-border bg-card animate-pulse min-h-[56px]">
-    <div className="w-14 h-[74px] rounded-lg bg-muted" />
-    <div className="flex-1 space-y-2">
-      <div className="h-2.5 w-1/3 rounded bg-muted" />
-      <div className="h-3 w-3/4 rounded bg-muted" />
-    </div>
-    <div className="h-3 w-12 rounded bg-muted" />
-  </div>
-);
-
-const normalize = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-function aestheticTagsFor(item: DetectedItem, list: AestheticResult[]): string[] {
-  const names = [item.description, item.category].filter(Boolean).map(normalize);
-  return list
-    .filter((a) => a.evidence.some((e) => {
-      const ev = normalize(e);
-      return !!ev && names.some((n) => n === ev || n.includes(ev) || ev.includes(n));
-    }))
-    .map((a) => a.name);
-}
+const TABS: [LookTier, string][] = [["budget", "Budget"], ["midRange", "Mid-range"], ["vintage", "Vintage"]];
+const QUICK_CHIPS = ["make it cheaper", "add some color", "dress it up", "different shoes"];
+const usd = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+type Override = CatalogProduct | "removed";
+type ShownPiece = LookPiece & { removed: boolean; swapped: boolean };
 
 const Results = () => {
   const navigate = useNavigate();
-  const { items, imageUrl, imagePayload, setAnalysis, aesthetics, aestheticSummary } = useAnalysis();
+  const { items, imageUrl, imagePayload, setAnalysis, aesthetics, aestheticSummary, lookPrefs } = useAnalysis();
   const [originalAesthetics, setOriginalAesthetics] = useState(aesthetics);
   const [originalSummary, setOriginalSummary] = useState(aestheticSummary);
   const { toast } = useToast();
-  const [shopMode, setShopMode] = useState<"new" | "vintage">("new");
-  const [openAccordionItem, setOpenAccordionItem] = useState<string>("");
   const [reanalyzing, setReanalyzing] = useState(false);
+
+  const [tier, setTier] = useState<LookTier>(lookPrefs.tier);
+  const [overrides, setOverrides] = useState<Record<string, Override>>({});
+  const [swapId, setSwapId] = useState<string | null>(null);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
+  const [ask, setAsk] = useState("");
+  useEffect(() => setOverrides({}), [items]);
 
   // Original items (without profile) for reverting
   const [originalItems, setOriginalItems] = useState<DetectedItem[] | null>(null);
@@ -137,12 +80,14 @@ const Results = () => {
     return { bust, waist, hips };
   }, [profileData, useProfile]);
 
-  const { state: liveState } = useLiveMatches(items);
-  const sizeRecFor = useCallback(
-    (p: CatalogProduct, item: DetectedItem) =>
-      userMeasurements ? getSizeRecommendation(`${p.merchantName ?? ""} ${p.title}`, item.description, userMeasurements) : null,
-    [userMeasurements],
-  );
+  const size = lookPrefs.size ?? readProfileSize();
+  const { state: liveState } = useLiveMatches(items, lookPrefs.size);
+  const sizeNoteFor = useCallback((p: CatalogProduct, item: DetectedItem): string | null => {
+    const title = `${p.merchantName ?? ""} ${p.title}`;
+    const rec = userMeasurements ? getSizeRecommendation(title, item.description, userMeasurements) : null;
+    if (rec) return `${rec.brandRunsSmall ? "Runs small, " : rec.brandRunsLarge ? "Runs large, " : ""}order ${rec.recommendedSize}`;
+    return brandFitNote(title, size) ?? item.sizeNote ?? null;
+  }, [userMeasurements, size]);
 
   useEffect(() => {
     if (!items || items.length === 0) {
@@ -226,236 +171,297 @@ const Results = () => {
 
   if (!items || items.length === 0) return null;
 
-  const handleBuildLook = () => {
-    navigate(`/concierge?q=${encodeURIComponent(buildLookRequest(aesthetics, items))}`);
+  const primary = aesthetics.find((a) => a.role === "primary") ?? aesthetics[0];
+  const info = primary ? getAesthetic(primary.name) : undefined;
+  const secondary = aesthetics.find((a) => a !== primary && getAesthetic(a.name));
+  const aestheticName = info?.name ?? primary?.name ?? "your";
+
+  const piecesFor = (t: "budget" | "midRange"): ShownPiece[] =>
+    assembleLook(items, liveState, t).map((p) => {
+      const o = overrides[`${t}:${p.item.id}`];
+      if (o === "removed") return { ...p, product: null, removed: true, swapped: false };
+      if (o) return { ...p, product: o, fromTier: null, removed: false, swapped: true };
+      return { ...p, removed: false, swapped: false };
+    });
+  const totalOf = (ps: ShownPiece[]) => ps.reduce((s, p) => s + (p.product ? majorAmount(p.product.price) : 0), 0);
+  const looks = { budget: piecesFor("budget"), midRange: piecesFor("midRange") };
+  const current = tier === "vintage" ? null : looks[tier];
+  const visible = current?.filter((p) => !p.removed) ?? [];
+  const bought = visible.filter((p) => p.product);
+  const totalLabel = (t: LookTier) => (t === "vintage" ? "Varies" : lookReady(looks[t]) ? usd(totalOf(looks[t])) : null);
+
+  const swapPiece = swapId && current ? current.find((p) => p.item.id === swapId) : undefined;
+  const swapAlts = swapPiece ? alternativesFor(liveState[swapPiece.item.id]?.matches, swapPiece.product?.key ?? null) : [];
+  const setOverride = (itemId: string, v: Override) => {
+    if (tier === "vintage") return;
+    setOverrides((o) => ({ ...o, [`${tier}:${itemId}`]: v }));
+    setSwapId(null);
+  };
+
+  const handoff = (ask: string) => {
+    const pickedDiffers = lookPrefs.size && lookPrefs.size !== readProfileSize() ? lookPrefs.size : null;
+    navigate(`/concierge?q=${encodeURIComponent(buildLookHandoff(aesthetics, items, ask, pickedDiffers))}`);
+  };
+
+  const cardInput = {
+    aesthetic: info?.name ?? null,
+    request: null,
+    total: current ? usd(totalOf(current)) : "",
+    pieces: bought.slice(0, 4).map((p) => ({ label: p.item.category, imageUrl: p.product!.imageUrl, price: formatPrice(p.product!.price), title: p.product!.title })),
   };
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <Toaster />
-      <div className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16">
-        <div className="max-w-2xl mx-auto space-y-4 sm:space-y-5">
-          {/* Back button */}
+      <div className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-36">
+        <div className="max-w-2xl mx-auto space-y-5">
           <button
             onClick={() => navigate("/analyzer")}
             className="inline-flex items-center gap-2 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors duration-300 ease-out min-h-[44px] uppercase tracking-[1px]"
           >
             <ArrowLeft className="w-4 h-4" />
-            Analyze Another
+            New photo
           </button>
 
-          {/* Image preview */}
-          {imageUrl && (
-            <div className="bg-card border border-border rounded-2xl overflow-hidden">
-              <img src={imageUrl} alt="Analyzed outfit" className="w-full object-cover max-h-[250px] sm:max-h-[300px]" />
+          {/* Compact aesthetic header */}
+          <section aria-label="Your aesthetic" className="flex items-start gap-4">
+            {imageUrl && <img src={imageUrl} alt="Your photo" className="w-20 h-24 sm:w-24 sm:h-28 rounded-xl object-cover flex-shrink-0 border border-border bg-muted" />}
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-medium tracking-[1.5px] uppercase text-muted-foreground">Your aesthetic</p>
+              <h1 className="text-[30px] sm:text-[36px] leading-none mt-1" style={SERIF}>{info?.name ?? "Your look"}</h1>
+              {(aestheticSummary || info?.about) && (
+                <p className="mt-2 text-[13px] leading-snug text-muted-foreground line-clamp-2">{aestheticSummary?.trim() || info?.about}</p>
+              )}
+              {secondary && (
+                <span className="mt-2 inline-flex items-center px-3 py-1 rounded-full border border-border text-[11px] text-muted-foreground">+ {secondary.name}</span>
+              )}
             </div>
-          )}
+          </section>
 
-          {/* Profile toggle */}
           {hasProfile && imagePayload && (
             <div className="flex items-center justify-between gap-4 bg-muted border border-border rounded-xl p-4">
               <div className="space-y-0.5">
-                <label htmlFor="results-use-profile" className="text-sm font-medium cursor-pointer">
-                  Use my measurements
-                </label>
-                {profileData.summary && (
-                  <p className="text-xs text-muted-foreground">{profileData.summary}</p>
-                )}
+                <label htmlFor="results-use-profile" className="text-sm font-medium cursor-pointer">Use my measurements</label>
+                {profileData.summary && <p className="text-xs text-muted-foreground">{profileData.summary}</p>}
               </div>
               <div className="flex items-center gap-2">
                 {reanalyzing && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                <Switch
-                  id="results-use-profile"
-                  checked={useProfile}
-                  onCheckedChange={handleToggleProfile}
-                  disabled={reanalyzing}
-                />
+                <Switch id="results-use-profile" checked={useProfile} onCheckedChange={handleToggleProfile} disabled={reanalyzing} />
               </div>
             </div>
           )}
 
-          <AestheticBlock aesthetics={aesthetics} summary={aestheticSummary} />
-          <GradientButton onClick={handleBuildLook} className="w-full sm:w-auto">
-            Build My Look
-          </GradientButton>
-
-          {/* Results header + toggle */}
-          <div id="detected-items" className="scroll-mt-24 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <h3 className="text-xl sm:text-2xl font-medium tracking-[-0.3px]">
-              {items.length} Item{items.length !== 1 ? "s" : ""} Detected
-            </h3>
-            <div className="flex p-1 rounded-full bg-muted w-full sm:w-fit">
-              <button
-                onClick={() => setShopMode("new")}
-                className={`flex-1 sm:flex-none px-4 py-2 rounded-full text-[11px] font-medium tracking-[1px] uppercase transition-all duration-300 ease-out min-h-[44px] ${
-                  shopMode === "new"
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                🛍️ Shop New
-              </button>
-              <button
-                onClick={() => setShopMode("vintage")}
-                className={`flex-1 sm:flex-none px-4 py-2 rounded-full text-[11px] font-medium tracking-[1px] uppercase transition-all duration-300 ease-out min-h-[44px] ${
-                  shopMode === "vintage"
-                    ? "bg-vintage text-white"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                ♻️ Shop Vintage
-              </button>
-            </div>
+          {/* Tier tabs */}
+          <div role="tablist" aria-label="Price tier" className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-muted">
+            {TABS.map(([id, label]) => {
+              const on = tier === id;
+              const total = totalLabel(id);
+              return (
+                <button key={id} role="tab" aria-selected={on} onClick={() => setTier(id)}
+                  className={`min-h-[56px] rounded-xl px-2 py-2 flex flex-col items-center justify-center transition-all duration-300 ease-out ${on ? (id === "vintage" ? "bg-vintage text-white" : "bg-foreground text-background") : "text-muted-foreground hover:text-foreground"}`}>
+                  <span className="text-[11px] font-medium uppercase tracking-[1px]">{label}</span>
+                  {total ? <span className="text-[13px] font-semibold mt-0.5">{total}</span>
+                    : <span aria-label="Loading total" className="mt-1 h-3 w-12 rounded bg-background/40 animate-pulse" />}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Sustainability banner */}
-          {shopMode === "vintage" && (
-            <div className="flex items-center gap-3 rounded-xl px-4 py-3 border bg-vintage-bg border-vintage-border">
-              <Leaf className="w-5 h-5 flex-shrink-0 text-vintage" />
-              <p className="text-[11px] font-medium text-vintage uppercase tracking-[0.5px]">
-                🌱 Shopping sustainably with pre-loved fashion
-              </p>
-            </div>
-          )}
-
-          {/* Accordion with loading overlay */}
           <div className="relative">
             {reanalyzing && (
               <div className="absolute inset-0 bg-background/60 backdrop-blur-sm z-10 rounded-2xl flex items-center justify-center">
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Updating matches…
-                </div>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin" />Updating matches…</div>
               </div>
             )}
-            <Accordion
-              type="single"
-              collapsible
-              value={openAccordionItem}
-              onValueChange={setOpenAccordionItem}
-              className="bg-card border border-border rounded-2xl px-2 py-2 overflow-hidden"
-            >
-              {items.map((item) => (
-                <AccordionItem
-                  key={item.id}
-                  value={item.id}
-                  className="border-0 rounded-xl mb-1 last:mb-0 data-[state=open]:bg-muted/50"
-                >
-                  <AccordionTrigger className="px-3 sm:px-4 py-3 rounded-xl hover:no-underline hover:bg-muted/50 [&[data-state=open]]:rounded-b-none transition-all duration-300 ease-out min-h-[52px]">
-                    <div className="flex items-center gap-3 text-left">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{item.category}</span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
-                            {(() => { const st = liveState[item.id]; if (!st || st.status === "loading") return "…"; const n = st.matches.budget.length + st.matches.midRange.length + st.matches.luxury.length; return `${n} match${n === 1 ? "" : "es"}`; })()}
-                          </span>
-                          {aestheticTagsFor(item, aesthetics).map((name) => (
-                            <span key={name} className="inline-flex items-center px-2 py-0.5 rounded-full text-[12px]" style={{ color: "#7A6F68", border: "1px solid #E8DFD5" }}>
-                              {name}
-                            </span>
-                          ))}
-                        </div>
-                        <p className="text-sm font-medium text-foreground truncate">{item.description}</p>
-                      </div>
-                    </div>
-                  </AccordionTrigger>
 
-                  <AccordionContent className="px-3 sm:px-4 pb-4 pt-0">
-                    {/* Metadata grid */}
-                    <div className="grid grid-cols-3 gap-2 mb-4 mt-3">
-                      {[
-                        { label: "Color", value: item.color },
-                        { label: "Style", value: item.style },
-                        { label: "Price Range", value: item.estimatedPrice },
-                      ].map(({ label, value }) => (
-                        <div key={label} className="bg-muted rounded-xl p-3">
-                          <p className="text-[9px] text-muted-foreground uppercase tracking-[1px] mb-1">{label}</p>
-                          <p className="text-sm font-medium">{value}</p>
-                        </div>
-                      ))}
-                    </div>
+            <div className="flex items-end justify-between gap-3 mb-3">
+              <h2 className="text-[22px] leading-tight" style={SERIF}>The full look{size ? `, size ${size}` : ""}</h2>
+              <p className="text-sm font-semibold">{tier === "vintage" ? "Varies" : totalLabel(tier) ?? "…"}</p>
+            </div>
 
-                    {item.sizeNote && (
-                      <p className="mb-3 text-[11px] text-primary font-medium">{item.sizeNote}</p>
-                    )}
-
-                    {shopMode === "vintage" ? (
-                      <div className="space-y-2">
-                        <p className="text-[10px] text-muted-foreground font-medium">Searches on pre-loved marketplaces, not specific products.</p>
+            {tier === "vintage" ? (
+              <>
+                <div className="flex items-center gap-2 rounded-xl px-4 py-3 mb-3 border bg-vintage-bg border-vintage-border">
+                  <Leaf className="w-4 h-4 flex-shrink-0 text-vintage" />
+                  <p className="text-[12px] font-medium text-vintage">Pre-loved pieces from Poshmark, Depop, ThredUp and Vestiaire.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {items.map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-border bg-card p-3 flex flex-col">
+                      <p className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{item.category}</p>
+                      <p className="text-[13px] font-medium leading-snug mt-1 line-clamp-3">{item.description}</p>
+                      <div className="mt-3 grid gap-1.5">
                         {VINTAGE_PLATFORMS.map((pl) => (
-                          <a
-                            key={pl.name}
-                            href={pl.url(encodeURIComponent(item.description))}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-between p-3 rounded-xl border border-border bg-card hover:border-primary transition-all duration-300 ease-out min-h-[48px]"
-                          >
-                            <span className="text-[12px] font-medium">Search {pl.name} for “{item.description}”</span>
-                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                          <a key={pl.name} href={pl.url(encodeURIComponent(item.description))} target="_blank" rel="noopener noreferrer"
+                            className="min-h-[44px] px-3 rounded-full border border-vintage-border text-vintage text-[12px] font-medium flex items-center justify-between hover:bg-vintage-bg transition-colors duration-300">
+                            {pl.name} <ExternalLink className="w-3 h-3" />
                           </a>
                         ))}
                       </div>
-                    ) : (() => {
-                      const st = liveState[item.id];
-                      if (st?.status === "loading") {
-                        return (
-                          <div className="space-y-4" aria-busy="true">
-                            {TIER_LABELS.map((t) => (
-                              <div key={t.key}>
-                                <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">{t.label}</p>
-                                <div className="space-y-2"><SkeletonRow /><SkeletonRow /></div>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      }
-                      const m: TieredMatches = st?.matches ?? { budget: [], midRange: [], luxury: [] };
-                      const total = m.budget.length + m.midRange.length + m.luxury.length;
-                      if (total === 0) {
-                        return (
-                          <div className="rounded-xl border border-border bg-card p-4">
-                            <p className="text-[12px] text-muted-foreground">We couldn't find a live match for this piece yet.</p>
-                            <a
-                              href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(item.description)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-2 inline-flex items-center gap-1.5 min-h-[44px] text-[12px] font-medium underline underline-offset-4"
-                            >
-                              Search the web <ExternalLink className="w-3 h-3" />
-                            </a>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div className="space-y-4">
-                          {TIER_LABELS.map((t) => m[t.key].length > 0 && (
-                            <div key={t.key}>
-                              <p className="text-[9px] font-semibold uppercase tracking-[1px] text-muted-foreground mb-2">
-                                {t.label} <span className="normal-case font-normal">· {t.range}</span>
-                              </p>
-                              <div className="space-y-2">
-                                {m[t.key].map((p) => <LiveProductRow key={p.key} product={p} sizeRec={sizeRecFor(p, item)} />)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </AccordionContent>
-                </AccordionItem>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {visible.map((p) => (
+                  <PieceCard key={p.item.id} piece={p} lookTier={tier} sizeNote={p.product ? sizeNoteFor(p.product, p.item) : null} onSwap={() => setSwapId(p.item.id)} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {tier !== "vintage" && (
+            <div className="grid gap-2 sm:grid-cols-3">
+              <button onClick={() => setShopOpen(true)} disabled={!bought.length} className="min-h-[48px] rounded-full bg-foreground text-background text-[12px] font-medium uppercase tracking-[1px] disabled:opacity-50 transition-opacity duration-300">Shop the look</button>
+              <button onClick={() => setCardOpen(true)} disabled={!bought.length} className="min-h-[48px] rounded-full border border-border bg-card text-[12px] font-medium uppercase tracking-[1px] disabled:opacity-50">Save look card</button>
+              <button onClick={() => setCardOpen(true)} disabled={!bought.length} className="min-h-[48px] rounded-full border border-border bg-card text-[12px] font-medium uppercase tracking-[1px] disabled:opacity-50">See it styled (AI)</button>
+            </div>
+          )}
+
+          <div>
+            <p className="text-[18px] mb-2" style={SERIF}>Not quite it?</p>
+            <div className="flex flex-wrap gap-2">
+              {QUICK_CHIPS.map((c) => (
+                <button key={c} onClick={() => handoff(c)} className="min-h-[44px] px-4 rounded-full border border-border bg-card text-[13px] hover:border-primary transition-colors duration-300">{c}</button>
               ))}
-            </Accordion>
+            </div>
           </div>
 
           {aesthetics.length > 0 && <ShopAesthetic aesthetics={aesthetics} />}
-          <GradientButton onClick={handleBuildLook} className="w-full sm:w-auto">
-            Build My Look
-          </GradientButton>
         </div>
       </div>
+
+      {/* Pinned bottom bar */}
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (ask.trim()) handoff(ask); }}
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-4 pt-3"
+        style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
+      >
+        <div className="max-w-2xl mx-auto flex items-center gap-2">
+          <input value={ask} onChange={(e) => setAsk(e.target.value)} maxLength={120} placeholder="change anything, or say it" aria-label="Change anything about this look"
+            className="flex-1 min-w-0 min-h-[48px] rounded-full border border-border bg-card px-5 text-[16px] sm:text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          <button type="submit" aria-label="Send" disabled={!ask.trim()} className="w-12 h-12 rounded-full bg-foreground text-background flex items-center justify-center disabled:opacity-40 flex-shrink-0">
+            <ArrowUp className="w-5 h-5" />
+          </button>
+        </div>
+      </form>
+
+      {/* Swap sheet */}
+      <Drawer open={!!swapPiece} onOpenChange={(o) => !o && setSwapId(null)}>
+        <DrawerContent className="max-h-[88vh]">
+          {swapPiece && (
+            <div className="px-5 pb-6 pt-2 overflow-y-auto max-w-2xl mx-auto w-full" style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <DrawerTitle className="text-[26px] leading-tight" style={SERIF}>Swap the {swapPiece.item.category.toLowerCase()}</DrawerTitle>
+                  <DrawerDescription className="text-[13px] text-muted-foreground">Still {aestheticName}{size ? `, still size ${size}` : ""}</DrawerDescription>
+                </div>
+                <DrawerClose aria-label="Close" className="w-11 h-11 rounded-full border border-border flex items-center justify-center flex-shrink-0"><X className="w-4 h-4" /></DrawerClose>
+              </div>
+              <div className="mt-4 rounded-xl bg-muted p-4">
+                <p className="text-[10px] uppercase tracking-[1px] text-muted-foreground mb-2">What we spotted</p>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div><p className="text-[10px] text-muted-foreground">Color</p><p className="font-medium">{swapPiece.item.color || "Not noted"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground">Style</p><p className="font-medium">{swapPiece.item.style || "Not noted"}</p></div>
+                </div>
+              </div>
+              <div className="mt-4 space-y-2">
+                {swapAlts.length === 0 && <p className="text-sm text-muted-foreground">No other matches for this piece yet.</p>}
+                {swapAlts.map(({ tier: t, product }) => {
+                  const note = sizeNoteFor(product, swapPiece.item);
+                  return (
+                    <div key={product.key} className="flex items-center gap-3 rounded-xl border border-border bg-card p-2">
+                      <img src={product.imageUrl} alt={product.title} className="w-14 h-[72px] rounded-lg object-cover bg-muted flex-shrink-0" loading="lazy" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{TIER_NAMES[t]}</p>
+                        <p className="text-[12px] font-medium leading-snug line-clamp-2">{product.title}</p>
+                        <p className="text-[12px] font-semibold">{formatPrice(product.price)}{note && <span className="font-normal text-muted-foreground"> · {note}</span>}</p>
+                      </div>
+                      <button onClick={() => setOverride(swapPiece.item.id, product)} className="min-h-[44px] px-4 rounded-full bg-foreground text-background text-[12px] font-medium flex-shrink-0">Use this</button>
+                    </div>
+                  );
+                })}
+              </div>
+              <button onClick={() => setOverride(swapPiece.item.id, "removed")} className="mt-4 w-full min-h-[44px] rounded-full border border-border text-[13px] text-muted-foreground hover:text-foreground">Remove from look</button>
+            </div>
+          )}
+        </DrawerContent>
+      </Drawer>
+
+      {/* Shop the look sheet */}
+      <Drawer open={shopOpen} onOpenChange={setShopOpen}>
+        <DrawerContent className="max-h-[88vh]">
+          <div className="px-5 pt-2 overflow-y-auto max-w-2xl mx-auto w-full" style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <DrawerTitle className="text-[26px] leading-tight" style={SERIF}>Shop the look</DrawerTitle>
+                <DrawerDescription className="text-[13px] text-muted-foreground">Each piece opens at its shop.</DrawerDescription>
+              </div>
+              <DrawerClose aria-label="Close" className="w-11 h-11 rounded-full border border-border flex items-center justify-center flex-shrink-0"><X className="w-4 h-4" /></DrawerClose>
+            </div>
+            <div className="mt-4 space-y-2">
+              {bought.map((p) => (
+                <div key={p.item.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-2">
+                  <img src={p.product!.imageUrl} alt={p.product!.title} className="w-12 h-16 rounded-lg object-cover bg-muted flex-shrink-0" loading="lazy" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{p.item.category}</p>
+                    <p className="text-[12px] font-medium line-clamp-1">{p.product!.title}</p>
+                    <p className="text-[12px] font-semibold">{formatPrice(p.product!.price)}</p>
+                  </div>
+                  <a href={p.product!.productUrl} target="_blank" rel="noopener noreferrer" className="min-h-[44px] px-4 rounded-full bg-foreground text-background text-[12px] font-medium inline-flex items-center gap-1.5 flex-shrink-0">Buy <ExternalLink className="w-3 h-3" /></a>
+                </div>
+              ))}
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {cardOpen && <LookCardDialog open={cardOpen} onOpenChange={setCardOpen} input={cardInput} occasion={null} />}
     </div>
   );
 };
+
+function PieceCard({ piece, lookTier, sizeNote, onSwap }: { piece: ShownPiece; lookTier: ShopTier; sizeNote: string | null; onSwap: () => void }) {
+  const { item, product, status, fromTier } = piece;
+  if (status === "loading") {
+    return (
+      <div className="rounded-2xl border border-border bg-card overflow-hidden animate-pulse">
+        <div className="aspect-[4/5] bg-muted" />
+        <div className="p-3 space-y-2"><div className="h-2 w-1/3 bg-muted rounded" /><div className="h-3 w-3/4 bg-muted rounded" /></div>
+      </div>
+    );
+  }
+  if (!product) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-card p-3 flex flex-col">
+        <p className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{item.category}</p>
+        <p className="text-[13px] font-medium leading-snug mt-1 line-clamp-3">{item.description}</p>
+        <p className="text-[11px] text-muted-foreground mt-1">No verified match yet.</p>
+        <a href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(item.description)}`} target="_blank" rel="noopener noreferrer"
+          className="mt-auto pt-3 min-h-[44px] inline-flex items-center gap-1.5 text-[12px] font-medium underline underline-offset-4">
+          <Search className="w-3.5 h-3.5" /> Search the web
+        </a>
+      </div>
+    );
+  }
+  const borrowed = fromTier && fromTier !== lookTier;
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col">
+      <a href={product.productUrl} target="_blank" rel="noopener noreferrer" className="block relative">
+        <img src={product.imageUrl} alt={product.title} loading="lazy" className="w-full aspect-[4/5] object-cover bg-muted" />
+        {borrowed && <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-background/90 text-[10px] font-medium">From {TIER_NAMES[fromTier!]}</span>}
+      </a>
+      <div className="p-3 flex flex-col flex-1">
+        <p className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{item.category}</p>
+        <p className="text-[12px] font-medium leading-snug line-clamp-2 mt-0.5">{product.title}</p>
+        <p className="text-[13px] font-semibold mt-1">{formatPrice(product.price)}</p>
+        {sizeNote && <p className="text-[11px] text-primary mt-0.5">{sizeNote}</p>}
+        <button onClick={onSwap} className="mt-auto pt-0 min-h-[44px] mt-2 rounded-full border border-border text-[12px] font-medium hover:border-primary transition-colors duration-300">Swap</button>
+      </div>
+    </div>
+  );
+}
 
 export default Results;

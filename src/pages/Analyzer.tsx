@@ -5,7 +5,12 @@ import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { useAnalysis, type DetectedItem } from "@/contexts/AnalysisContext";
+import { useAnalysis, type DetectedItem, type LookTier } from "@/contexts/AnalysisContext";
+import { readProfileSize } from "@/lib/shopCatalog";
+
+const SIZE_CHIPS = ["XS", "S", "M", "L", "XL+"];
+const TIER_CHIPS: [LookTier, string][] = [["budget", "Budget"], ["midRange", "Mid-range"], ["vintage", "Vintage"]];
+const chipClass = (on: boolean) => `min-h-[44px] min-w-[44px] px-4 rounded-full border text-[12px] font-medium transition-all duration-300 ease-out ${on ? "bg-foreground text-background border-foreground" : "bg-card border-border text-foreground hover:border-primary"}`;
 import { Switch } from "@/components/ui/switch";
 import PasteTipStrip from "@/components/PasteTipStrip";
 import { useClipboardPaste } from "@/hooks/useClipboardPaste";
@@ -39,7 +44,13 @@ function isValidUrl(str: string) {
 
 const Analyzer = () => {
   const navigate = useNavigate();
-  const { setAnalysis } = useAnalysis();
+  const { setAnalysis, setLookPrefs } = useAnalysis();
+  const [pickedSize, setPickedSize] = useState<string | null>(() => {
+    const s = readProfileSize()?.toUpperCase() ?? null;
+    if (!s) return null;
+    return SIZE_CHIPS.includes(s) ? s : s.startsWith("X") && s.length > 2 ? "XL+" : s === "XL" ? "XL+" : null;
+  });
+  const [startTier, setStartTier] = useState<LookTier>("midRange");
 
   const [activeTab, setActiveTab] = useState<Tab>("file");
   const [profileNudgeDismissed, setProfileNudgeDismissed] = useState(() => {
@@ -122,6 +133,7 @@ const Analyzer = () => {
 
     const stepTimer1 = setTimeout(() => setAnalyzeStep(1), 2500);
     const stepTimer2 = setTimeout(() => setAnalyzeStep(2), 5500);
+    const stepTimer3 = setTimeout(() => setAnalyzeStep(3), 8500);
 
     try {
       let imagePayload: { imageUrl?: string; imageBase64?: string; mimeType?: string };
@@ -183,6 +195,7 @@ const Analyzer = () => {
       }
 
       const displayUrl = activeTab === "url" ? pastedUrl : filePreviewUrl;
+      setLookPrefs({ size: pickedSize, tier: startTier });
       setAnalysis(items, displayUrl, imagePayload, null, null, data.aesthetics ?? [], data.aestheticSummary ?? "");
       navigate("/results");
     } catch (err) {
@@ -192,6 +205,7 @@ const Analyzer = () => {
     } finally {
       clearTimeout(stepTimer1);
       clearTimeout(stepTimer2);
+      clearTimeout(stepTimer3);
       setAnalyzing(false);
     }
   };
@@ -374,6 +388,30 @@ const Analyzer = () => {
               </div>
             )}
 
+            {/* Look preferences */}
+            <div className="space-y-4 bg-card border border-border rounded-xl p-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[10px] font-medium tracking-[1px] uppercase text-muted-foreground">Your size</p>
+                  <RouterLink to="/profile" className="text-primary hover:underline text-xs font-medium min-h-[44px] inline-flex items-center">Add measurements</RouterLink>
+                </div>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Your size">
+                  {SIZE_CHIPS.map((s) => (
+                    <button key={s} type="button" aria-pressed={pickedSize === s} onClick={() => setPickedSize(pickedSize === s ? null : s)} className={chipClass(pickedSize === s)}>{s}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-[10px] font-medium tracking-[1px] uppercase text-muted-foreground">Start with</p>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Start with">
+                  {TIER_CHIPS.map(([id, label]) => (
+                    <button key={id} type="button" aria-pressed={startTier === id} onClick={() => setStartTier(id)} className={chipClass(startTier === id)}>{label}</button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">You can compare all three after</p>
+              </div>
+            </div>
+
             {/* Analyze button */}
             {hasInput && !urlPreviewError && (
               <div className="space-y-3">
@@ -391,7 +429,7 @@ const Analyzer = () => {
                   ) : (
                     <>
                       <Camera className="w-5 h-5 mr-2" />
-                      Analyze This Outfit
+                      Build my look
                     </>
                   )}
                 </GradientButton>
@@ -448,7 +486,7 @@ const Analyzer = () => {
               <h3 className="text-lg font-medium mb-2 tracking-[-0.3px]">AI is analyzing...</h3>
               <p className="text-muted-foreground text-sm">Gemini is identifying clothing items, colors, styles, and your look's aesthetic</p>
               <div className="mt-6 space-y-2">
-                {["Reading your photo...", "Spotting each piece...", "Finding your aesthetic..."].map((step, i) => (
+                {["Reading your photo...", "Spotting each piece...", "Finding your aesthetic...", "Pulling pieces in your size..."].map((step, i) => (
                   <div key={step} className={`flex items-center gap-2 text-sm transition-all duration-500 ${i <= analyzeStep ? "opacity-100 text-primary" : "opacity-30 text-muted-foreground"}`}>
                     <Loader2 className={`w-3 h-3 ${i === analyzeStep ? "animate-spin" : ""}`} />
                     {step}

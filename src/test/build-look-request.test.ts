@@ -34,3 +34,12 @@ describe("Results look request", () => {
     expect(buildLookRequest(aesthetics, [item("black blazer\u2014tailored fit")])).not.toContain("\u2014");
   });
 });
+import { buildLookHandoff } from "@/lib/buildLookRequest";
+describe("Results bottom bar handoff", () => {
+  it("adds the shopper's ask and size and stays under 300 characters", () => {
+    const many = Array.from({ length: 20 }, (_, i) => item(`long descriptive piece number ${i}`));
+    const q = buildLookHandoff(aesthetics, many, "make it cheaper", "M");
+    expect(q.length).toBeLessThan(300);
+    expect(q.endsWith(", size M. make it cheaper")).toBe(true);
+  });
+});

@@ -58,7 +58,12 @@ interface AnalysisState {
   aestheticSummary: string;
 }
 
+export type LookTier = "budget" | "midRange" | "vintage";
+export interface LookPrefs { size: string | null; tier: LookTier }
+
 interface AnalysisContextType extends AnalysisState {
+  lookPrefs: LookPrefs;
+  setLookPrefs: (prefs: LookPrefs) => void;
   setAnalysis: (
     items: DetectedItem[],
     imageUrl: string | null,
@@ -84,6 +89,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     aesthetics: [],
     aestheticSummary: "",
   });
+
+  const [lookPrefs, setLookPrefs] = useState<LookPrefs>({ size: null, tier: "midRange" });
 
   const setAnalysis = useCallback((
     items: DetectedItem[],
@@ -121,7 +128,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AnalysisContext.Provider value={{ ...state, setAnalysis, clearAnalysis }}>
+    <AnalysisContext.Provider value={{ ...state, lookPrefs, setLookPrefs, setAnalysis, clearAnalysis }}>
       {children}
     </AnalysisContext.Provider>
   );
