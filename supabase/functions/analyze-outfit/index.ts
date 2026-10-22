@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { AESTHETIC_NAMES, aestheticPromptBlock } from "../_shared/aesthetics.ts";
 import { INPUT_LIMITS, rateLimitResponse, limitedResponse } from "../_shared/rateLimit.ts";
+import { safePublicFetch } from "../_shared/safeFetch.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,7 +56,16 @@ serve(async (req) => {
     let { imageBase64, mimeType } = body;
 
     if (imageUrl) {
-      const imgResponse = await fetch(imageUrl);
+      if (typeof imageUrl !== "string" || imageUrl.length > 2048) {
+        return new Response(JSON.stringify({ error: "Invalid image URL" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      let imgResponse: Response;
+      try {
+        imgResponse = await safePublicFetch(imageUrl);
+      } catch (e) {
+        console.warn("analyze-outfit: blocked image URL", String(e));
+        return new Response(JSON.stringify({ error: "Failed to fetch image from URL" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       if (!imgResponse.ok) {
         return new Response(
           JSON.stringify({ error: "Failed to fetch image from URL" }),
