@@ -33,6 +33,7 @@ function normalize(p: any) {
 }
 
 Deno.serve(async (req) => {
+  console.log("IPDEBUG", JSON.stringify({ cf: req.headers.get("cf-connecting-ip"), xff: req.headers.get("x-forwarded-for"), xri: req.headers.get("x-real-ip") }));
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
