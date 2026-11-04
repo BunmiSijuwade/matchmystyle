@@ -1,4 +1,6 @@
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { rateLimitResponse } from "../_shared/rateLimit.ts";
+import { corsBase, withCors } from "../_shared/cors.ts";
+const corsHeaders = corsBase;
 import { z } from "npm:zod@3";
 
 const ENDPOINT = "https://catalog.shopify.com/api/ucp/mcp";
@@ -32,9 +34,12 @@ function normalize(p: any) {
   };
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  // Counts per caller IP (or the original caller's IP for internal MCP calls, via callerIp).
+  const limited = await rateLimitResponse("shopify-catalog", req, corsHeaders);
+  if (limited) return limited;
 
   let raw: unknown;
   try { raw = await req.json(); } catch { return json({ error: "Invalid JSON body" }, 400); }
@@ -82,4 +87,4 @@ Deno.serve(async (req) => {
     console.error(JSON.stringify({ tool, durationMs, error: timeout ? "timeout" : String(e) }));
     return json({ error: timeout ? "Shopify took too long to respond." : "Couldn't reach Shopify.", meta: { tool, durationMs } }, 504);
   }
-});
+}));

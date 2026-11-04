@@ -1,13 +1,10 @@
+import { corsBase, withCors } from "../_shared/cors.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { AESTHETIC_NAMES, aestheticPromptBlock } from "../_shared/aesthetics.ts";
 import { INPUT_LIMITS, rateLimitResponse, limitedResponse } from "../_shared/rateLimit.ts";
 import { safePublicFetch } from "../_shared/safeFetch.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+const corsHeaders = corsBase;
 
 function sanitizeText(text: string): string {
   if (!text) return text;
@@ -43,7 +40,7 @@ function sanitizeAesthetics(raw: any): { name: string; role: "primary" | "second
   return scaled;
 }
 
-serve(async (req) => {
+serve(withCors(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -285,4 +282,4 @@ Keep all field values short and concise. Do not repeat instructions or field nam
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+}));
