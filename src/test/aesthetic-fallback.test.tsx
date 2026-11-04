@@ -18,7 +18,10 @@ describe("aesthetic look fallback", () => {
 
   it("fills 3 pieces from fallback queries when their first search comes back empty", async () => {
     // Gallery Hours: only the blouse works first time; the rest fail like a throttled burst.
-    respond = (q) => (q.includes("cream silk blouse") || !q.includes(" size ") && !q.includes("cream") ? { ok: true, products: [prod(q)] } : { ok: false, products: [] });
+    const works = ["women's cream silk blouse", "women's shirt jacket", "women's wool trousers", "women's silver cuff"];
+    let calls = 0;
+    // silver cuff fails on the first try, then the same simple query succeeds on retry
+    respond = (q) => { calls++; return works.includes(q) && calls > 1 && !(calls <= 4 && q.includes("cuff")) ? { ok: true, products: [prod(q)] } : { ok: false, products: [] }; };
     render(<MemoryRouter><Concierge /></MemoryRouter>);
     fireEvent.click(screen.getByRole("button", { name: "Gallery Hours" }));
     await waitFor(() => expect(searchCatalog).toHaveBeenCalledTimes(7));
