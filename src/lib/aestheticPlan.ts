@@ -17,10 +17,11 @@ const FALLBACK_OVERRIDES: Record<string, string> = {
 export function fallbackQuery(piece: string): string {
   const p = piece.trim().toLowerCase();
   if (FALLBACK_OVERRIDES[p]) return FALLBACK_OVERRIDES[p];
-  const words = p.replace(/-/g, " ").split(/\s+/).filter((w) => w && !["a", "an", "the", "one"].includes(w));
-  if (words.length <= 2) return words.join(" ");
-  // "oxblood shirt jacket" -> "shirt jacket", "black lace midi dress" -> "midi dress"
-  return words.slice(-2).join(" ");
+  const tokens = p.split(/\s+/).filter((w) => w && !["a", "an", "the", "one"].includes(w));
+  const last = tokens[tokens.length - 1] ?? "";
+  // A hyphenated last word is already the category ("shirt-jacket"); otherwise keep one descriptor ("lug-sole boots").
+  const kept = last.includes("-") || tokens.length < 2 ? [last] : tokens.slice(-2);
+  return kept.join(" ").replace(/-/g, " ");
 }
 
 /** Local look plan from an aesthetic's signature pieces. No AI call. */
