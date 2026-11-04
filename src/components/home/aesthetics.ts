@@ -63,7 +63,7 @@ export const aesthetics: Aesthetic[] = [
     photoPosition: "50% 35%",
     flatLay: "/images/home/off-duty-muse-flatlay.jpg",
     flatLayCaption: "white tank · baggy denim · sneakers",
-    pieceSpots: [{ x: 30, y: 30 }, { x: 30, y: 55 }, { x: 47, y: 75 }],
+    pieceSpots: [{ x: 30, y: 30 }, { x: 30, y: 50 }, { x: 47, y: 75 }],
     palette: ["#FFFFFF", "#A9BCD3", "#8A5A3B", "#E9E2D3"],
   },
   {

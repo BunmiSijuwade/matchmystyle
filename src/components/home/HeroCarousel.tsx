@@ -55,6 +55,8 @@ export default function HeroCarousel({ ctaHref = "/analyzer" }: Props) {
     const place = () => {
       if (!img.naturalWidth) return;
       const bw = box.clientWidth, bh = box.clientHeight;
+      const pol = box.parentElement?.querySelector<HTMLElement>(".mms-hero__flatlay--mobile");
+      const polaroidVisible = !!pol && getComputedStyle(pol).display !== "none";
       const scale = Math.max(bw / img.naturalWidth, bh / img.naturalHeight);
       const iw = img.naturalWidth * scale, ih = img.naturalHeight * scale;
       const [px, py] = (a.photoPosition || "50% 50%").split(" ").map((v) => parseFloat(v) / 100);
@@ -64,7 +66,9 @@ export default function HeroCarousel({ ctaHref = "/analyzer" }: Props) {
         const tw = el?.offsetWidth ?? 100, th = el?.offsetHeight ?? 26;
         const left = Math.min(Math.max(ox + (s.x / 100) * iw, 8), bw - tw - 8);
         const top = Math.min(Math.max(oy + (s.y / 100) * ih, 8), bh - th - 56); // keep clear of the found pill
-        return { left, top };
+        // Phones: the polaroid covers the bottom-right corner, so slide low tags left of it.
+        const overPolaroid = polaroidVisible && top + th > bh - 100 && left + tw > bw - 124;
+        return { left: overPolaroid ? Math.max(8, bw - 124 - tw - 8) : left, top };
       }));
     };
     place();
