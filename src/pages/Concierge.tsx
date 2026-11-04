@@ -9,6 +9,7 @@ import ConciergeComposer from "@/components/concierge/ConciergeComposer";
 import EditorialProductCard, { type CatalogProduct } from "@/components/concierge/EditorialProductCard";
 import { LookSidebar, LookBar, type LookSlot } from "@/components/concierge/LookBoard";
 import { supabase } from "@/integrations/supabase/client";
+import { buildAestheticPlan } from "@/lib/aestheticPlan";
 
 interface SearchMeta { tool: string; durationMs: number; count?: number }
 type Status = "idle" | "loading" | "done" | "error";
@@ -330,11 +331,22 @@ const Concierge = () => {
     if (plan) runRefine(q); else runPlan(q);
   };
 
-  const startAesthetic = (a: AestheticInfo) => {
+  /** Aesthetic chip: a local plan (no AI) run through the same rail path as runPlan. */
+  const startAesthetic = async (a: AestheticInfo) => {
     if (status === "loading") return;
-    say({ from: "you", text: a.name }, { from: "me", text: `love it. pulling a ${a.name} rail.` });
-    const pieces = a.signaturePieces.split(",").slice(0, 2).map((p) => p.trim().toLowerCase());
-    runSearch(`women's ${pieces.join(" ")}`);
+    say({ from: "you", text: a.name }, { from: "me", text: `love it. pulling a ${a.name} look.` });
+    setPlan(null); setGroups([]); setLook(null); lookRef.current = null; setProducts([]); setError(null); setStatus("loading");
+    const size = readProfileSize();
+    const h = [`a ${a.name} look`];
+    setHistory(h);
+    const key = cacheKeyFor(h, size);
+    const cached = readCache<CachedRail>(key);
+    if (cached) { afterRail(cached.plan, showRail(cached.plan, cached.raw)); return; }
+    const next: Plan = buildAestheticPlan(a);
+    const { map, changed } = await fillRaw(next, {}, size);
+    const built = showRail(next, map);
+    if (built.length) writeCache(key, { plan: next, raw: map, changed });
+    afterRail(next, built);
   };
 
   const [moreLoading, setMoreLoading] = useState<string | null>(null);
