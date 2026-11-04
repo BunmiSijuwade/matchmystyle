@@ -13,7 +13,7 @@ import { buildAestheticPlan } from "@/lib/aestheticPlan";
 
 interface SearchMeta { tool: string; durationMs: number; count?: number }
 type Status = "idle" | "loading" | "done" | "error";
-interface PlanPiece { label: string; query: string }
+interface PlanPiece { label: string; query: string; fallback?: string }
 interface Plan { note: string; aesthetic: string | null; pieces: PlanPiece[]; maxPrice?: number; budget?: number; intent?: "tweak" | "restyle" | "new"; ask?: string; options?: string[] }
 interface RailGroup { label: string; products: CatalogProduct[] }
 
@@ -86,6 +86,8 @@ function reconcileLook(plan: Plan, groups: RailGroup[], prev: Look | null, raw: 
   return { look: out, groups };
 }
 
+const RETRY_PAUSE_MS = 400;
+const RETRY_STAGGER_MS = 150;
 const sizeSuffix = (size: string | null) => (size ? ` size ${size}` : "");
 
 /** Build the rail from raw search results: maxPrice filter, dedupe, 3 per piece. */
@@ -180,7 +182,7 @@ const Concierge = () => {
     // Staggered after a short pause, since Shopify can throttle a burst of parallel searches.
     const retry = toSearch.filter((pc) => !map[pc.query].length);
     let res2: Awaited<ReturnType<typeof searchCatalog>>[] = [];
-    const second = retry.map((pc) => `women's ${(pc as PlanPiece & { fallback?: string }).fallback ?? pc.query}`);
+    const second = retry.map((pc) => `women's ${pc.fallback ?? pc.query}`);
     if (retry.length) {
       searches += retry.length;
       await new Promise((r) => setTimeout(r, RETRY_PAUSE_MS));
@@ -213,6 +215,7 @@ const Concierge = () => {
 
   const showRail = (next: Plan, map: RawMap) => {
     const { look: nextLook, groups: built } = reconcileLook(next, buildGroups(next, map), lookRef.current, map);
+    if (import.meta.env.DEV) console.info("[concierge] after dedupe", next.pieces.map((pc) => `${pc.label}: ${map[pc.query]?.length ?? 0} -> ${built.find((g) => g.label === pc.label)?.products.length ?? 0}`));
     if (import.meta.env.DEV) console.info("[concierge] rail", built.map((g) => `${g.label}: ${g.products.map((p) => p.price ? majorAmount(p.price) : "?").join(",")}`));
     setPlan(next); setRaw(map); setGroups(built); setProducts([]); setStatus("done");
     setLook(nextLook);
@@ -254,10 +257,10 @@ const Concierge = () => {
     if (!next && limitedRef.current) { say({ from: "me", text: limitedRef.current }); setError(limitedRef.current); setStatus("error"); return; }
     if (!next) { await runSearch(text); return; }
     say({ from: "me", text: next.note }, { from: "me", text: `pulling a rail: ${next.pieces.map((p) => p.label).join(", ")}.` });
-    const { map, changed } = await fillRaw(next, {}, size);
-    const built = showRail(next, map);
-    if (built.length) writeCache(key, { plan: next, raw: map, changed });
-    afterRail(next, built);
+    const { map, changed, plan: filled } = await fillRaw(next, {}, size);
+    const built = showRail(filled, map);
+    if (built.length) writeCache(key, { plan: filled, raw: map, changed });
+    afterRail(filled, built);
   };
 
   const runRefine = async (instruction: string) => {
@@ -308,9 +311,9 @@ const Concierge = () => {
       return;
     }
     if (next.intent === "restyle") lookRef.current = null;
-    const { map, changed } = await fillRaw(next, next.intent === "restyle" ? {} : raw, size);
-    const built = finish(next, map, changed);
-    if (built.length && next.intent !== "restyle") writeCache(key, { plan: next, raw: map, changed });
+    const { map, changed, plan: filled } = await fillRaw(next, next.intent === "restyle" ? {} : raw, size);
+    const built = finish(filled, map, changed);
+    if (built.length && next.intent !== "restyle") writeCache(key, { plan: filled, raw: map, changed });
   };
 
   const runSearch = async (q: string) => {
@@ -377,10 +380,10 @@ const Concierge = () => {
     const cached = readCache<CachedRail>(key);
     if (cached) { afterRail(cached.plan, showRail(cached.plan, cached.raw)); return; }
     const next: Plan = buildAestheticPlan(a);
-    const { map, changed } = await fillRaw(next, {}, size);
-    const built = showRail(next, map);
-    if (built.length) writeCache(key, { plan: next, raw: map, changed });
-    afterRail(next, built);
+    const { map, changed, plan: filled } = await fillRaw(next, {}, size);
+    const built = showRail(filled, map);
+    if (built.length) writeCache(key, { plan: filled, raw: map, changed });
+    afterRail(filled, built);
   };
 
   const [moreLoading, setMoreLoading] = useState<string | null>(null);
