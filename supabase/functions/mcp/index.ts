@@ -11,7 +11,9 @@ var RATE_LIMITS = {
   "style-look": { ai: true, perIp: { limit: 3, windowS: 86400 }, global: { limit: 20, windowS: 86400 } },
   "concierge-plan": { ai: true, perIp: { limit: 40, windowS: 3600 }, global: { limit: 150, windowS: 86400 } },
   "analyze-outfit": { ai: true, perIp: { limit: 20, windowS: 3600 }, global: { limit: 100, windowS: 86400 } },
-  "image-proxy": { ai: false, perIp: { limit: 60, windowS: 3600 }, global: { limit: 2e4, windowS: 86400 } }
+  "image-proxy": { ai: false, perIp: { limit: 60, windowS: 3600 }, global: { limit: 3e3, windowS: 86400 } },
+  // ~30 catalog searches per normal session (Concierge look, refinements, "Show more options", Results tiers and "Shop the aesthetic"), so 300/h is about 10 sessions.
+  "shopify-catalog": { ai: false, perIp: { limit: 300, windowS: 3600 }, global: { limit: 5e3, windowS: 86400 } }
 };
 var GLOBAL_AI_CALLS_PER_DAY = 200;
 var INPUT_LIMITS = {
@@ -31,7 +33,8 @@ function rateLimitNotice(fn, reason) {
       "concierge-plan": `make up to ${limit} styling requests`,
       "image-proxy": `load up to ${limit} images`,
       "style-look": `make up to ${limit} styled previews`,
-      mcp: `make up to ${limit} assistant requests`
+      mcp: `make up to ${limit} assistant requests`,
+      "shopify-catalog": `run up to ${limit} product searches`
     };
     return {
       scope: "personal",
@@ -67,8 +70,7 @@ async function serviceFetch(path, init = {}) {
   });
 }
 function clientIp(headers) {
-  const xff = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return headers.get("cf-connecting-ip") ?? xff ?? headers.get("x-real-ip") ?? "unknown";
+  return headers.get("cf-connecting-ip")?.trim().slice(0, 64) || "unknown";
 }
 async function checkRateLimit(fn, ip) {
   const cfg = RATE_LIMITS[fn];
@@ -114,6 +116,10 @@ if (deno?.serve && !deno.__mmsWrapped) {
   const original = deno.serve.bind(deno);
   deno.__mmsWrapped = true;
   deno.serve = (...args) => {
+    const g = globalThis;
+    if (!g.Deno?.env?.get?.("MCP_INTERNAL_KEY")) {
+      console.error("MCP_INTERNAL_KEY is not set: style_me and search still work, but every MCP user shares one per-IP bucket (the MCP server's own IP).");
+    }
     const i = args.findIndex((a) => typeof a === "function");
     if (i >= 0) {
       const h = args[i];
@@ -192,16 +198,24 @@ function toProduct(p) {
     imageUrl: p.imageUrl ?? ""
   };
 }
+var env2 = (n) => globalThis.Deno?.env?.get?.(n);
+function internalHeaders() {
+  const internalKey = env2("MCP_INTERNAL_KEY");
+  return internalKey ? { "x-mms-internal": internalKey, "x-mms-client-ip": currentIp() } : {};
+}
 async function searchCatalog(query, signal) {
   const key = supabasePublishableKey();
   const res = await fetch(`${supabaseProjectUrl()}/functions/v1/shopify-catalog`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}`, ...internalHeaders() },
     body: JSON.stringify({ query }),
     signal
   });
   const body = await res.json().catch(() => null);
-  if (!res.ok || !Array.isArray(body?.products)) throw new ToolError(body?.error ?? `Product search failed (${res.status}).`);
+  if (!res.ok || !Array.isArray(body?.products)) {
+    const notice = body;
+    throw new ToolError(notice?.message ?? body?.error ?? `Product search failed (${res.status}).`);
+  }
   return body.products.filter((p) => p.title && p.productUrl && p.imageUrl && p.price && String(p.price.currency).toUpperCase() === "USD").map(toProduct);
 }
 
@@ -275,7 +289,7 @@ var list_aesthetics_default = defineTool2({
 import { defineTool as defineTool3, ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@3.0.4";
 import { z as z2 } from "npm:zod@^3.25.76";
 var TTL_MS = 24 * 60 * 60 * 1e3;
-var env2 = (n) => globalThis.Deno?.env?.get?.(n);
+var env3 = (n) => globalThis.Deno?.env?.get?.(n);
 function pieceCaps(plan) {
   const out = {};
   const n = plan.pieces.length;
@@ -286,7 +300,7 @@ function pieceCaps(plan) {
 }
 async function getPlan(request, size, signal) {
   const key = supabasePublishableKey();
-  const internalKey = env2("MCP_INTERNAL_KEY");
+  const internalKey = env3("MCP_INTERNAL_KEY");
   const res = await fetch(`${supabaseProjectUrl()}/functions/v1/concierge-plan`, {
     method: "POST",
     headers: {

@@ -1,6 +1,7 @@
+import { corsBase, withCors } from "../_shared/cors.ts";
 // PROTOTYPE: AI-styled preview of a Concierge look. Isolated; delete this folder + LookStyledTab to remove.
 import { rateLimitResponse, styleLookEnabled, limitedResponse } from "../_shared/rateLimit.ts";
-const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
+const cors = corsBase;
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const MODEL = "google/gemini-3.1-flash-image";
 const ALLOWED = (h: string) => h === "cdn.shopify.com" || h.endsWith(".shopifycdn.com");
@@ -22,7 +23,7 @@ async function toDataUrl(url: string): Promise<string | null> {
   } catch { return null; }
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (!styleLookEnabled()) return json({ error: "disabled", message: "not available yet" }, 403);
   const limited = await rateLimitResponse("style-look", req, cors);
@@ -73,4 +74,4 @@ Deno.serve(async (req) => {
     console.error("style-look error", e);
     return json({ error: "server_error", message: "An unexpected error occurred." }, 500);
   }
-});
+}));

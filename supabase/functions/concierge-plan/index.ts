@@ -1,12 +1,9 @@
+import { corsBase, withCors } from "../_shared/cors.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { AESTHETIC_NAMES } from "../_shared/aesthetics.ts";
 import { INPUT_LIMITS, rateLimitResponse, limitedResponse } from "../_shared/rateLimit.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+const corsHeaders = corsBase;
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -39,7 +36,7 @@ Refinement mode (when a previous plan and an instruction are given):
 - Set intent: "tweak" when changing some pieces of this look (including "different {piece}": replace just that piece with a new query for the same role); "restyle" when the shopper wants a whole new look for the same occasion ("a whole new look", "something completely different", "not this vibe at all", "show me another option"): keep the occasion and budget but return a fully new set of pieces with new labels and queries, ideally in a different aesthetic from the current one; "new" when the shopper describes a different occasion or need (e.g. "actually i need something for a beach wedding"): plan for that new need.
 - If the instruction is an answer to your previous question, never ask again: make a reasonable plan and say what you assumed in the note.`;
 
-serve(async (req) => {
+serve(withCors(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const limited = await rateLimitResponse("concierge-plan", req, corsHeaders);
   if (limited) return limited;
@@ -154,4 +151,4 @@ serve(async (req) => {
     console.error("concierge-plan error", e);
     return json({ error: "server_error", message: "An unexpected error occurred." }, 500);
   }
-});
+}));

@@ -9,7 +9,9 @@ export const RATE_LIMITS = {
   "style-look": { ai: true, perIp: { limit: 3, windowS: 86400 }, global: { limit: 20, windowS: 86400 } },
   "concierge-plan": { ai: true, perIp: { limit: 40, windowS: 3600 }, global: { limit: 150, windowS: 86400 } },
   "analyze-outfit": { ai: true, perIp: { limit: 20, windowS: 3600 }, global: { limit: 100, windowS: 86400 } },
-  "image-proxy": { ai: false, perIp: { limit: 60, windowS: 3600 }, global: { limit: 20000, windowS: 86400 } },
+  "image-proxy": { ai: false, perIp: { limit: 60, windowS: 3600 }, global: { limit: 3000, windowS: 86400 } },
+  // ~30 catalog searches per normal session (Concierge look, refinements, "Show more options", Results tiers and "Shop the aesthetic"), so 300/h is about 10 sessions.
+  "shopify-catalog": { ai: false, perIp: { limit: 300, windowS: 3600 }, global: { limit: 5000, windowS: 86400 } },
 } as const;
 
 /** Kill switch: total AI-credit calls per UTC day across all functions (MCP style_me counts via concierge-plan). */
@@ -40,6 +42,7 @@ export function rateLimitNotice(fn: LimitedFunction, reason: BlockingVerdict) {
       "image-proxy": `load up to ${limit} images`,
       "style-look": `make up to ${limit} styled previews`,
       mcp: `make up to ${limit} assistant requests`,
+      "shopify-catalog": `run up to ${limit} product searches`,
     };
     return {
       scope: "personal" as const,
@@ -84,10 +87,11 @@ export async function serviceFetch(path: string, init: RequestInit = {}): Promis
   });
 }
 
-/** Best-effort client IP from proxy headers. */
+/** Client IP the caller can't fake. Verified on the edge gateway: cf-connecting-ip is set by Cloudflare
+ *  (requests that send their own are rejected with 403), x-forwarded-for is rewritten and its last entry
+ *  is an internal gateway hop, and x-real-ip is stripped. So only cf-connecting-ip is trusted. */
 export function clientIp(headers: Headers): string {
-  const xff = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return headers.get("cf-connecting-ip") ?? xff ?? headers.get("x-real-ip") ?? "unknown";
+  return headers.get("cf-connecting-ip")?.trim().slice(0, 64) || "unknown";
 }
 
 /** True when the call comes from our own MCP server (shared secret header). */

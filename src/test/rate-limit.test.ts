@@ -44,7 +44,7 @@ describe("unchanged enforcement with reason verdicts", () => {
   });
   it("allows only ok and sends the existing caps to hit_rate_limit_v2", async () => {
     const fetchMock = storage("ok");
-    expect(await rateLimitResponse("analyze-outfit", new Request("https://example.invalid", { headers: { "x-real-ip": "test-ip" } }), {})).toBeNull();
+    expect(await rateLimitResponse("analyze-outfit", new Request("https://example.invalid", { headers: { "cf-connecting-ip": "test-ip" } }), {})).toBeNull();
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("https://example.invalid/rest/v1/rpc/hit_rate_limit_v2");
     expect(JSON.parse(init.body)).toEqual({ _ip_key: "analyze-outfit:ip:test-ip", _ip_window_s: 3600, _ip_limit: 20, _global_key: "analyze-outfit:global", _global_window_s: 86400, _global_limit: 100, _ai_key: "ai:global", _ai_limit: 200 });
