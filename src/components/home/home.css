@@ -258,6 +258,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mms-home .mms-hero__slide { animation: none; }
+  .mms-home .mms-hero__media { animation: none; }
   .mms-home .mms-dot span, .mms-home .mms-btn { transition: none; }
 }
