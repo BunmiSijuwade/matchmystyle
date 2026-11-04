@@ -165,24 +165,50 @@ const Concierge = () => {
     return null;
   };
 
-  /** Search pieces not already in `base`, then re-search any piece left empty by maxPrice. */
-  const fillRaw = async (next: Plan, base: RawMap, size: string | null) => {
+  /** Search pieces not already in `base`, retry empty pieces once with a simpler query, re-search any piece left
+   *  empty by maxPrice, then drop pieces that still have nothing so the look never shows a blank slot. */
+  const fillRaw = async (input: Plan, base: RawMap, size: string | null) => {
+    let next = input;
     const map: RawMap = {};
     for (const pc of next.pieces) if (base[pc.query]) map[pc.query] = base[pc.query];
     const toSearch = next.pieces.filter((pc) => !map[pc.query]);
     let searches = toSearch.length;
-    const res = await Promise.all(toSearch.map((pc) => searchCatalog(`women's ${pc.query}${sizeSuffix(size)}`)));
+    const first = toSearch.map((pc) => `women's ${pc.query}${sizeSuffix(size)}`);
+    const res = await Promise.all(first.map((q) => searchCatalog(q)));
     toSearch.forEach((pc, i) => { map[pc.query] = res[i].products; });
+    // One retry per empty piece: aesthetic fallback query, or the AI query without the size suffix.
+    // Staggered after a short pause, since Shopify can throttle a burst of parallel searches.
+    const retry = toSearch.filter((pc) => !map[pc.query].length);
+    let res2: Awaited<ReturnType<typeof searchCatalog>>[] = [];
+    const second = retry.map((pc) => `women's ${(pc as PlanPiece & { fallback?: string }).fallback ?? pc.query}`);
+    if (retry.length) {
+      searches += retry.length;
+      await new Promise((r) => setTimeout(r, RETRY_PAUSE_MS));
+      res2 = await Promise.all(second.map((q, i) => new Promise<number>((r) => setTimeout(() => r(0), i * RETRY_STAGGER_MS)).then(() => searchCatalog(q))));
+      retry.forEach((pc, i) => { map[pc.query] = res2[i].products; });
+    }
+    if (import.meta.env.DEV) {
+      toSearch.forEach((pc, i) => {
+        const j = retry.indexOf(pc);
+        console.info("[concierge] piece", { piece: pc.label, query: first[i], ok: res[i].ok, usable: res[i].products.length,
+          ...(j >= 0 ? { retryQuery: second[j], retryOk: res2[j].ok, retryUsable: res2[j].products.length } : {}) });
+      });
+    }
     const changed = new Set(toSearch.map((pc) => pc.label));
+    const missing = next.pieces.filter((pc) => !(map[pc.query] ?? []).length);
+    if (missing.length) {
+      next = { ...next, pieces: next.pieces.filter((pc) => !missing.includes(pc)) };
+      say(...missing.map((pc) => ({ from: "me" as const, text: `couldn't find ${shortLabel(pc.label)} right now, here's the rest.` })));
+    }
     const caps = pieceCaps(next);
     if (next.maxPrice || next.budget) {
       const empty = next.pieces.filter((pc) => caps[pc.label] && !(map[pc.query] ?? []).some((p) => p.price && majorAmount(p.price) <= caps[pc.label]!));
       searches += empty.length;
-      const res2 = await Promise.all(empty.map((pc) => searchCatalog(`women's ${pc.query} under $${caps[pc.label]}${sizeSuffix(size)}`)));
-      empty.forEach((pc, i) => { map[pc.query] = [...res2[i].products, ...(map[pc.query] ?? [])]; changed.add(pc.label); });
+      const res3 = await Promise.all(empty.map((pc) => searchCatalog(`women's ${pc.query} under $${caps[pc.label]}${sizeSuffix(size)}`)));
+      empty.forEach((pc, i) => { map[pc.query] = [...res3[i].products, ...(map[pc.query] ?? [])]; changed.add(pc.label); });
     }
     if (import.meta.env.DEV) console.info("[concierge] searches", searches);
-    return { map, changed: [...changed], searches };
+    return { map, changed: [...changed], searches, plan: next };
   };
 
   const showRail = (next: Plan, map: RawMap) => {
