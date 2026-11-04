@@ -11,7 +11,9 @@ var RATE_LIMITS = {
   "style-look": { ai: true, perIp: { limit: 3, windowS: 86400 }, global: { limit: 20, windowS: 86400 } },
   "concierge-plan": { ai: true, perIp: { limit: 40, windowS: 3600 }, global: { limit: 150, windowS: 86400 } },
   "analyze-outfit": { ai: true, perIp: { limit: 20, windowS: 3600 }, global: { limit: 100, windowS: 86400 } },
-  "image-proxy": { ai: false, perIp: { limit: 60, windowS: 3600 }, global: { limit: 2e4, windowS: 86400 } }
+  "image-proxy": { ai: false, perIp: { limit: 60, windowS: 3600 }, global: { limit: 3e3, windowS: 86400 } },
+  // ~30 catalog searches per normal session (Concierge look, refinements, "Show more options", Results tiers and "Shop the aesthetic"), so 300/h is about 10 sessions.
+  "shopify-catalog": { ai: false, perIp: { limit: 300, windowS: 3600 }, global: { limit: 5e3, windowS: 86400 } }
 };
 var GLOBAL_AI_CALLS_PER_DAY = 200;
 var INPUT_LIMITS = {
@@ -31,7 +33,8 @@ function rateLimitNotice(fn, reason) {
       "concierge-plan": `make up to ${limit} styling requests`,
       "image-proxy": `load up to ${limit} images`,
       "style-look": `make up to ${limit} styled previews`,
-      mcp: `make up to ${limit} assistant requests`
+      mcp: `make up to ${limit} assistant requests`,
+      "shopify-catalog": `run up to ${limit} product searches`
     };
     return {
       scope: "personal",
@@ -67,8 +70,7 @@ async function serviceFetch(path, init = {}) {
   });
 }
 function clientIp(headers) {
-  const xff = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return headers.get("cf-connecting-ip") ?? xff ?? headers.get("x-real-ip") ?? "unknown";
+  return headers.get("cf-connecting-ip")?.trim().slice(0, 64) || "unknown";
 }
 async function checkRateLimit(fn, ip) {
   const cfg = RATE_LIMITS[fn];
