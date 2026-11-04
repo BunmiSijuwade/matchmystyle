@@ -154,6 +154,7 @@
 .mms-home .mms-hero__ask-label { margin: 0; font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; font-weight: 600; color: #5c534d; }
 .mms-home .mms-hero__ask-heading { margin: 6px 0 0; font-family: var(--mms-serif); font-size: 28px; line-height: 1.1; }
 .mms-home .mms-hero__ask-heading em { font-style: italic; }
+@media (max-width: 767px) { .mms-home .mms-hero__beta { display: none; } }
 .mms-home .mms-hero__beta { display: inline-block; margin-left: 6px; padding: 1px 8px; border: 1px solid #5c534d; border-radius: 999px; font-size: 10px; letter-spacing: 0.5px; text-transform: lowercase; font-weight: 500; vertical-align: 1px; }
 .mms-home .mms-hero__concierge input { font-size: 16px; }
 .mms-home .mms-hero__choices { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
