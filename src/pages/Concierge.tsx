@@ -110,7 +110,11 @@ function buildGroups(plan: Plan, raw: RawMap): RailGroup[] {
 const Concierge = () => {
   const [initial] = useState(readSession);
   const [query, setQuery] = useState("");
-  const [choice, setChoice] = useState<ChoiceId | null>(null);
+  const [choice, setChoice] = useState<ChoiceId | null>(() => {
+    // ?choice= link from the homepage hero picks a starting choice.
+    const c = new URLSearchParams(window.location.search).get("choice");
+    return c === "occasion" || c === "piece" || c === "inspire" ? c : null;
+  });
   const [turns, setTurns] = useState<Turn[]>(initial?.turns ?? []);
   const [pending, setPending] = useState<string | null>(null);
   const [lastSearch, setLastSearch] = useState<string | null>(null);

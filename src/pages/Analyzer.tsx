@@ -52,7 +52,9 @@ const Analyzer = () => {
   });
   const [startTier, setStartTier] = useState<LookTier>("midRange");
 
-  const [activeTab, setActiveTab] = useState<Tab>("file");
+  const [activeTab, setActiveTab] = useState<Tab>(() =>
+    new URLSearchParams(window.location.search).get("tab") === "url" ? "url" : "file",
+  );
   const [profileNudgeDismissed, setProfileNudgeDismissed] = useState(() => {
     return localStorage.getItem("matchmystyle_profile_nudge_dismissed") === "true";
   });
