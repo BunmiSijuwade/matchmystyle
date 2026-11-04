@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Link2, Upload } from "lucide-react";
 import { aesthetics } from "./aesthetics";
@@ -41,6 +41,43 @@ export default function HeroCarousel({ ctaHref = "/analyzer" }: Props) {
 
   const a = aesthetics[index];
   const pieces = a.flatLayCaption.split(" · ").map((p) => p.trim()).filter(Boolean);
+  const spots = a.pieceSpots && a.pieceSpots.length === pieces.length ? a.pieceSpots : null;
+
+  // Map image-space spots through the object-fit: cover crop, then nudge tags inside the box.
+  const photoRef = useRef<HTMLElement>(null);
+  const tagRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const [tagPos, setTagPos] = useState<{ left: number; top: number }[] | null>(null);
+  useLayoutEffect(() => {
+    setTagPos(null);
+    const box = photoRef.current;
+    const img = box?.querySelector("img");
+    if (!spots || !box || !img) return;
+    const place = () => {
+      if (!img.naturalWidth) return;
+      const bw = box.clientWidth, bh = box.clientHeight;
+      const pol = box.parentElement?.querySelector<HTMLElement>(".mms-hero__flatlay--mobile");
+      const polaroidVisible = !!pol && getComputedStyle(pol).display !== "none";
+      const scale = Math.max(bw / img.naturalWidth, bh / img.naturalHeight);
+      const iw = img.naturalWidth * scale, ih = img.naturalHeight * scale;
+      const [px, py] = (a.photoPosition || "50% 50%").split(" ").map((v) => parseFloat(v) / 100);
+      const ox = (bw - iw) * (isNaN(px) ? 0.5 : px), oy = (bh - ih) * (isNaN(py) ? 0.5 : py);
+      setTagPos(spots.map((s, i) => {
+        const el = tagRefs.current[i];
+        const tw = el?.offsetWidth ?? 100, th = el?.offsetHeight ?? 26;
+        const left = Math.min(Math.max(ox + (s.x / 100) * iw, 8), bw - tw - 8);
+        const top = Math.min(Math.max(oy + (s.y / 100) * ih, 8), bh - th - 56); // keep clear of the found pill
+        // Phones: the polaroid covers the bottom-right corner, so slide low tags left of it.
+        const overPolaroid = polaroidVisible && top + th > bh - 100 && left + tw > bw - 124;
+        return { left: overPolaroid ? Math.max(8, bw - 124 - tw - 8) : left, top };
+      }));
+    };
+    place();
+    img.addEventListener("load", place);
+    const ro = new ResizeObserver(place);
+    ro.observe(box);
+    return () => { img.removeEventListener("load", place); ro.disconnect(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [a.slug]);
 
   const submitAsk = (e: FormEvent) => {
     e.preventDefault();
@@ -98,16 +135,27 @@ export default function HeroCarousel({ ctaHref = "/analyzer" }: Props) {
           }}
         >
           <div className="mms-hero__photowrap">
-            <figure className="mms-hero__photo">
+            <figure className="mms-hero__photo" ref={photoRef}>
               <img
                 src={a.photo}
                 alt={`${a.photoAlt}. Pieces: ${pieces.join(", ")}`}
                 style={{ objectPosition: a.photoPosition }}
               />
-              <div className="mms-hero__scan" aria-hidden="true">
-                {pieces.map((p) => (
-                  <span key={p} className="mms-scan-pill"><i />{p}</span>
-                ))}
+              <div aria-hidden="true">
+                {spots ? (
+                  pieces.map((p, i) => (
+                    <span
+                      key={p}
+                      ref={(el) => (tagRefs.current[i] = el)}
+                      className="mms-scan-pill mms-scan-pill--spot"
+                      style={tagPos ? { left: tagPos[i].left, top: tagPos[i].top } : { visibility: "hidden" }}
+                    ><i />{p}</span>
+                  ))
+                ) : (
+                  <div className="mms-hero__scan">
+                    {pieces.map((p) => <span key={p} className="mms-scan-pill"><i />{p}</span>)}
+                  </div>
+                )}
                 <span className="mms-scan-found">{pieces.length} pieces found · in your size</span>
               </div>
             </figure>

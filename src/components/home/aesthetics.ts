@@ -13,6 +13,9 @@ export type Aesthetic = {
   photoPosition: string;
   flatLay: string;
   flatLayCaption: string;
+  /** Hero tag spots, one per flatLayCaption piece, as % of the full source image (left/top of the tag).
+   *  The hero maps them through the object-fit crop so they stay on the garment at every size. */
+  pieceSpots?: { x: number; y: number }[];
   /** 4 hex colors pulled from the look, used in the style-mix card */
   palette: string[];
 };
@@ -30,6 +33,7 @@ export const aesthetics: Aesthetic[] = [
     photoPosition: "50% 30%",
     flatLay: "/images/home/brownstone-minimal-flatlay.jpg",
     flatLayCaption: "camel coat · black tank · wide-leg denim",
+    pieceSpots: [{ x: 54, y: 29 }, { x: 31, y: 41 }, { x: 42, y: 69 }],
     palette: ["#B08A62", "#1A1A1A", "#9DB0C8", "#C9A55A"],
   },
   {
@@ -44,6 +48,7 @@ export const aesthetics: Aesthetic[] = [
     photoPosition: "50% 30%",
     flatLay: "/images/home/downtown-uniform-flatlay.jpg",
     flatLayCaption: "leather jacket · washed black denim · silver",
+    pieceSpots: [{ x: 38, y: 38 }, { x: 20, y: 58 }, { x: 21, y: 27 }],
     palette: ["#1A1A1A", "#3A3634", "#5B4636", "#B9BDC2"],
   },
   {
@@ -58,6 +63,7 @@ export const aesthetics: Aesthetic[] = [
     photoPosition: "50% 35%",
     flatLay: "/images/home/off-duty-muse-flatlay.jpg",
     flatLayCaption: "white tank · baggy denim · sneakers",
+    pieceSpots: [{ x: 30, y: 30 }, { x: 30, y: 50 }, { x: 47, y: 75 }],
     palette: ["#FFFFFF", "#A9BCD3", "#8A5A3B", "#E9E2D3"],
   },
   {
@@ -72,6 +78,7 @@ export const aesthetics: Aesthetic[] = [
     photoPosition: "40% 30%",
     flatLay: "/images/home/gallery-hours-flatlay.jpg",
     flatLayCaption: "oxblood jacket · cream silk · black wool",
+    pieceSpots: [{ x: 26, y: 38 }, { x: 42, y: 25 }, { x: 34, y: 58 }],
     palette: ["#6B2A2A", "#EDE4D3", "#1F1D1C", "#C0C3C6"],
   },
 ];
