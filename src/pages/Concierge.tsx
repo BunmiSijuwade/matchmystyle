@@ -312,11 +312,14 @@ const Concierge = () => {
     qStarted.current = true;
     const params = new URLSearchParams(window.location.search);
     const q = params.get("q")?.trim().slice(0, 300);
-    if (!q || q.length < 2) return;
+    if (!params.has("q") && !params.has("choice")) return;
     params.delete("q");
+    params.delete("choice");
     const rest = params.toString();
     window.history.replaceState(null, "", window.location.pathname + (rest ? `?${rest}` : "") + window.location.hash);
-    runPlan(q);
+    if (!q || q.length < 2) return;
+    setQuery(q);
+    send(q); // same path as typing and pressing send
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

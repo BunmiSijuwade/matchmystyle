@@ -140,9 +140,8 @@ export default function HeroCarousel({ ctaHref = "/analyzer" }: Props) {
           </div>
 
           <div className="theme-concierge mms-hero__concierge">
-            <p className="mms-hero__ask-label">No photo? Ask the concierge</p>
+            <p className="mms-hero__ask-label">No photo? Ask the concierge <span className="mms-hero__beta">beta</span></p>
             <p className="mms-hero__ask-heading">what are we <em>dressing for?</em></p>
-            <p className="mms-hero__divider"><span>or tell the concierge what you're dressing for</span></p>
             <ConciergeComposer inline value={ask} loading={false} onChange={setAsk} onSubmit={submitAsk} placeholder="a summer wedding in the city" />
             <div className="mms-hero__choices">
               {CHOICES.map((c) => (
