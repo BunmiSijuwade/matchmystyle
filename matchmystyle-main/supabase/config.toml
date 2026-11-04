@@ -1,4 +1,0 @@
-project_id = "dqxrhzlbtwrrxnwdaybh"
-
-[functions.analyze-outfit]
-verify_jwt = false
