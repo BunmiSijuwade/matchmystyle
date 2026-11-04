@@ -109,7 +109,15 @@ function buildGroups(plan: Plan, raw: RawMap): RailGroup[] {
 }
 
 const Concierge = () => {
-  const [initial] = useState(readSession);
+  // ?choice= or ?q= links mean a fresh start: ignore and clear the saved session.
+  const [initial] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.has("choice") || p.has("q")) {
+      try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+      return null;
+    }
+    return readSession();
+  });
   const [query, setQuery] = useState("");
   const [choice, setChoice] = useState<ChoiceId | null>(() => {
     // ?choice= link from the homepage hero picks a starting choice.
