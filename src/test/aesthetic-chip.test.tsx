@@ -18,9 +18,9 @@ import { AESTHETICS } from "@/data/aesthetics";
 describe("aesthetic chip", () => {
   afterEach(() => { cleanup(); localStorage.clear(); sessionStorage.clear(); invoke.mockClear(); searchCatalog.mockClear(); });
 
-  it("Downtown Uniform skips the silver and keeps 3 clothing and shoe pieces", () => {
+  it("Downtown Uniform keeps silver because only 3 clothing and shoe pieces exist", () => {
     const plan = buildAestheticPlan(AESTHETICS.find((a) => a.slug === "downtown-uniform")!);
-    expect(plan.pieces.map((p) => p.query)).toEqual(["vintage leather jacket", "washed black jeans", "lug-sole boots", "layered silver"].slice(0, 3).concat(["layered silver"]));
+    expect(plan.pieces.map((p) => p.query)).toEqual(["vintage leather jacket", "washed black jeans", "lug-sole boots", "layered silver"]);
   });
 
   it("Brownstone Minimal skips gold hoops since 4 non-jewelry pieces exist", () => {
@@ -37,5 +37,8 @@ describe("aesthetic chip", () => {
     ].map((q) => expect.stringContaining(q)));
     expect(invoke).not.toHaveBeenCalledWith("concierge-plan", expect.anything());
     await screen.findByText("love it. pulling a Brownstone Minimal look.");
+    for (const t of ["long camel coat", "black knit", "wide-leg jeans", "structured tote"]) {
+      expect(await screen.findAllByText(new RegExp(`Item for women's ${t}`))).not.toHaveLength(0);
+    }
   });
 });
