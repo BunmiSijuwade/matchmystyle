@@ -14,6 +14,11 @@ if (deno?.serve && !deno.__mmsWrapped) {
   const original = deno.serve.bind(deno);
   deno.__mmsWrapped = true;
   deno.serve = (...args: unknown[]) => {
+    // Startup check (runs when the server starts, not at import).
+    const g = globalThis as { Deno?: { env?: { get?: (k: string) => string | undefined } } };
+    if (!g.Deno?.env?.get?.("MCP_INTERNAL_KEY")) {
+      console.error("MCP_INTERNAL_KEY is not set: style_me and search still work, but every MCP user shares one per-IP bucket (the MCP server's own IP).");
+    }
     const i = args.findIndex((a) => typeof a === "function");
     if (i >= 0) {
       const h = args[i] as ServeHandler;

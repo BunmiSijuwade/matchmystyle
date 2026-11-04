@@ -116,6 +116,10 @@ if (deno?.serve && !deno.__mmsWrapped) {
   const original = deno.serve.bind(deno);
   deno.__mmsWrapped = true;
   deno.serve = (...args) => {
+    const g = globalThis;
+    if (!g.Deno?.env?.get?.("MCP_INTERNAL_KEY")) {
+      console.error("MCP_INTERNAL_KEY is not set: style_me and search still work, but every MCP user shares one per-IP bucket (the MCP server's own IP).");
+    }
     const i = args.findIndex((a) => typeof a === "function");
     if (i >= 0) {
       const h = args[i];
@@ -194,16 +198,24 @@ function toProduct(p) {
     imageUrl: p.imageUrl ?? ""
   };
 }
+var env2 = (n) => globalThis.Deno?.env?.get?.(n);
+function internalHeaders() {
+  const internalKey = env2("MCP_INTERNAL_KEY");
+  return internalKey ? { "x-mms-internal": internalKey, "x-mms-client-ip": currentIp() } : {};
+}
 async function searchCatalog(query, signal) {
   const key = supabasePublishableKey();
   const res = await fetch(`${supabaseProjectUrl()}/functions/v1/shopify-catalog`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}`, ...internalHeaders() },
     body: JSON.stringify({ query }),
     signal
   });
   const body = await res.json().catch(() => null);
-  if (!res.ok || !Array.isArray(body?.products)) throw new ToolError(body?.error ?? `Product search failed (${res.status}).`);
+  if (!res.ok || !Array.isArray(body?.products)) {
+    const notice = body;
+    throw new ToolError(notice?.message ?? body?.error ?? `Product search failed (${res.status}).`);
+  }
   return body.products.filter((p) => p.title && p.productUrl && p.imageUrl && p.price && String(p.price.currency).toUpperCase() === "USD").map(toProduct);
 }
 
@@ -277,7 +289,7 @@ var list_aesthetics_default = defineTool2({
 import { defineTool as defineTool3, ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@3.0.4";
 import { z as z2 } from "npm:zod@^3.25.76";
 var TTL_MS = 24 * 60 * 60 * 1e3;
-var env2 = (n) => globalThis.Deno?.env?.get?.(n);
+var env3 = (n) => globalThis.Deno?.env?.get?.(n);
 function pieceCaps(plan) {
   const out = {};
   const n = plan.pieces.length;
@@ -288,7 +300,7 @@ function pieceCaps(plan) {
 }
 async function getPlan(request, size, signal) {
   const key = supabasePublishableKey();
-  const internalKey = env2("MCP_INTERNAL_KEY");
+  const internalKey = env3("MCP_INTERNAL_KEY");
   const res = await fetch(`${supabaseProjectUrl()}/functions/v1/concierge-plan`, {
     method: "POST",
     headers: {

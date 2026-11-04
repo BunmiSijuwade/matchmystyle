@@ -39,16 +39,27 @@ export function toProduct(p: Raw) {
 }
 export type McpProduct = ReturnType<typeof toProduct>;
 
+const env = (n: string) => (globalThis as { Deno?: { env?: { get?: (k: string) => string | undefined } } }).Deno?.env?.get?.(n);
+
+/** Marks a call as coming from our MCP server so it counts against the original caller's IP. */
+export function internalHeaders(): Record<string, string> {
+  const internalKey = env("MCP_INTERNAL_KEY");
+  return internalKey ? { "x-mms-internal": internalKey, "x-mms-client-ip": currentIp() } : {};
+}
+
 export async function searchCatalog(query: string, signal?: AbortSignal): Promise<McpProduct[]> {
   const key = supabasePublishableKey();
   const res = await fetch(`${supabaseProjectUrl()}/functions/v1/shopify-catalog`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}`, ...internalHeaders() },
     body: JSON.stringify({ query }),
     signal,
   });
   const body = (await res.json().catch(() => null)) as { products?: Raw[]; error?: string } | null;
-  if (!res.ok || !Array.isArray(body?.products)) throw new ToolError(body?.error ?? `Product search failed (${res.status}).`);
+  if (!res.ok || !Array.isArray(body?.products)) {
+    const notice = body as { message?: string } | null;
+    throw new ToolError(notice?.message ?? body?.error ?? `Product search failed (${res.status}).`);
+  }
   return body.products
     .filter((p) => p.title && p.productUrl && p.imageUrl && p.price && String(p.price.currency).toUpperCase() === "USD")
     .map(toProduct);
