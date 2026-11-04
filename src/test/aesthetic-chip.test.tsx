@@ -38,7 +38,7 @@ describe("aesthetic chip", () => {
     expect(invoke).not.toHaveBeenCalledWith("concierge-plan", expect.anything());
     await screen.findByText("love it. pulling a Brownstone Minimal look.");
     for (const t of ["long camel coat", "black knit", "wide-leg jeans", "structured tote"]) {
-      expect(await screen.findAllByText(new RegExp(`Item for women's ${t}`))).not.toHaveLength(0);
+      expect(await screen.findAllByText(new RegExp(`the ${t}`, "i"))).not.toHaveLength(0);
     }
   });
 });
