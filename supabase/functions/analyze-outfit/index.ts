@@ -6,6 +6,8 @@ import { safePublicFetch } from "../_shared/safeFetch.ts";
 
 const corsHeaders = corsBase;
 
+import { ALLOWED_MIME, readCapped, sanitizeProfile } from "./inputs.ts";
+
 function sanitizeText(text: string): string {
   if (!text) return text;
   return text.replace(/[^\x20-\x7E]/g, "").replace(/\s+/g, " ").trim();
@@ -69,19 +71,23 @@ serve(withCors(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const contentType = imgResponse.headers.get("content-type") || "image/jpeg";
-      mimeType = contentType.split(";")[0].trim();
+      // Check the type before reading, then stream the body and stop at the size limit.
+      mimeType = (imgResponse.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+      if (!ALLOWED_MIME.has(mimeType)) {
+        await imgResponse.body?.cancel();
+        return new Response(JSON.stringify({ error: "invalid_image", message: "Please use a JPG, PNG, WebP, GIF or HEIC image." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       if (Number(imgResponse.headers.get("content-length") ?? 0) > INPUT_LIMITS.maxImageBytes) {
+        await imgResponse.body?.cancel();
         return new Response(JSON.stringify({ error: "image_too_large", message: "Image is too large (max 5 MB)." }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      const arrayBuffer = await imgResponse.arrayBuffer();
-      if (arrayBuffer.byteLength > INPUT_LIMITS.maxImageBytes) {
+      const uint8Array = await readCapped(imgResponse, INPUT_LIMITS.maxImageBytes);
+      if (!uint8Array) {
         return new Response(JSON.stringify({ error: "image_too_large", message: "Image is too large (max 5 MB)." }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      const uint8Array = new Uint8Array(arrayBuffer);
       let binary = "";
-      for (let i = 0; i < uint8Array.length; i++) {
-        binary += String.fromCharCode(uint8Array[i]);
+      for (let i = 0; i < uint8Array.length; i += 0x8000) {
+        binary += String.fromCharCode(...uint8Array.subarray(i, i + 0x8000));
       }
       imageBase64 = btoa(binary);
     }
@@ -89,7 +95,8 @@ serve(withCors(async (req) => {
     if (typeof imageBase64 === "string" && Math.floor(imageBase64.length * 3 / 4) > INPUT_LIMITS.maxImageBytes) {
       return new Response(JSON.stringify({ error: "image_too_large", message: "Image is too large (max 5 MB)." }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    if (typeof mimeType === "string" && !mimeType.startsWith("image/")) {
+    if (typeof mimeType === "string") mimeType = mimeType.split(";")[0].trim().toLowerCase();
+    if (typeof mimeType === "string" && !ALLOWED_MIME.has(mimeType)) {
       return new Response(JSON.stringify({ error: "invalid_image", message: "Please upload an image." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     if (!imageBase64 || !mimeType) {
@@ -112,21 +119,21 @@ All output must be in English only. Do not use Chinese, Japanese, Korean, or any
 Keep all field values short and concise. Do not repeat instructions or field names in values.`;
 
     // Append profile-based personalization if available
-    if (profile && typeof profile === "object") {
+    const safe = sanitizeProfile(profile);
+    if (safe) {
       const parts: string[] = [];
-      const sizeVal = Array.isArray(profile.size) ? profile.size.join("/") : profile.size;
-      if (sizeVal) parts.push(`Size ${sizeVal}`);
-      if (profile.height) parts.push(`Height ${profile.height}cm`);
-      if (profile.bust) parts.push(`Bust ${profile.bust}cm`);
-      if (profile.waist) parts.push(`Waist ${profile.waist}cm`);
-      if (profile.hips) parts.push(`Hips ${profile.hips}cm`);
-      if (profile.shoeSize) parts.push(`Shoe ${profile.shoeUnit || "EU"} ${profile.shoeSize}`);
+      if (safe.size?.length) parts.push(`Size ${safe.size.join("/")}`);
+      if (safe.height) parts.push(`Height ${safe.height}cm`);
+      if (safe.bust) parts.push(`Bust ${safe.bust}cm`);
+      if (safe.waist) parts.push(`Waist ${safe.waist}cm`);
+      if (safe.hips) parts.push(`Hips ${safe.hips}cm`);
+      if (safe.shoeSize) parts.push(`Shoe ${safe.shoeUnit ?? "EU"} ${safe.shoeSize}`);
 
       if (parts.length > 0) {
         systemPrompt += `\n\nThe user's measurements: ${parts.join(", ")}.`;
-        if (profile.currency) {
-          systemPrompt += `\nPreferred currency: ${profile.currency}.`;
-          systemPrompt += `\nUse ${profile.currency} for all prices.`;
+        if (safe.currency) {
+          systemPrompt += `\nPreferred currency: ${safe.currency}.`;
+          systemPrompt += `\nUse ${safe.currency} for all prices.`;
         }
         systemPrompt += `\nFor each item, include a short "sizeNote" with sizing advice for this user (e.g. "Order size M", "Size up for an oversized fit").`;
       }
