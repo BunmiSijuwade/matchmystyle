@@ -121,10 +121,11 @@
 .mms-home .mms-hero__photowrap { position: relative; }
 .mms-home .mms-hero__photo { position: relative; margin: 0; border-radius: 6px; overflow: hidden; background: var(--mms-warm-2); height: 300px; }
 .mms-home .mms-hero__photo img { width: 100%; height: 100%; object-fit: cover; }
-.mms-home .mms-hero__scan { position: absolute; left: 12px; bottom: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; max-width: 62%; }
-.mms-home .mms-scan-pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; background: rgba(250, 250, 248, 0.94); color: var(--mms-ink); font-size: 12px; line-height: 1.3; box-shadow: 0 2px 10px rgba(26, 26, 26, 0.12); }
+.mms-home .mms-hero__scan { position: absolute; left: 16px; bottom: 56px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; max-width: 62%; }
+.mms-home .mms-scan-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px 6px 8px; border-radius: 999px; background: rgba(250, 250, 248, 0.94); color: var(--mms-ink); font-size: 12px; font-weight: 500; line-height: 1.3; white-space: nowrap; box-shadow: 0 2px 10px rgba(26, 26, 26, 0.12); }
+.mms-home .mms-scan-pill--spot { position: absolute; }
 .mms-home .mms-scan-pill i { width: 6px; height: 6px; border-radius: 50%; background: var(--mms-brand); flex-shrink: 0; }
-.mms-home .mms-scan-found { margin-top: 4px; padding: 6px 12px; border-radius: 999px; background: var(--mms-ink); color: var(--mms-bg); font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 600; }
+.mms-home .mms-scan-found { position: absolute; left: 16px; bottom: 16px; padding: 6px 12px; border-radius: 999px; background: var(--mms-ink); color: var(--mms-bg); font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 600; }
 .mms-home .mms-hero__caption { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 32px; }
 @media (min-width: 1024px) { .mms-home .mms-hero__caption { margin-top: 12px; } }
 .mms-home .mms-hero__aesthetic { font-family: var(--mms-serif); font-size: 24px; line-height: 1.1; }
