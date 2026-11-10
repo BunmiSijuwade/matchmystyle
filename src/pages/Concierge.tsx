@@ -6,6 +6,8 @@ import { AESTHETICS, type AestheticInfo } from "@/data/aesthetics";
 import { readProfileSize, searchCatalog, readCache, writeCache, majorAmount, type CatalogProduct as ShopProduct } from "@/lib/shopCatalog";
 import ConciergeStart, { CHOICES, FOLLOW_UPS, PhotoSoon, type ChoiceId } from "@/components/concierge/ConciergeStart";
 import ConciergeComposer from "@/components/concierge/ConciergeComposer";
+import { isRedesign } from "@/lib/redesign";
+import { TopNav } from "@/components/v2/SiteNav";
 import EditorialProductCard, { type CatalogProduct } from "@/components/concierge/EditorialProductCard";
 import { LookSidebar, LookBar, type LookSlot } from "@/components/concierge/LookBoard";
 import { supabase } from "@/integrations/supabase/client";
@@ -111,6 +113,7 @@ function buildGroups(plan: Plan, raw: RawMap): RailGroup[] {
 }
 
 const Concierge = () => {
+  const [redesign] = useState(() => isRedesign());
   // ?choice=, ?q= or ?aesthetic= links mean a fresh start: ignore and clear the saved session.
   const [initial] = useState(() => {
     const p = new URLSearchParams(window.location.search);
@@ -461,10 +464,10 @@ const Concierge = () => {
   const removeFromLook = (label: string) => setLook((prev) => ({ ...(prev ?? {}), [label]: null }));
 
   return (
-    <div className="theme-concierge flex min-h-screen flex-col">
-      <Navbar />
+    <div className={`theme-concierge flex min-h-screen flex-col${redesign ? " theme-v2" : ""}`}>
+      {redesign ? <TopNav active="concierge" /> : <Navbar />}
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-10 pt-[104px] sm:px-6 sm:pt-[120px] lg:flex lg:gap-10">
+      <main className={`mx-auto w-full max-w-6xl flex-1 px-4 pb-10 sm:px-6 lg:flex lg:gap-10 ${redesign ? "pt-8 sm:pt-10" : "pt-[104px] sm:pt-[120px]"}`}>
         <div className="min-w-0 flex-1">
         {!started && <ConciergeStart onChoose={setChoice} onAesthetic={startAesthetic} composer={<ConciergeComposer inline value={query} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />} />}
 

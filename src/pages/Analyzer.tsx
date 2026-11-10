@@ -16,6 +16,8 @@ import PasteTipStrip from "@/components/PasteTipStrip";
 import { useClipboardPaste } from "@/hooks/useClipboardPaste";
 import { INPUT_LIMITS } from "../../supabase/functions/_shared/rateLimit";
 import { shrinkImage } from "@/lib/shrinkImage";
+import { isRedesign } from "@/lib/redesign";
+import { TopNav, TabBar } from "@/components/v2/SiteNav";
 
 type Tab = "url" | "file";
 
@@ -45,6 +47,7 @@ function isValidUrl(str: string) {
 
 const Analyzer = () => {
   const navigate = useNavigate();
+  const [redesign] = useState(() => isRedesign());
   const { setAnalysis, setLookPrefs } = useAnalysis();
   const [pickedSize, setPickedSize] = useState<string | null>(() => {
     const s = readProfileSize()?.toUpperCase() ?? null;
@@ -229,10 +232,10 @@ const Analyzer = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <div className={`min-h-screen bg-background${redesign ? " theme-v2 pb-20 md:pb-0" : ""}`}>
+      {redesign ? <><TopNav active="match" /><TabBar active="match" /></> : <Navbar />}
       <Toaster />
-      <div className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16">
+      <div className={`container mx-auto px-4 sm:px-6 pb-16 ${redesign ? "pt-8 sm:pt-10" : "pt-24 sm:pt-28"}`}>
         {/* Header */}
         <div className="mb-8 sm:mb-10 text-center">
           <p className="text-[10px] font-medium tracking-[1px] uppercase text-muted-foreground mb-4">AI Outfit Analyzer</p>
