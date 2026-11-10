@@ -14,4 +14,4 @@
 - Caller IP for rate limits comes only from `cf-connecting-ip` (verified unspoofable on the edge gateway; x-forwarded-for and x-real-ip are client-influenced or internal), so per-IP buckets can't be reset by headers.
 - The MCP server stays read-only and never gets tools that read or write user data unless OAuth is added first.
 - Any function that touches user data (saved looks, pieces, roles) checks the signed-in user inside the function with `supabase.auth.getUser()` and relies on row-level security, never on `verify_jwt` alone, because the publishable key is public.
-- Every new public function gets a `RATE_LIMITS` entry and uses the shared CORS allowlist in `supabase/functions/_shared/cors.ts` (`withCors`); only `mcp` keeps the SDK's CORS.
+- Every new public function gets a `RATE_LIMITS` entry and uses the shared CORS allowlist in `supabase/functions/_shared/cors.ts` (`withCors`); only `mcp` keeps the SDK's CORS. Any change to `_shared/` must be followed by redeploying every function that imports it, since a stale deploy silently blocks the custom domains.

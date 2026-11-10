@@ -67,7 +67,11 @@ export const formatPrice = (p: { amount: number; currency: string }) => {
 export async function searchCatalog(query: string): Promise<{ ok: boolean; products: CatalogProduct[] }> {
   try {
     const { data, error } = await supabase.functions.invoke("shopify-catalog", { body: { query } });
-    if (error || !Array.isArray(data?.products)) return { ok: false, products: [] };
+    if (error || !Array.isArray(data?.products)) {
+      const status = (error as { context?: Response } | null)?.context?.status;
+      console.error("[search] shopify-catalog failed", { status, reason: error?.message ?? data?.error ?? "no products array" });
+      return { ok: false, products: [] };
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const products = (data.products as any[])
       .filter((p) => p?.imageUrl && p?.price && p?.productUrl && p?.title && String(p.price.currency).toUpperCase() === "USD")
@@ -80,7 +84,8 @@ export async function searchCatalog(query: string): Promise<{ ok: boolean; produ
         productUrl: p.productUrl,
       }));
     return { ok: true, products };
-  } catch {
+  } catch (e) {
+    console.error("[search] shopify-catalog unreachable", e);
     return { ok: false, products: [] };
   }
 }

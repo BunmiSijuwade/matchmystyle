@@ -3,6 +3,7 @@ import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Navbar from "@/components/Navbar";
 import { AESTHETICS, type AestheticInfo } from "@/data/aesthetics";
+import { dropColor, dropSize, hasColor } from "@/lib/loosenSearch";
 import { readProfileSize, searchCatalog, readCache, writeCache, majorAmount, type CatalogProduct as ShopProduct } from "@/lib/shopCatalog";
 import ConciergeStart, { CHOICES, FOLLOW_UPS, PhotoSoon, type ChoiceId } from "@/components/concierge/ConciergeStart";
 import ConciergeComposer from "@/components/concierge/ConciergeComposer";
@@ -90,6 +91,7 @@ function reconcileLook(plan: Plan, groups: RailGroup[], prev: Look | null, raw: 
 
 const RETRY_PAUSE_MS = 400;
 const RETRY_STAGGER_MS = 150;
+const SEARCH_DOWN = "Search is down for a moment. Try again in a minute.";
 const sizeSuffix = (size: string | null) => (size ? ` size ${size}` : "");
 
 /** Build the rail from raw search results: maxPrice filter, dedupe, 3 per piece. */
@@ -143,6 +145,10 @@ const Concierge = () => {
   const [chips, setChips] = useState<string[] | null>(initial?.chips ?? null);
   const [asked, setAsked] = useState<string | null>(initial?.asked ?? null);
   const [look, setLook] = useState<Look | null>(initial?.look ?? null);
+  // Honest empty states: did every catalog call fail (search down) or did it just find nothing?
+  const [searchDown, setSearchDown] = useState(false);
+  const [loosenStep, setLoosenStep] = useState(0); // 0 none, 1 dropped color, 2 dropped size
+  const retryRef = useRef<(() => void) | null>(null);
   const lookRef = useRef(look);
   lookRef.current = look;
 
@@ -199,6 +205,7 @@ const Concierge = () => {
           ...(j >= 0 ? { retryQuery: second[j], retryOk: res2[j].ok, retryUsable: res2[j].products.length } : {}) });
       });
     }
+    setSearchDown(toSearch.length > 0 && !res.some((r) => r.ok) && !res2.some((r) => r.ok));
     const changed = new Set(toSearch.map((pc) => pc.label));
     const missing = next.pieces.filter((pc) => !(map[pc.query] ?? []).length);
     if (missing.length) {
@@ -243,6 +250,7 @@ const Concierge = () => {
 
   const runPlan = async (text: string, echo = true) => {
     if (echo) say({ from: "you", text });
+    retryRef.current = () => runPlan(text, false); setLoosenStep(0); setSearchDown(false);
     setPlan(null); setGroups([]); setLook(null); lookRef.current = null; setProducts([]); setError(null); setStatus("loading");
     const size = readProfileSize();
     const h = [text];
@@ -319,8 +327,9 @@ const Concierge = () => {
     if (built.length && next.intent !== "restyle") writeCache(key, { plan: filled, raw: map, changed });
   };
 
-  const runSearch = async (q: string) => {
+  const runSearch = async (q: string, step = 0) => {
     setLastSearch(q);
+    retryRef.current = () => runSearch(q, step); setLoosenStep(step); setSearchDown(false);
     setLook(null);
     setPlan(null);
     setGroups([]);
@@ -333,9 +342,13 @@ const Concierge = () => {
       console.info("[concierge] shopify-catalog", { ms: Math.round(performance.now() - started), meta: data?.meta, fnError });
     }
     if (fnError || !data || data.error || !Array.isArray(data.products)) {
-      let msg = (data?.message ?? data?.error) as string | undefined;
-      try { const body = await (fnError as any)?.context?.json?.(); msg = body?.message ?? msg ?? body?.error; } catch { /* ignore */ }
-      setError(msg ?? "couldn't search right now.");
+      const ctx = (fnError as { context?: Response } | null)?.context;
+      let body: { message?: string; error?: string } | null = null;
+      try { body = await ctx?.json?.(); } catch { /* ignore */ }
+      console.error("[concierge] search failed", { status: ctx?.status, reason: body?.error ?? data?.error ?? fnError?.message ?? "no products array" });
+      // Usage limits keep their own personal message; anything else is an outage.
+      setError(ctx?.status === 429 && body?.message ? body.message : SEARCH_DOWN);
+      setSearchDown(ctx?.status !== 429);
       setMeta(data?.meta ?? null);
       setStatus("error");
       return;
@@ -343,7 +356,7 @@ const Concierge = () => {
     setProducts(data.products);
     setMeta(data.meta ?? null);
     setStatus("done");
-    say({ from: "me", text: data.products.length ? `here's a first rail: ${data.products.length} pieces.` : "hmm, nothing came back for that." });
+    say({ from: "me", text: data.products.length ? `here's a first rail: ${data.products.length} pieces.` : "nothing in your size yet for this piece. want me to loosen the search?" });
   };
 
   // ?q= link (e.g. from AI assistants): start a fresh plan from it on load, then drop it from the URL.
@@ -380,6 +393,7 @@ const Concierge = () => {
   const startAesthetic = async (a: AestheticInfo) => {
     if (status === "loading") return;
     say({ from: "you", text: a.name }, { from: "me", text: `love it. pulling a ${a.name} look.` });
+    retryRef.current = () => startAesthetic(a); setLoosenStep(0); setSearchDown(false);
     setPlan(null); setGroups([]); setLook(null); lookRef.current = null; setProducts([]); setError(null); setStatus("loading");
     const size = readProfileSize();
     const h = [`a ${a.name} look`];
@@ -529,18 +543,39 @@ const Concierge = () => {
             <div className="mono-outline mono-card p-8 text-center">
               <AlertCircle className="mono-accent-text mx-auto mb-3 h-7 w-7" />
               <p className="mb-4 text-sm">{error}</p>
-              <button type="button" onClick={() => lastSearch && runSearch(lastSearch)} className="mono-ink-bg mono-pill min-h-[44px] px-6 text-sm font-medium">
-                try again
+              <button type="button" onClick={() => retryRef.current?.()} className="mono-ink-bg mono-pill min-h-[44px] px-6 text-sm font-medium">
+                Retry
               </button>
             </div>
           )}
 
-          {status === "done" && products.length === 0 && groups.length === 0 && (
-            <div className="mono-dashed mono-card p-10 text-center">
-              <p className="mb-1 text-sm">no pieces found.</p>
-              <p className="mono-soft text-sm">try a specific piece, material or occasion.</p>
+          {status === "done" && products.length === 0 && groups.length === 0 && (searchDown ? (
+            <div className="mono-outline mono-card p-8 text-center">
+              <AlertCircle className="mono-accent-text mx-auto mb-3 h-7 w-7" />
+              <p className="mb-4 text-sm">{SEARCH_DOWN}</p>
+              <button type="button" onClick={() => retryRef.current?.()} className="mono-ink-bg mono-pill min-h-[44px] px-6 text-sm font-medium">
+                Retry
+              </button>
             </div>
-          )}
+          ) : (
+            <div className="mono-dashed mono-card p-10 text-center">
+              <p className="mb-4 text-sm">Nothing in your size yet for this piece.</p>
+              {(() => {
+                const base = lastSearch ?? history[0];
+                if (!base || loosenStep >= 2) return <p className="mono-soft text-sm">Try a specific piece, material or occasion.</p>;
+                const size = readProfileSize();
+                const noColor = dropColor(dropSize(base));
+                const next = loosenStep === 0 && hasColor(base)
+                  ? { label: "Loosen it: drop the color", run: () => runSearch(size ? `${noColor} size ${size}` : noColor, 1) }
+                  : { label: "Loosen it: drop the size", run: () => runSearch(noColor, 2) };
+                return (
+                  <button type="button" onClick={next.run} className="mono-ink-bg mono-pill min-h-[44px] px-6 text-sm font-medium">
+                    {next.label}
+                  </button>
+                );
+              })()}
+            </div>
+          ))}
 
           {status === "done" && products.length > 0 && (
             <div className="grid grid-cols-2 gap-x-4 gap-y-12 md:grid-cols-3 md:gap-x-6 md:gap-y-16">
