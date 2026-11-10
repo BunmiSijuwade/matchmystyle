@@ -4,9 +4,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { ArrowLeft, ExternalLink, Loader2, Search, Sparkles, X, RotateCcw, Bookmark } from "lucide-react";
 import LookStyledTab, { type StylePiece } from "@/components/concierge/LookStyledTab";
-import { alternativesFor, TIER_NAMES, type LookPiece } from "@/lib/assembleLook";
+import { TIER_NAMES, type LookPiece, type ShopTier } from "@/lib/assembleLook";
 import type { DetectedItem, LookTier } from "@/contexts/AnalysisContext";
-import type { LiveMatchState } from "@/hooks/useLiveMatches";
+import { PRICE_TIERS, type LiveMatchState } from "@/hooks/useLiveMatches";
 import { formatPrice, type CatalogProduct } from "@/lib/shopCatalog";
 import { loadRedesignFont, V2 } from "@/lib/redesign";
 
@@ -55,6 +55,12 @@ const SPOTS = [
 ];
 
 const display = { fontFamily: V2.display, fontWeight: 800 } as const;
+// One column per price range, so every piece shows its Budget, Mid-range and Luxury option side by side.
+const RANGES: { tier: ShopTier; range: string }[] = [
+  { tier: "budget", range: `under $${PRICE_TIERS.budgetMax}` },
+  { tier: "midRange", range: `$${PRICE_TIERS.budgetMax}–${PRICE_TIERS.luxuryMin}` },
+  { tier: "luxury", range: `$${PRICE_TIERS.luxuryMin}+` },
+];
 const label = "text-[10px] font-extrabold uppercase tracking-[1px]";
 
 export default function LookStudio(p: LookStudioProps) {
@@ -283,13 +289,15 @@ function Layer({ n, piece, p }: { n: number; piece: StudioPiece; p: LookStudioPr
   }
 
   const matches = p.liveState[item.id]?.matches;
-  const alts = alternativesFor(matches, product?.key ?? null, 6);
   const extra = p.more[item.id];
-  const options: { product: CatalogProduct; tag: string; on: boolean }[] = [
-    ...(product ? [{ product, tag: piece.fromTier ? TIER_NAMES[piece.fromTier] : "Your pick", on: true }] : []),
-    ...alts.map((a) => ({ product: a.product, tag: TIER_NAMES[a.tier], on: false })),
-    ...(extra?.status === "done" ? extra.products.map((x) => ({ product: x, tag: "More options", on: false })) : []),
-  ];
+  // Per range: the product already in the look if it's in that range, else the range's top match.
+  const cells = RANGES.map(({ tier, range }) => {
+    const list = matches?.[tier] ?? [];
+    const pick = (product && list.find((x) => x.key === product.key)) || list[0] || null;
+    return { tier, range, product: pick, on: !!(pick && product && pick.key === product.key) };
+  });
+  const shownKeys = [product?.key, ...cells.map((c) => c.product?.key)].filter(Boolean) as string[];
+  const extras = extra?.status === "done" ? extra.products.filter((x) => !shownKeys.includes(x.key)) : [];
   const note = product ? p.sizeNoteFor(product, item) : null;
 
   return (
@@ -302,9 +310,10 @@ function Layer({ n, piece, p }: { n: number; piece: StudioPiece; p: LookStudioPr
           <span className="w-16 h-[76px] rounded-[10px] flex-shrink-0" style={{ background: V2.sand }} />
         )}
         <div className="flex-1 min-w-0">
-          <p className={label} style={{ color: V2.muted }}>{item.category}{product?.merchantName ? ` · ${product.merchantName}` : ""}</p>
+          <p className={label} style={{ color: V2.muted }}>{item.category}</p>
           {product ? (
             <>
+              {product.merchantName && <p className="text-[12px] font-extrabold uppercase tracking-[0.6px] truncate">{product.merchantName}</p>}
               <p className="text-[15px] font-bold leading-snug line-clamp-2">{product.title}</p>
               <p className="flex flex-wrap items-center gap-1.5 mt-0.5">
                 <span className="font-extrabold text-[14px]">{formatPrice(product.price)}</span>
@@ -330,21 +339,18 @@ function Layer({ n, piece, p }: { n: number; piece: StudioPiece; p: LookStudioPr
         )}
       </div>
 
-      {options.length > (product ? 1 : 0) && (
+      <p className={`${label} mt-4 mb-2`} style={{ color: V2.muted }}>Pick your price</p>
+      <div className="grid grid-cols-3 gap-2">
+        {cells.map((c) => (
+          <OptionCard key={c.tier} heading={TIER_NAMES[c.tier]} sub={c.range} product={c.product} on={c.on} onUse={() => c.product && p.onUse(item.id, c.product)} />
+        ))}
+      </div>
+      {extras.length > 0 && (
         <>
-          <p className={`${label} mt-3 mb-2`} style={{ color: V2.muted }}>Swap in</p>
-          <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1">
-            {options.map((o) => (
-              <button key={o.product.key} onClick={() => !o.on && p.onUse(item.id, o.product)} aria-pressed={o.on} aria-label={o.on ? `${o.product.title}, in your look` : `Use ${o.product.title}`}
-                className="flex-shrink-0 w-[120px] lg:w-[132px] text-left p-1.5 rounded-xl"
-                style={{ background: V2.card, border: o.on ? `2px solid ${V2.ink}` : `1px solid ${V2.line}` }}>
-                <img src={o.product.imageUrl} alt="" className="w-full h-[108px] object-cover rounded-lg bg-muted" loading="lazy" />
-                <span className="block text-[9px] font-extrabold uppercase tracking-[0.8px] mt-1.5" style={{ color: o.tag === "Budget" ? V2.ink : V2.accent }}>
-                  {o.tag}{o.on ? " · in look" : ""}
-                </span>
-                <span className="block text-[12px] font-bold leading-tight line-clamp-2 h-[30px]">{o.product.title}</span>
-                <span className="block text-[12px] font-extrabold">{formatPrice(o.product.price)}</span>
-              </button>
+          <p className={`${label} mt-4 mb-2`} style={{ color: V2.muted }}>More options</p>
+          <div className="grid grid-cols-3 gap-2">
+            {extras.map((x) => (
+              <OptionCard key={x.key} heading="More" sub={null} product={x} on={x.key === product?.key} onUse={() => p.onUse(item.id, x)} />
             ))}
           </div>
         </>
@@ -352,7 +358,7 @@ function Layer({ n, piece, p }: { n: number; piece: StudioPiece; p: LookStudioPr
 
       <div className="flex flex-wrap gap-x-4 mt-1.5">
         {extra?.status !== "done" && (
-          <button onClick={() => p.onMore(item, options.map((o) => o.product.key))} disabled={extra?.status === "loading"}
+          <button onClick={() => p.onMore(item, shownKeys)} disabled={extra?.status === "loading"}
             className="min-h-[44px] text-[13px] font-bold underline underline-offset-4 inline-flex items-center gap-1.5 disabled:opacity-60" style={{ color: V2.accent }}>
             {extra?.status === "loading" ? <><Loader2 className="w-4 h-4 animate-spin" />Finding more</> : `More ${item.category.toLowerCase()} options`}
           </button>
@@ -365,5 +371,34 @@ function Layer({ n, piece, p }: { n: number; piece: StudioPiece; p: LookStudioPr
         )}
       </div>
     </div>
+  );
+}
+
+function OptionCard({ heading, sub, product, on, onUse }: { heading: string; sub: string | null; product: CatalogProduct | null; on: boolean; onUse: () => void }) {
+  const head = (
+    <span className="block mb-1.5">
+      <span className="block text-[10px] font-extrabold uppercase tracking-[0.8px]" style={{ color: heading === "Budget" ? V2.ink : V2.accent }}>{heading}</span>
+      {sub && <span className="block text-[11px]" style={{ color: V2.muted }}>{sub}</span>}
+    </span>
+  );
+  if (!product) {
+    return (
+      <div className="rounded-xl p-1.5 flex flex-col" style={{ border: `1px dashed ${V2.line}` }}>
+        {head}
+        <span className="flex-1 min-h-[120px] rounded-lg flex items-center justify-center text-center text-[11px] px-2" style={{ background: V2.sand, color: V2.muted }}>None in your size yet</span>
+      </div>
+    );
+  }
+  return (
+    <button onClick={() => !on && onUse()} aria-pressed={on} aria-label={on ? `${product.title}, in your look` : `Use ${product.title}`}
+      className="text-left rounded-xl p-1.5 flex flex-col" style={{ background: V2.card, border: on ? `2px solid ${V2.ink}` : `1px solid ${V2.line}` }}>
+      {head}
+      <img src={product.imageUrl} alt="" className="w-full aspect-[4/5] object-cover rounded-lg bg-muted" loading="lazy" />
+      {product.merchantName && <span className="block text-[10px] font-extrabold uppercase tracking-[0.6px] mt-1.5 truncate">{product.merchantName}</span>}
+      <span className="block text-[12px] font-semibold leading-tight line-clamp-2">{product.title}</span>
+      <span className="block text-[13px] font-extrabold mt-0.5">{formatPrice(product.price)}</span>
+      <span className="mt-1.5 min-h-[36px] rounded-full flex items-center justify-center text-[12px] font-bold"
+        style={on ? { background: V2.ink, color: V2.paper } : { border: `1px solid ${V2.ink}` }}>{on ? "In your look" : "Use this"}</span>
+    </button>
   );
 }
