@@ -71,3 +71,13 @@ describe("analyze-outfit inputs", () => {
     expect([...ALLOWED_MIME].sort()).toEqual(["image/gif", "image/heic", "image/heif", "image/jpeg", "image/png", "image/webp"]);
   });
 });
+
+describe("custom domain CORS", () => {
+  it("allows matchmystyle.app and www, and still blocks look-alikes", async () => {
+    const { isAllowedOrigin: fn } = await import("../../supabase/functions/_shared/cors");
+    expect(fn("https://matchmystyle.app")).toBe(true);
+    expect(fn("https://www.matchmystyle.app")).toBe(true);
+    expect(fn("https://matchmystyle.app.evil.com")).toBe(false);
+    expect(fn("http://matchmystyle.app")).toBe(false);
+  });
+});
