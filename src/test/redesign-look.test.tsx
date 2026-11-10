@@ -123,6 +123,13 @@ describe("LookStudio", () => {
     expect(screen.getByText("ai preview mounted")).toBeTruthy();
   });
 
+  it("always shows the original photo, and tapping it opens it full size", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "See the original photo full size" }));
+    expect(screen.getByRole("tab", { name: "Original" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getAllByAltText(/photo you matched/i).length).toBe(2);
+  });
+
   it("vintage shows marketplace searches instead of layers", () => {
     setup({ tier: "vintage", tierTotal: () => "Varies", running: () => "Varies" });
     expect(screen.queryByRole("heading", { name: "Layers" })).toBeNull();
