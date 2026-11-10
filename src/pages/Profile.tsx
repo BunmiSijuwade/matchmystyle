@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Save, CheckCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
+import { isRedesign } from "@/lib/redesign";
+import { TopNav, TabBar } from "@/components/v2/SiteNav";
+import ClosetHeader from "@/components/profile/v2/ClosetHeader";
 
 interface Measurements {
   height: string;
@@ -16,17 +19,23 @@ interface Measurements {
 
 const sizeOptions = ["XS", "S", "M", "L", "XL", "XXL", "0", "2", "4", "6", "8", "10", "12", "14", "16", "18", "20"];
 
+const EMPTY: Measurements = { height: "", heightUnit: "cm", size: [], bust: "", waist: "", hips: "", shoeSize: "", preferredCurrency: "USD" };
+
+/** Saved measurements, so the form opens with what was saved instead of blank (and saving doesn't wipe it). */
+function loadSaved(): Measurements {
+  try {
+    const raw = localStorage.getItem("matchmystyle_profile");
+    if (!raw) return EMPTY;
+    const p = JSON.parse(raw);
+    return { ...EMPTY, ...p, size: Array.isArray(p.size) ? p.size : p.size ? [String(p.size)] : [] };
+  } catch {
+    return EMPTY;
+  }
+}
+
 const Profile = () => {
-  const [measurements, setMeasurements] = useState<Measurements>({
-    height: "",
-    heightUnit: "cm",
-    size: [],
-    bust: "",
-    waist: "",
-    hips: "",
-    shoeSize: "",
-    preferredCurrency: "USD",
-  });
+  const [redesign] = useState(() => isRedesign());
+  const [measurements, setMeasurements] = useState<Measurements>(loadSaved);
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
@@ -49,9 +58,11 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <div className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16 max-w-2xl">
+    <div className={`min-h-screen bg-background${redesign ? " theme-v2 pb-20 md:pb-0" : ""}`}>
+      {redesign ? <><TopNav active="closet" /><TabBar active="closet" /></> : <Navbar />}
+      <div className={`container mx-auto px-4 sm:px-6 pb-16 max-w-2xl ${redesign ? "pt-8 sm:pt-10" : "pt-24 sm:pt-28"}`}>
+        {redesign ? <ClosetHeader /> : (
+          <>
         {/* Header */}
         <div className="mb-10 text-center">
           <p className="text-[10px] font-medium tracking-[1px] uppercase text-muted-foreground mb-4">Your Style Profile</p>
@@ -63,6 +74,8 @@ const Profile = () => {
             Enter your measurements once and get perfectly-sized outfit matches every time.
           </p>
         </div>
+          </>
+        )}
 
         <div className="bg-card border border-border rounded-2xl p-5 sm:p-8 space-y-8">
           {/* Height */}
