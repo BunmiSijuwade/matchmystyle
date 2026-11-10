@@ -1,5 +1,6 @@
-// Redesign switch. The new design shows only when turned on with ?redesign=1 (remembered in this browser);
-// ?redesign=0 turns it off. Everyone else keeps the current design until this file's default changes.
+// Redesign switch. The redesign is the default for everyone (Nov 10, 2026). ?redesign=0 switches back to the
+// previous design (remembered in this browser) and ?redesign=1 returns to the redesign. Remove this file, the
+// old screens and the checks that call it once nobody needs the way back.
 
 const KEY = "mms_redesign";
 const FONT_ID = "mms-redesign-font";
@@ -7,11 +8,11 @@ const FONT_ID = "mms-redesign-font";
 export function isRedesign(search: string = typeof window !== "undefined" ? window.location.search : ""): boolean {
   try {
     const flag = new URLSearchParams(search).get("redesign");
-    if (flag === "1") localStorage.setItem(KEY, "1");
-    if (flag === "0") localStorage.removeItem(KEY);
-    return localStorage.getItem(KEY) === "1";
+    if (flag === "1") localStorage.removeItem(KEY);
+    if (flag === "0") localStorage.setItem(KEY, "0");
+    return localStorage.getItem(KEY) !== "0";
   } catch {
-    return false;
+    return true;
   }
 }
 
