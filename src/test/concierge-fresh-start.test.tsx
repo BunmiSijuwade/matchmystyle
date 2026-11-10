@@ -38,13 +38,13 @@ describe("concierge fresh start", () => {
     expect(window.location.search).toBe("");
   });
 
-  it("uses the redesign theme only when the switch is on", () => {
+  it("uses the redesign theme by default, and the old one after ?redesign=0", () => {
     window.history.replaceState(null, "", "/concierge");
-    const off = render(<MemoryRouter><Concierge /></MemoryRouter>);
-    expect(off.container.querySelector(".theme-v2")).toBeNull();
-    cleanup();
-    localStorage.setItem("mms_redesign", "1");
     const on = render(<MemoryRouter><Concierge /></MemoryRouter>);
     expect(on.container.querySelector(".theme-concierge.theme-v2")).toBeTruthy();
+    cleanup();
+    localStorage.setItem("mms_redesign", "0");
+    const off = render(<MemoryRouter><Concierge /></MemoryRouter>);
+    expect(off.container.querySelector(".theme-v2")).toBeNull();
   });
 });

@@ -22,13 +22,13 @@ describe("Profile / Closet", () => {
     expect(values).toContain("71");
   });
 
-  it("shows the old header without the switch", () => {
+  it("shows the old header when switched back with ?redesign=0", () => {
+    localStorage.setItem("mms_redesign", "0");
     page();
     expect(screen.queryByRole("heading", { name: "Your closet" })).toBeNull();
   });
 
-  it("with the switch on, shows Your closet and your aesthetic from the last match", () => {
-    localStorage.setItem("mms_redesign", "1");
+  it("shows Your closet and your aesthetic from the last match", () => {
     analysis.aesthetics = [{ name: "Brownstone Minimal", role: "primary", weight: 0.7, evidence: [] }, { name: "Gallery Hours", role: "secondary", weight: 0.3, evidence: [] }];
     page();
     expect(screen.getByRole("heading", { name: "Your closet" })).toBeTruthy();
@@ -36,8 +36,7 @@ describe("Profile / Closet", () => {
     expect(screen.getByRole("link", { name: "Shop this aesthetic" }).getAttribute("href")).toBe("/concierge?aesthetic=brownstone-minimal");
   });
 
-  it("with the switch on and no match yet, invites a first match", () => {
-    localStorage.setItem("mms_redesign", "1");
+  it("with no match yet, invites a first match", () => {
     page();
     expect(screen.getByRole("link", { name: "Match a look" })).toBeTruthy();
   });

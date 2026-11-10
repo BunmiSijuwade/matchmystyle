@@ -10,19 +10,19 @@ vi.mock("@/components/concierge/LookStyledTab", () => ({ default: () => <p>ai pr
 describe("redesign switch", () => {
   beforeEach(() => localStorage.clear());
 
-  it("is off by default", () => {
-    expect(isRedesign("")).toBe(false);
-  });
-
-  it("turns on with ?redesign=1 and remembers it", () => {
-    expect(isRedesign("?redesign=1")).toBe(true);
+  it("is on by default", () => {
     expect(isRedesign("")).toBe(true);
   });
 
-  it("turns off with ?redesign=0", () => {
-    isRedesign("?redesign=1");
+  it("?redesign=0 switches back to the previous design and remembers it", () => {
     expect(isRedesign("?redesign=0")).toBe(false);
     expect(isRedesign("")).toBe(false);
+  });
+
+  it("?redesign=1 returns to the redesign", () => {
+    isRedesign("?redesign=0");
+    expect(isRedesign("?redesign=1")).toBe(true);
+    expect(isRedesign("")).toBe(true);
   });
 });
 
