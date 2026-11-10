@@ -10,15 +10,19 @@ import Analyzer from "./pages/Analyzer";
 import Results from "./pages/Results";
 import NotFound from "./pages/NotFound";
 import Concierge from "./pages/Concierge";
+import PageMeta from "./components/PageMeta";
+import { HelmetProvider } from "react-helmet-async";
 
 const queryClient = new QueryClient();
 
 const App = () => (
+  <HelmetProvider>
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <PageMeta />
         <AnalysisProvider>
           <Routes>
             <Route path="/" element={<Index />} />
@@ -34,6 +38,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
+  </HelmetProvider>
 );
 
 export default App;
