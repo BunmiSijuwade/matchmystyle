@@ -351,7 +351,7 @@ const Analyzer = () => {
                       <line style={{ stroke: "hsl(0, 0%, 10%)", strokeWidth: 2.5 }} x1="12" y1="8" x2="12" y2="16"/>
                       <line style={{ stroke: "hsl(0, 0%, 10%)", strokeWidth: 2.5 }} x1="8" y1="12" x2="16" y2="12"/>
                     </svg>
-                    <h3 className="text-sm font-medium mb-1 text-foreground">Drop your photo here</h3>
+                    <h2 className="text-sm font-medium mb-1 text-foreground">Drop your photo here</h2>
                     <p className="text-muted-foreground text-xs mb-3">or click to browse files</p>
                     <p className="text-[11px] text-muted-foreground">JPG, PNG, WEBP · Max 5MB</p>
                     {/* Paste hint – hidden on mobile */}
@@ -496,7 +496,7 @@ const Analyzer = () => {
               <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center mx-auto mb-6 shadow-brand">
                 <span className="text-primary-foreground text-2xl">✨</span>
               </div>
-              <h3 className="text-lg font-medium mb-2 tracking-[-0.3px]">AI is analyzing...</h3>
+              <h2 className="text-lg font-medium mb-2 tracking-[-0.3px]">AI is analyzing...</h2>
               <p className="text-muted-foreground text-sm">Gemini is identifying clothing items, colors, styles, and your look's aesthetic</p>
               <div className="mt-6 space-y-2">
                 {["Reading your photo...", "Spotting each piece...", "Finding your aesthetic...", "Pulling pieces in your size..."].map((step, i) => (

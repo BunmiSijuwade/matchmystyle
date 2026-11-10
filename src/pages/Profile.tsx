@@ -80,12 +80,13 @@ const Profile = () => {
         <div className="bg-card border border-border rounded-2xl p-5 sm:p-8 space-y-8">
           {/* Height */}
           <div>
-            <h3 className="text-base font-medium mb-4 text-foreground tracking-[-0.3px]">Height</h3>
+            <h2 className="text-base font-medium mb-4 text-foreground tracking-[-0.3px]">Height</h2>
             <div className="flex gap-3">
               <input
                 type="number"
                 value={measurements.height}
                 onChange={(e) => update("height", e.target.value)}
+                aria-label={`Height in ${measurements.heightUnit}`}
                 placeholder={measurements.heightUnit === "cm" ? "e.g. 165" : "e.g. 5.5"}
                 className="flex-1 bg-muted border border-border rounded-xl px-4 py-3 min-h-[44px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-300 text-sm"
               />
@@ -111,7 +112,7 @@ const Profile = () => {
 
           {/* Clothing Size */}
           <div>
-            <h3 className="text-base font-medium mb-4 text-foreground tracking-[-0.3px]">Clothing Size</h3>
+            <h2 className="text-base font-medium mb-4 text-foreground tracking-[-0.3px]">Clothing Size</h2>
             <div className="flex flex-wrap gap-2">
               {sizeOptions.map((size) => (
                 <button
@@ -133,10 +134,10 @@ const Profile = () => {
 
           {/* Body Measurements */}
           <div>
-            <h3 className="text-base font-medium mb-2 text-foreground tracking-[-0.3px]">
+            <h2 className="text-base font-medium mb-2 text-foreground tracking-[-0.3px]">
               Body Measurements{" "}
               <span className="text-muted-foreground text-xs font-normal">(optional, in cm)</span>
-            </h3>
+            </h2>
             <p className="text-muted-foreground text-sm mb-4">For more precise matching, especially for tops and dresses.</p>
             <div className="grid grid-cols-3 gap-3">
               {[
@@ -150,6 +151,7 @@ const Profile = () => {
                     type="number"
                     value={measurements[field]}
                     onChange={(e) => update(field, e.target.value)}
+                    aria-label={`${label} in cm`}
                     placeholder={placeholder}
                     className="w-full bg-muted border border-border rounded-xl px-3 py-3 min-h-[44px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-300 text-sm"
                   />
@@ -162,11 +164,12 @@ const Profile = () => {
 
           {/* Shoe Size */}
           <div>
-            <h3 className="text-base font-medium mb-4 text-foreground tracking-[-0.3px]">Shoe Size (EU)</h3>
+            <h2 className="text-base font-medium mb-4 text-foreground tracking-[-0.3px]">Shoe Size (EU)</h2>
             <input
               type="number"
               value={measurements.shoeSize}
               onChange={(e) => update("shoeSize", e.target.value)}
+              aria-label="Shoe size (EU)"
               placeholder="e.g. 38"
               className="w-full bg-muted border border-border rounded-xl px-4 py-3 min-h-[44px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-300 text-sm"
             />
@@ -176,7 +179,7 @@ const Profile = () => {
 
           {/* Currency */}
           <div>
-            <h3 className="text-base font-medium mb-4 text-foreground tracking-[-0.3px]">Preferred Currency</h3>
+            <h2 className="text-base font-medium mb-4 text-foreground tracking-[-0.3px]">Preferred Currency</h2>
             <div className="flex gap-2">
               {["USD", "EUR", "GBP", "CAD"].map((currency) => (
                 <button
