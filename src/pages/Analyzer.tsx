@@ -78,7 +78,8 @@ const Analyzer = () => {
   const [useProfile, setUseProfile] = useState(hasProfile);
   const [dragOver, setDragOver] = useState(false);
 
-  const [pastedUrl, setPastedUrl] = useState("");
+  // ?url= (redesign Home composer) pre-fills the link option.
+  const [pastedUrl, setPastedUrl] = useState(() => new URLSearchParams(window.location.search).get("url")?.slice(0, 2000) ?? "");
   const [urlPreviewError, setUrlPreviewError] = useState(false);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
