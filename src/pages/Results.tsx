@@ -15,6 +15,8 @@ import { useAnalysis, type DetectedItem, type LookTier } from "@/contexts/Analys
 import { useLiveMatches } from "@/hooks/useLiveMatches";
 import { CATALOG_GENDER, formatPrice, majorAmount, readProfileSize, searchCatalog, type CatalogProduct } from "@/lib/shopCatalog";
 import { getSizeRecommendation, brandFitNote, type UserMeasurements } from "@/services/sizingService";
+import { isRedesign } from "@/lib/redesign";
+import LookStudio from "@/components/results/v2/LookStudio";
 
 const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;
 const SERIF = { fontFamily: '"Instrument Serif", Georgia, serif', fontWeight: 400 } as const;
@@ -45,6 +47,7 @@ const Results = () => {
   const [shopOpen, setShopOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
   const [ask, setAsk] = useState("");
+  const [redesign] = useState(() => isRedesign());
   const [more, setMore] = useState<Record<string, { status: "loading" | "done" | "error"; products: CatalogProduct[] }>>({});
   useEffect(() => setOverrides({}), [items]);
 
@@ -202,18 +205,27 @@ const Results = () => {
   const swapPiece = swapId && current ? current.find((p) => p.item.id === swapId) : undefined;
   const swapAlts = swapPiece ? alternativesFor(liveState[swapPiece.item.id]?.matches, swapPiece.product?.key ?? null) : [];
   const moreForSwap = swapPiece ? more[swapPiece.item.id] : undefined;
-  const loadMore = async (item: DetectedItem) => {
+  const loadMoreFor = async (item: DetectedItem, exclude: string[]) => {
     setMore((m) => ({ ...m, [item.id]: { status: "loading", products: [] } }));
     const q = `${CATALOG_GENDER} ${[item.color, item.style, item.category].filter(Boolean).join(" ")}${size ? ` size ${size}` : ""}`.slice(0, 300);
     const { ok, products } = await searchCatalog(q);
-    const seen = new Set<string>([swapPiece?.product?.key ?? "", ...swapAlts.map((a) => a.product.key)]);
+    const seen = new Set<string>(exclude);
     const fresh = products.filter((p) => !seen.has(p.key) && (seen.add(p.key), true)).slice(0, 6);
     setMore((m) => ({ ...m, [item.id]: { status: ok ? "done" : "error", products: fresh } }));
   };
+  const loadMore = (item: DetectedItem) => loadMoreFor(item, [swapPiece?.product?.key ?? "", ...swapAlts.map((a) => a.product.key)]);
   const setOverride = (itemId: string, v: Override) => {
     if (tier === "vintage") return;
     setOverrides((o) => ({ ...o, [`${tier}:${itemId}`]: v }));
     setSwapId(null);
+  };
+  const clearOverride = (itemId: string) => {
+    if (tier === "vintage") return;
+    setOverrides((o) => {
+      const next = { ...o };
+      delete next[`${tier}:${itemId}`];
+      return next;
+    });
   };
 
   const handoff = (ask: string) => {
@@ -265,6 +277,89 @@ const Results = () => {
       </div>
     );
   };
+
+  const shopSheet = (
+      <Drawer open={shopOpen} onOpenChange={setShopOpen}>
+        <DrawerContent className="max-h-[88vh]">
+          <div className="px-5 pt-2 overflow-y-auto max-w-2xl mx-auto w-full" style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <DrawerTitle className="text-[26px] leading-tight" style={SERIF}>Shop the look</DrawerTitle>
+                <DrawerDescription className="text-[13px] text-muted-foreground">Each piece opens at its shop.</DrawerDescription>
+              </div>
+              <DrawerClose aria-label="Close" className="w-11 h-11 rounded-full border border-border flex items-center justify-center flex-shrink-0"><X className="w-4 h-4" /></DrawerClose>
+            </div>
+            <div className="mt-4 space-y-2">
+              {bought.map((p) => (
+                <div key={p.item.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-2">
+                  <img src={p.product!.imageUrl} alt={p.product!.title} className="w-12 h-16 rounded-lg object-cover bg-muted flex-shrink-0" loading="lazy" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{p.item.category}</p>
+                    <p className="text-[12px] font-medium line-clamp-1">{p.product!.title}</p>
+                    <p className="text-[12px] font-semibold">{formatPrice(p.product!.price)}</p>
+                  </div>
+                  <a href={p.product!.productUrl} target="_blank" rel="noopener noreferrer" className="min-h-[44px] px-4 rounded-full bg-foreground text-background text-[12px] font-medium inline-flex items-center gap-1.5 flex-shrink-0">Buy <ExternalLink className="w-3 h-3" /></a>
+                </div>
+              ))}
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
+  );
+  const cardDialog = cardOpen ? <LookCardDialog open={cardOpen} onOpenChange={setCardOpen} input={cardInput} occasion={null} /> : null;
+
+  if (redesign) {
+    return (
+      <>
+        <Navbar />
+        <Toaster />
+        <LookStudio
+          items={items}
+          tier={tier}
+          onTier={setTier}
+          tabs={TABS}
+          tierTotal={totalLabel}
+          running={runningLabel}
+          pieces={current}
+          liveState={liveState}
+          more={more}
+          onMore={loadMoreFor}
+          onUse={(id, product) => setOverride(id, product)}
+          onRemove={(id) => setOverride(id, "removed")}
+          onRestore={clearOverride}
+          sizeNoteFor={sizeNoteFor}
+          imageUrl={imageUrl}
+          aestheticName={info?.name ?? null}
+          size={size}
+          quickChips={QUICK_CHIPS}
+          onHandoff={handoff}
+          askField={<form onSubmit={submitAsk} className="flex flex-1 items-center gap-2">{askField}</form>}
+          onShop={() => setShopOpen(true)}
+          onCard={() => setCardOpen(true)}
+          onBack={() => navigate("/analyzer")}
+          reanalyzing={reanalyzing}
+          profileToggle={
+              hasProfile && imagePayload && (
+              <div className="flex items-center justify-between gap-4 bg-muted border border-border rounded-xl p-4">
+                <div className="space-y-0.5">
+                  <label htmlFor="results-use-profile" className="text-sm font-medium cursor-pointer">Use my measurements</label>
+                  {profileData.summary && <p className="text-xs text-muted-foreground">{profileData.summary}</p>}
+                </div>
+                <div className="flex items-center gap-2">
+                  {reanalyzing && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                  <Switch id="results-use-profile" checked={useProfile} onCheckedChange={handleToggleProfile} disabled={reanalyzing} />
+                </div>
+              </div>
+            )
+          }
+          vintagePlatforms={VINTAGE_PLATFORMS}
+          footer={aesthetics.length > 0 ? <ShopAesthetic aesthetics={aesthetics} /> : null}
+        />
+        {shopSheet}
+        {cardDialog}
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -458,35 +553,8 @@ const Results = () => {
         </DrawerContent>
       </Drawer>
 
-      {/* Shop the look sheet */}
-      <Drawer open={shopOpen} onOpenChange={setShopOpen}>
-        <DrawerContent className="max-h-[88vh]">
-          <div className="px-5 pt-2 overflow-y-auto max-w-2xl mx-auto w-full" style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <DrawerTitle className="text-[26px] leading-tight" style={SERIF}>Shop the look</DrawerTitle>
-                <DrawerDescription className="text-[13px] text-muted-foreground">Each piece opens at its shop.</DrawerDescription>
-              </div>
-              <DrawerClose aria-label="Close" className="w-11 h-11 rounded-full border border-border flex items-center justify-center flex-shrink-0"><X className="w-4 h-4" /></DrawerClose>
-            </div>
-            <div className="mt-4 space-y-2">
-              {bought.map((p) => (
-                <div key={p.item.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-2">
-                  <img src={p.product!.imageUrl} alt={p.product!.title} className="w-12 h-16 rounded-lg object-cover bg-muted flex-shrink-0" loading="lazy" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[9px] font-semibold uppercase tracking-[1px] text-primary">{p.item.category}</p>
-                    <p className="text-[12px] font-medium line-clamp-1">{p.product!.title}</p>
-                    <p className="text-[12px] font-semibold">{formatPrice(p.product!.price)}</p>
-                  </div>
-                  <a href={p.product!.productUrl} target="_blank" rel="noopener noreferrer" className="min-h-[44px] px-4 rounded-full bg-foreground text-background text-[12px] font-medium inline-flex items-center gap-1.5 flex-shrink-0">Buy <ExternalLink className="w-3 h-3" /></a>
-                </div>
-              ))}
-            </div>
-          </div>
-        </DrawerContent>
-      </Drawer>
-
-      {cardOpen && <LookCardDialog open={cardOpen} onOpenChange={setCardOpen} input={cardInput} occasion={null} />}
+      {shopSheet}
+      {cardDialog}
     </div>
   );
 };
