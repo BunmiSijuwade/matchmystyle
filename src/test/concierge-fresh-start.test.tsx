@@ -28,4 +28,23 @@ describe("concierge fresh start", () => {
     render(<MemoryRouter><Concierge /></MemoryRouter>);
     expect(await screen.findByText("old saved turn here")).toBeTruthy();
   });
+
+  it("?aesthetic=<slug> starts that aesthetic fresh and clears the link", async () => {
+    localStorage.setItem("mms_concierge_session", JSON.stringify(saved));
+    window.history.replaceState(null, "", "/concierge?aesthetic=brownstone-minimal");
+    render(<MemoryRouter><Concierge /></MemoryRouter>);
+    expect(await screen.findByText(/pulling a Brownstone Minimal look/i)).toBeTruthy();
+    expect(screen.queryByText("old saved turn here")).toBeNull();
+    expect(window.location.search).toBe("");
+  });
+
+  it("uses the redesign theme only when the switch is on", () => {
+    window.history.replaceState(null, "", "/concierge");
+    const off = render(<MemoryRouter><Concierge /></MemoryRouter>);
+    expect(off.container.querySelector(".theme-v2")).toBeNull();
+    cleanup();
+    localStorage.setItem("mms_redesign", "1");
+    const on = render(<MemoryRouter><Concierge /></MemoryRouter>);
+    expect(on.container.querySelector(".theme-concierge.theme-v2")).toBeTruthy();
+  });
 });

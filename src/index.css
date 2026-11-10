@@ -225,3 +225,44 @@
 .theme-concierge .look-stack > *:hover { position: relative; z-index: 1; }
 /* let the look sidebar stick: overflow-x hidden on html/body breaks position: sticky (Concierge page only) */
 html:has(.theme-concierge), body:has(.theme-concierge) { overflow-x: clip; }
+
+/* Redesign theme (behind ?redesign=1, see src/lib/redesign.ts). Remaps the shared tokens to cream / ink /
+   clay rose / rosewood, and restyles the Concierge's mono-* layer, without changing any page logic. */
+.theme-v2 {
+  --background: 36 42% 94%;
+  --foreground: 26 15% 9%;
+  --card: 39 100% 99%;
+  --card-foreground: 26 15% 9%;
+  --popover: 39 100% 99%;
+  --popover-foreground: 26 15% 9%;
+  --primary: 0 37% 45%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 35 38% 89%;
+  --muted-foreground: 27 11% 33%;
+  --accent: 35 38% 89%;
+  --accent-foreground: 26 15% 9%;
+  --border: 34 29% 85%;
+  --input: 34 29% 85%;
+  --ring: 26 15% 9%;
+  background: #F6F1E9;
+  color: #1B1714;
+}
+.theme-concierge.theme-v2 {
+  --concierge-bg: #F6F1E9;
+  --concierge-ink: #1B1714;
+  --concierge-accent: #A85454;
+  --concierge-accent-ink: #FFFFFF;
+  --concierge-panel: #EDE4D7;
+  --concierge-soft-ink: #5E544C;
+  --concierge-font-display: 'Bricolage Grotesque', 'Manrope', sans-serif;
+  --concierge-border: 1px solid #CFC3B4;
+  --concierge-border-dashed: 1px dashed #CFC3B4;
+}
+.theme-v2 .mono-display { font-weight: 800; letter-spacing: -1px; }
+.theme-v2 .mono-display em { font-style: normal; color: #9E4848; }
+.theme-v2 .mono-accent-text { color: #9E4848; }
+.theme-v2 .mono-ink-bg { background: #1B1714; color: #F6F1E9; }
+.theme-v2 .mono-outline:hover, .theme-v2 .mono-outline:focus-visible, .theme-v2 .mono-outline:focus-within { border-color: #1B1714; }
+.theme-v2 .look-polaroid__label { font-family: 'Bricolage Grotesque', 'Manrope', sans-serif; font-style: normal; font-weight: 700; color: #1B1714; }
+.theme-v2 .look-polaroid__price { color: #1B1714; font-weight: 700; }
+.theme-v2 .look-polaroid--empty { background: #EDE4D7; border-color: #CFC3B4; }
