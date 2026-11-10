@@ -9,3 +9,28 @@ MatchMyStyle is an AI fashion styling and shopping-discovery site, not a retaile
 - [Home](https://matchmystyle.app/): What MatchMyStyle does and how it works.
 - [Outfit Analyzer](https://matchmystyle.app/analyzer): Upload an outfit photo to identify every piece and shop it in your size.
 - [Shopping Concierge](https://matchmystyle.app/concierge): Describe what you're dressing for and get a full look built from real products.
+
+## How it works
+
+1. Add an outfit photo or image link, or describe what you want to the concierge.
+2. MatchMyStyle identifies each piece (coat, top, trousers, shoes, bag, jewelry) and searches live store catalogs for matches in your size. Clothing sizes apply to clothing only; jewelry, bags and shoes are matched without one.
+3. The look is put together with a budget, mid-range and luxury option for each piece, plus vintage searches on Poshmark, Depop, ThredUp and Vestiaire. Any piece can be swapped in place.
+
+Free to use, no account needed. Prices and stock come from the stores at the time of the search and can change. MatchMyStyle may earn a commission when people shop through its links; it never changes the price.
+
+## Aesthetics
+
+Looks are organized into NYC-inspired aesthetics:
+
+- Brownstone Minimal: warm, quiet tailoring in a few good neutrals (camel coats, black knits, wide-leg denim, gold)
+- Downtown Uniform: all black with edge (leather jackets, washed black denim, lug boots, silver)
+- Off-Duty Muse: easy denim basics (white tanks, baggy jeans, chunky sneakers, ball caps)
+- Gallery Hours: one bold color against quiet neutrals, sculptural shapes
+- East Village Romantic: dark, moody romance (lace, velvet, dark florals, sheer layers)
+- Upper West Prep: academic and put-together (plaid, cable knits, blazers, loafers)
+- Midtown Power: sharp suiting with strong shoulders and '80s confidence
+- Broadway Maximalist: prints, color clash and statement accessories
+- Tribeca Archive: vintage designer pieces worn as everyday clothes
+- Prospect Park Sport: athletic pieces styled for the street (track pants, retro sneakers)
+- Nolita Soft: sweet and feminine (pink, bows, satin, ballet flats)
+- Bushwick Experimental: avant-garde, asymmetric, deconstructed

@@ -469,6 +469,7 @@ const Concierge = () => {
 
       <main className={`mx-auto w-full max-w-6xl flex-1 px-4 pb-10 sm:px-6 lg:flex lg:gap-10 ${redesign ? "pt-8 sm:pt-10" : "pt-[104px] sm:pt-[120px]"}`}>
         <div className="min-w-0 flex-1">
+        {started && <h1 className="sr-only">MatchMyStyle shopping concierge</h1>}
         {!started && <ConciergeStart onChoose={setChoice} onAesthetic={startAesthetic} composer={<ConciergeComposer inline value={query} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />} />}
 
         {started && (

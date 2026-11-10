@@ -25,6 +25,7 @@ const PAGES: Record<string, Meta> = {
     title: "My Profile and Sizes | MatchMyStyle",
     description:
       "Save your height, clothing size, body measurements and shoe size so every look MatchMyStyle builds is matched to your fit.",
+    noindex: true,
   },
   "/results": {
     title: "Your Look | MatchMyStyle",
