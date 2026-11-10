@@ -1,7 +1,10 @@
 import Navbar from "@/components/Navbar";
 import HomePage from "@/components/home/HomePage";
+import HomeV2 from "@/components/home/v2/HomeV2";
+import { isRedesign } from "@/lib/redesign";
 
 const Index = () => {
+  if (isRedesign()) return <HomeV2 />;
   return (
     <div className="min-h-screen bg-background">
       <Navbar />

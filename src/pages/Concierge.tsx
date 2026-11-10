@@ -111,10 +111,10 @@ function buildGroups(plan: Plan, raw: RawMap): RailGroup[] {
 }
 
 const Concierge = () => {
-  // ?choice= or ?q= links mean a fresh start: ignore and clear the saved session.
+  // ?choice=, ?q= or ?aesthetic= links mean a fresh start: ignore and clear the saved session.
   const [initial] = useState(() => {
     const p = new URLSearchParams(window.location.search);
-    if (p.has("choice") || p.has("q")) {
+    if (p.has("choice") || p.has("q") || p.has("aesthetic")) {
       try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
       return null;
     }
@@ -350,11 +350,16 @@ const Concierge = () => {
     qStarted.current = true;
     const params = new URLSearchParams(window.location.search);
     const q = params.get("q")?.trim().slice(0, 300);
-    if (!params.has("q") && !params.has("choice")) return;
+    const aestheticSlug = params.get("aesthetic");
+    if (!params.has("q") && !params.has("choice") && !aestheticSlug) return;
     params.delete("q");
     params.delete("choice");
+    params.delete("aesthetic");
     const rest = params.toString();
     window.history.replaceState(null, "", window.location.pathname + (rest ? `?${rest}` : "") + window.location.hash);
+    // ?aesthetic=<slug> (redesign Home cards): the same local, no-AI path as tapping an aesthetic chip.
+    const a = aestheticSlug ? AESTHETICS.find((x) => x.slug === aestheticSlug) : undefined;
+    if (a) { startAesthetic(a); return; }
     if (!q || q.length < 2) return;
     setQuery(q);
     send(q); // same path as typing and pressing send
