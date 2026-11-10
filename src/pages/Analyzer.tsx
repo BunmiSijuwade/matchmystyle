@@ -280,6 +280,7 @@ const Analyzer = () => {
               <div className="space-y-3">
                 <input
                   type="url"
+                  aria-label="Link to an outfit photo"
                   value={pastedUrl}
                   onChange={handleUrlChange}
                   placeholder="https://example.com/outfit.jpg"
