@@ -27,6 +27,18 @@ const PAGES: Record<string, Meta> = {
       "Save your height, clothing size, body measurements and shoe size so every look MatchMyStyle builds is matched to your fit.",
     noindex: true,
   },
+  "/about": {
+    title: "About MatchMyStyle",
+    description: "What MatchMyStyle does and why: find every piece of an outfit and shop real matches in your size, new or secondhand. Plus answers to common questions.",
+  },
+  "/privacy": {
+    title: "Privacy | MatchMyStyle",
+    description: "How MatchMyStyle handles your photos, saved measurements and store links, in plain language.",
+  },
+  "/terms": {
+    title: "Terms | MatchMyStyle",
+    description: "The plain-language terms for using MatchMyStyle.",
+  },
   "/results": {
     title: "Your Look | MatchMyStyle",
     description: "Your analyzed outfit, rebuilt from real products in your size across budget, mid-range and vintage.",

@@ -483,13 +483,6 @@ const Analyzer = () => {
               </div>
             )}
 
-            {/* AI Note */}
-            <div className="flex items-start gap-3 bg-muted border border-border rounded-xl p-4 text-sm">
-              <span className="text-primary mt-0.5 flex-shrink-0 text-xs">✨</span>
-              <p className="text-muted-foreground">
-                <strong className="text-foreground font-medium">Real AI Active:</strong> Powered by Google Gemini via Lovable Cloud. Upload any outfit photo for instant identification and shoppable matches.
-              </p>
-            </div>
           </div>
 
           {analyzing && (
