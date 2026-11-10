@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /results
 
-Sitemap: https://matchmystyle.lovable.app/sitemap.xml
+Sitemap: https://matchmystyle.app/sitemap.xml
