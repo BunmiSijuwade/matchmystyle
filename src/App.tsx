@@ -10,6 +10,8 @@ import Analyzer from "./pages/Analyzer";
 import Results from "./pages/Results";
 import NotFound from "./pages/NotFound";
 import Concierge from "./pages/Concierge";
+import { About, Privacy, Terms } from "./pages/InfoPages";
+import ScrollToHash from "./components/v2/ScrollToHash";
 import PageMeta from "./components/PageMeta";
 import { HelmetProvider } from "react-helmet-async";
 
@@ -23,6 +25,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <PageMeta />
+        <ScrollToHash />
         <AnalysisProvider>
           <Routes>
             <Route path="/" element={<Index />} />
@@ -31,6 +34,9 @@ const App = () => (
             <Route path="/results" element={<Results />} />
             <Route path="/results/:analysisId" element={<Results />} />
             <Route path="/concierge" element={<Concierge />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

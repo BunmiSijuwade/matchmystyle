@@ -62,3 +62,28 @@ export function TabBar({ active }: { active: NavKey }) {
     </nav>
   );
 }
+
+const FOOTER_LINKS = [
+  { to: "/about", label: "About" },
+  { to: "/#how-it-works", label: "How it works" },
+  { to: "/about#faq", label: "FAQ" },
+  { to: "/privacy", label: "Privacy" },
+  { to: "/terms", label: "Terms" },
+];
+
+export function SiteFooter() {
+  return (
+    <footer className="max-w-6xl mx-auto mt-14 lg:mt-20 px-5 lg:px-8 py-6 border-t text-[13px]" style={{ borderColor: V2.line, color: V2.muted }}>
+      <nav aria-label="Footer" className="flex flex-wrap gap-x-2 mb-3">
+        {FOOTER_LINKS.map((l) => (
+          <Link key={l.to} to={l.to} className="min-h-[44px] px-1.5 flex items-center font-bold" style={{ color: V2.ink }}>{l.label}</Link>
+        ))}
+        <a href="mailto:bunmi007@gmail.com" className="min-h-[44px] px-1.5 flex items-center font-bold" style={{ color: V2.ink }}>Contact</a>
+      </nav>
+      <div className="flex flex-wrap justify-between gap-3">
+        <span>We may earn a commission when you shop through our links. It never changes the price you pay.</span>
+        <span>© 2026 MatchMyStyle</span>
+      </div>
+    </footer>
+  );
+}

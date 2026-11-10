@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Camera } from "lucide-react";
 import { aesthetics } from "@/components/home/aesthetics";
-import { TopNav, TabBar } from "@/components/v2/SiteNav";
+import { TopNav, TabBar, SiteFooter } from "@/components/v2/SiteNav";
 import { V2 } from "@/lib/redesign";
 import { composerTarget } from "@/lib/composerTarget";
 
@@ -15,6 +15,7 @@ const display = { fontFamily: V2.display, fontWeight: 800 } as const;
 export default function HomeV2() {
   const navigate = useNavigate();
   const [text, setText] = useState("");
+  const [photoFailed, setPhotoFailed] = useState(false);
   const demo = aesthetics[0];
   const pieces = demo.flatLayCaption.split(" · ");
   const spots = demo.pieceSpots ?? [];
@@ -56,25 +57,32 @@ export default function HomeV2() {
         </div>
 
         <div className="flex-[1_1_380px] min-w-0 grid grid-cols-[1.1fr_1fr] gap-3">
-          <div className="relative rounded-[20px] overflow-hidden aspect-[4/5]">
-            <img src={demo.photo} alt={demo.photoAlt} className="w-full h-full object-cover" />
+          <div className="relative rounded-[20px] overflow-hidden aspect-[4/5]" style={{ background: V2.sand }}>
+            {!photoFailed && (
+              <img src={demo.photo} alt={demo.photoAlt} width={800} height={1000} onError={() => setPhotoFailed(true)} className="w-full h-full object-cover" />
+            )}
             <span className="absolute left-2.5 bottom-2.5 text-[12px] font-bold px-2.5 py-1 rounded-full" style={{ background: V2.ink, color: V2.paper }}>Their photo</span>
-            {spots.map((s, i) => (
+            {!photoFailed && spots.map((s, i) => (
               <span key={i} aria-hidden="true" className="absolute w-7 h-7 rounded-full border-2 text-[12px] font-extrabold text-white flex items-center justify-center"
                 style={{ left: `${s.x}%`, top: `${s.y}%`, background: V2.fill, borderColor: V2.card }}>{i + 1}</span>
             ))}
           </div>
           <div className="flex flex-col gap-2.5">
             {pieces.map((piece, i) => (
-              <div key={piece} className="rounded-2xl border px-3 py-2.5" style={{ background: V2.card, borderColor: V2.line }}>
-                <p className="text-[10px] font-extrabold tracking-[1px] uppercase" style={{ color: V2.muted }}>Piece {i + 1}</p>
-                <p className="text-[15px] font-bold capitalize">{piece}</p>
-                <p className="text-[12px] font-bold" style={{ color: V2.okText }}>We find it in your size</p>
-              </div>
+              <Link key={piece} to={`/concierge?q=${encodeURIComponent(piece.toLowerCase())}`} aria-label={`Shop ${piece}`}
+                className="min-h-[44px] rounded-2xl border px-3 py-2.5 flex items-center justify-between gap-2 transition-colors hover:border-current" style={{ background: V2.card, borderColor: V2.line }}>
+                <span>
+                  <span className="block text-[10px] font-extrabold tracking-[1px] uppercase" style={{ color: V2.muted }}>Piece {i + 1}</span>
+                  <span className="block text-[15px] font-bold capitalize">{piece}</span>
+                </span>
+                <span aria-hidden="true" className="text-[13px] font-bold" style={{ color: V2.accent }}>Shop</span>
+              </Link>
             ))}
+            <p className="text-[12px] font-bold px-1" style={{ color: V2.okText }}>We find each piece in your size</p>
             <div className="rounded-2xl p-3.5 flex-1 flex flex-col justify-center" style={{ background: V2.ink, color: V2.paper }}>
               <p className="text-[12px] opacity-85">3 versions</p>
-              <p className="text-[17px] leading-tight" style={display}>Budget · Mid-range · Vintage</p>
+              <p className="text-[17px] leading-tight" style={display}>Budget · Mid-range · Luxury</p>
+              <p className="text-[12px] opacity-85 mt-1">plus vintage</p>
             </div>
           </div>
         </div>
@@ -93,10 +101,28 @@ export default function HomeV2() {
         </div>
       </section>
 
-      <footer className="max-w-6xl mx-auto mt-14 lg:mt-20 px-5 lg:px-8 py-6 border-t flex flex-wrap justify-between gap-3 text-[13px]" style={{ borderColor: V2.line, color: V2.muted }}>
-        <span>We may earn a commission when you shop through our links. It never changes the price you pay.</span>
-        <span>© 2026 MatchMyStyle</span>
-      </footer>
+<section className="max-w-6xl mx-auto px-5 lg:px-8 pt-14 lg:pt-20" aria-labelledby="what-it-is">
+        <h2 id="what-it-is" className="mb-3 text-[24px] lg:text-[36px] tracking-[-0.5px]" style={display}>What MatchMyStyle is</h2>
+        <div className="max-w-[640px] flex flex-col gap-2 text-[16px] lg:text-[18px] leading-relaxed" style={{ color: V2.muted }}>
+          <p>The outfits you see online are rarely linked.</p>
+          <p>When they are, the piece is out of budget or not in your size.</p>
+          <p style={{ color: V2.ink }}>MatchMyStyle finds every piece and shows real matches you can buy in your size, new or secondhand.</p>
+        </div>
+      </section>
+
+      <section id="how-it-works" className="max-w-6xl mx-auto px-5 lg:px-8 pt-14 lg:pt-20 scroll-mt-6" aria-labelledby="how-heading">
+        <h2 id="how-heading" className="mb-5 text-[24px] lg:text-[36px] tracking-[-0.5px]" style={display}>How it works</h2>
+        <ol className="grid gap-3 md:grid-cols-3">
+          {["Add a photo or describe a look", "We name every piece", "Shop matches in your size, new or vintage"].map((step, i) => (
+            <li key={step} className="rounded-2xl border p-4" style={{ background: V2.card, borderColor: V2.line }}>
+              <span className="text-[13px] font-extrabold" style={{ color: V2.accent }}>Step {i + 1}</span>
+              <p className="mt-1 text-[17px] font-bold">{step}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <SiteFooter />
 
       <TabBar active="home" />
     </div>
