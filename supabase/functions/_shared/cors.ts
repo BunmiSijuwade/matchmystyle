@@ -3,7 +3,7 @@
 // Runtime-agnostic: env is read per request, not at import time.
 
 const PROJECT_ID = "12e8eb6e-ade3-4555-8e56-0ca2ff71e4d4";
-const FIXED = new Set(["https://matchmystyle.lovable.app"]);
+const FIXED = new Set(["https://matchmystyle.lovable.app", "https://matchmystyle.app", "https://www.matchmystyle.app"]);
 // Lovable preview hosts for this project, e.g. id-preview--<id>.lovable.app and <id>.lovableproject.com
 const PREVIEW = new RegExp(`^https://([a-z0-9-]+--)?${PROJECT_ID}\\.(lovable\\.app|lovableproject\\.com)$`);
 const LOCALHOST = /^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/;
