@@ -10,6 +10,10 @@ import {
   type CatalogProduct,
 } from "@/lib/shopCatalog";
 
+const STAGGER_MS = 120;
+const RETRY_DELAY_MS = 700;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 /** Price tier thresholds in the product's own currency (major units). Edit here. */
 export const PRICE_TIERS = { budgetMax: 75, luxuryMin: 250 } as const;
 const PER_TIER = 2;
@@ -60,8 +64,17 @@ export function useLiveMatches(items: DetectedItem[] | null, sizeOverride?: stri
     console.log(`[LiveMatches] ${list.length} items, ${list.length - toFetch.length} from cache, ${toFetch.length} searches`);
     const t0 = performance.now();
     Promise.all(
-      toFetch.map(async ({ item, key, query }) => {
-        const { ok, products } = await searchCatalog(query);
+      toFetch.map(async ({ item, key, query }, i) => {
+        // Small stagger so the pieces don't all hit the catalog at the same instant (it throttles bursts
+        // with 429s), then one retry after a short pause if a search fails.
+        if (i) await sleep(i * STAGGER_MS);
+        if (cancelled) return;
+        let { ok, products } = await searchCatalog(query);
+        if (!ok && !cancelled) {
+          await sleep(RETRY_DELAY_MS);
+          if (cancelled) return;
+          ({ ok, products } = await searchCatalog(query));
+        }
         const matches = bucket(products);
         const total = matches.budget.length + matches.midRange.length + matches.luxury.length;
         if (ok && total > 0) writeCache(key, matches);
