@@ -143,6 +143,10 @@ const Concierge = () => {
   const [chips, setChips] = useState<string[] | null>(initial?.chips ?? null);
   const [asked, setAsked] = useState<string | null>(initial?.asked ?? null);
   const [look, setLook] = useState<Look | null>(initial?.look ?? null);
+  // Honest empty states: did every catalog call fail (search down) or did it just find nothing?
+  const [searchDown, setSearchDown] = useState(false);
+  const [loosenStep, setLoosenStep] = useState(0); // 0 none, 1 dropped color, 2 dropped size
+  const retryRef = useRef<(() => void) | null>(null);
   const lookRef = useRef(look);
   lookRef.current = look;
 
@@ -199,6 +203,7 @@ const Concierge = () => {
           ...(j >= 0 ? { retryQuery: second[j], retryOk: res2[j].ok, retryUsable: res2[j].products.length } : {}) });
       });
     }
+    setSearchDown(toSearch.length > 0 && !res.some((r) => r.ok) && !res2.some((r) => r.ok));
     const changed = new Set(toSearch.map((pc) => pc.label));
     const missing = next.pieces.filter((pc) => !(map[pc.query] ?? []).length);
     if (missing.length) {
@@ -243,6 +248,7 @@ const Concierge = () => {
 
   const runPlan = async (text: string, echo = true) => {
     if (echo) say({ from: "you", text });
+    retryRef.current = () => runPlan(text, false); setLoosenStep(0); setSearchDown(false);
     setPlan(null); setGroups([]); setLook(null); lookRef.current = null; setProducts([]); setError(null); setStatus("loading");
     const size = readProfileSize();
     const h = [text];
@@ -319,8 +325,9 @@ const Concierge = () => {
     if (built.length && next.intent !== "restyle") writeCache(key, { plan: filled, raw: map, changed });
   };
 
-  const runSearch = async (q: string) => {
+  const runSearch = async (q: string, step = 0) => {
     setLastSearch(q);
+    retryRef.current = () => runSearch(q, step); setLoosenStep(step); setSearchDown(false);
     setLook(null);
     setPlan(null);
     setGroups([]);
@@ -333,9 +340,13 @@ const Concierge = () => {
       console.info("[concierge] shopify-catalog", { ms: Math.round(performance.now() - started), meta: data?.meta, fnError });
     }
     if (fnError || !data || data.error || !Array.isArray(data.products)) {
-      let msg = (data?.message ?? data?.error) as string | undefined;
-      try { const body = await (fnError as any)?.context?.json?.(); msg = body?.message ?? msg ?? body?.error; } catch { /* ignore */ }
-      setError(msg ?? "couldn't search right now.");
+      const ctx = (fnError as { context?: Response } | null)?.context;
+      let body: { message?: string; error?: string } | null = null;
+      try { body = await ctx?.json?.(); } catch { /* ignore */ }
+      console.error("[concierge] search failed", { status: ctx?.status, reason: body?.error ?? data?.error ?? fnError?.message ?? "no products array" });
+      // Usage limits keep their own personal message; anything else is an outage.
+      setError(ctx?.status === 429 && body?.message ? body.message : SEARCH_DOWN);
+      setSearchDown(ctx?.status !== 429);
       setMeta(data?.meta ?? null);
       setStatus("error");
       return;
@@ -380,6 +391,7 @@ const Concierge = () => {
   const startAesthetic = async (a: AestheticInfo) => {
     if (status === "loading") return;
     say({ from: "you", text: a.name }, { from: "me", text: `love it. pulling a ${a.name} look.` });
+    retryRef.current = () => startAesthetic(a); setLoosenStep(0); setSearchDown(false);
     setPlan(null); setGroups([]); setLook(null); lookRef.current = null; setProducts([]); setError(null); setStatus("loading");
     const size = readProfileSize();
     const h = [`a ${a.name} look`];
