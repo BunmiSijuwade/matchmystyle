@@ -88,6 +88,15 @@ describe("LookStudio", () => {
     expect(screen.getByRole("button", { name: "Camel coat, in your look" }).getAttribute("aria-pressed")).toBe("true");
   });
 
+  it("shows Budget, Mid-range and Luxury side by side with brands", () => {
+    setup();
+    expect(screen.getAllByText("Budget").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Mid-range").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Luxury").length).toBe(2);
+    expect(screen.getAllByText("None in your size yet").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Store").length).toBeGreaterThan(2);
+  });
+
   it("swaps a piece in place", () => {
     const props = setup();
     fireEvent.click(screen.getByRole("button", { name: "Use Dark wool coat" }));
