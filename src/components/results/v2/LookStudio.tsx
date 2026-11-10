@@ -158,9 +158,18 @@ export default function LookStudio(p: LookStudioProps) {
         <div className="lg:flex lg:gap-12 lg:items-start mt-2">
           {/* Left: the look, pinned on desktop */}
           <div className="lg:w-[440px] lg:flex-shrink-0 lg:sticky lg:top-24">
-            <div className="flex items-baseline gap-2.5 mb-3 flex-wrap">
-              <h1 className="text-[32px] leading-none" style={display}>Your look</h1>
-              {p.aestheticName && <span className={`${label} px-2.5 py-1 rounded-full`} style={{ background: "#E7D5C0" }}>{p.aestheticName}</span>}
+            <div className="flex items-center gap-3 mb-3">
+              {p.imageUrl && (
+                <button onClick={() => setView("original")} aria-label="See the original photo full size"
+                  className="relative flex-shrink-0 w-[64px] h-[80px] rounded-xl overflow-hidden border-[1.5px]" style={{ borderColor: V2.ink }}>
+                  <img src={p.imageUrl} alt="The photo you matched" className="w-full h-full object-cover" />
+                  <span className="absolute inset-x-0 bottom-0 text-[9px] font-extrabold uppercase tracking-[0.6px] py-0.5 text-center" style={{ background: V2.ink, color: V2.paper }}>Original</span>
+                </button>
+              )}
+              <div className="min-w-0">
+                <h1 className="text-[32px] leading-none" style={display}>Your look</h1>
+                {p.aestheticName && <span className={`${label} inline-block mt-2 px-2.5 py-1 rounded-full`} style={{ background: "#E7D5C0" }}>{p.aestheticName}</span>}
+              </div>
             </div>
             {stage}
             {actions}
