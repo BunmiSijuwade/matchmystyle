@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import PasteTipStrip from "@/components/PasteTipStrip";
 import { useClipboardPaste } from "@/hooks/useClipboardPaste";
 import { INPUT_LIMITS } from "../../supabase/functions/_shared/rateLimit";
+import { shrinkImage } from "@/lib/shrinkImage";
 
 type Tab = "url" | "file";
 
@@ -94,6 +95,8 @@ const Analyzer = () => {
   }, []);
   useClipboardPaste({ onImagePasted, isEnabled: !analyzing });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Shrinking starts as soon as a photo is picked, so it's usually done before Analyze is tapped.
+  const shrunkRef = useRef<{ file: File; small: Promise<File> } | null>(null);
   const { toast } = useToast();
 
   const hasInput = activeTab === "url" ? isValidUrl(pastedUrl) : !!uploadedFile;
@@ -109,6 +112,7 @@ const Analyzer = () => {
     const url = URL.createObjectURL(file);
     setFilePreviewUrl(url);
     setUploadedFile(file);
+    shrunkRef.current = { file, small: shrinkImage(file) };
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -144,8 +148,11 @@ const Analyzer = () => {
         imagePayload = { imageUrl: pastedUrl };
       } else {
         if (!uploadedFile) return;
-        const imageBase64 = await fileToBase64(uploadedFile);
-        imagePayload = { imageBase64, mimeType: uploadedFile.type };
+        const pending = shrunkRef.current?.file === uploadedFile ? shrunkRef.current.small : shrinkImage(uploadedFile);
+        const toSend = await pending;
+        if (import.meta.env.DEV) console.info("[analyzer] upload", { original: uploadedFile.size, sent: toSend.size, type: toSend.type });
+        const imageBase64 = await fileToBase64(toSend);
+        imagePayload = { imageBase64, mimeType: toSend.type };
       }
 
       const requestBody: Record<string, unknown> = { ...imagePayload };

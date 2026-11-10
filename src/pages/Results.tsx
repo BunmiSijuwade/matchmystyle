@@ -190,6 +190,14 @@ const Results = () => {
   const visible = current?.filter((p) => !p.removed) ?? [];
   const bought = visible.filter((p) => p.product);
   const totalLabel = (t: LookTier) => (t === "vintage" ? "Varies" : lookReady(looks[t]) ? usd(totalOf(looks[t])) : null);
+  /** While pieces are still loading, show the running total of what's arrived instead of a blank. */
+  const runningLabel = (t: LookTier) => {
+    if (t === "vintage") return "Varies";
+    const full = totalLabel(t);
+    if (full) return full;
+    const arrived = looks[t].filter((p) => p.status === "done" && p.product).length;
+    return arrived ? `${usd(totalOf(looks[t]))} so far` : "…";
+  };
 
   const swapPiece = swapId && current ? current.find((p) => p.item.id === swapId) : undefined;
   const swapAlts = swapPiece ? alternativesFor(liveState[swapPiece.item.id]?.matches, swapPiece.product?.key ?? null) : [];
@@ -319,7 +327,7 @@ const Results = () => {
           {tier !== "vintage" && (
             <div className="hidden md:flex flex-wrap items-center gap-2">
               <p className="text-sm mr-2 whitespace-nowrap">
-                <span className="font-semibold">{totalLabel(tier) ?? "…"}</span>
+                <span className="font-semibold">{runningLabel(tier)}</span>
                 <span className="text-muted-foreground"> for {bought.length}{size ? `, size ${size}` : ""}</span>
               </p>
               {actionButtons}
@@ -336,7 +344,7 @@ const Results = () => {
 
             <div className="flex items-end justify-between gap-3 mb-3">
               <h2 className="text-[22px] leading-tight" style={SERIF}>The full look{size ? `, size ${size}` : ""}</h2>
-              <p className="text-sm font-semibold">{tier === "vintage" ? "Varies" : totalLabel(tier) ?? "…"}</p>
+              <p className="text-sm font-semibold">{tier === "vintage" ? "Varies" : runningLabel(tier)}</p>
             </div>
 
             {tier === "vintage" ? (
@@ -402,7 +410,7 @@ const Results = () => {
         {tier !== "vintage" && (
           <div className="max-w-2xl mx-auto flex items-center justify-between mb-2 text-[12px]">
             <span className="text-muted-foreground">Look total{size ? `, size ${size}` : ""}</span>
-            <span className="font-semibold">{totalLabel(tier) ?? "…"}</span>
+            <span className="font-semibold">{runningLabel(tier)}</span>
           </div>
         )}
         <div className="max-w-2xl mx-auto flex items-center gap-2">{askField}</div>
