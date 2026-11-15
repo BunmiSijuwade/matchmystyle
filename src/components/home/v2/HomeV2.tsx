@@ -1,4 +1,4 @@
-// Redesigned Home (shown only with the redesign switch on). One composer: words go to the Concierge,
+// Redesigned Home, editorial look (Nov 15, 2026): hero match, what it is, See it work app loop, Shop by aesthetic. One composer: words go to the Concierge,
 // "Add photo" opens the analyzer, and a pasted link shows a note (links aren't analyzed). Aesthetic cards open the Concierge's
 // local (no-AI) aesthetic look via ?aesthetic=<slug>.
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -6,11 +6,31 @@ import { Link, useNavigate } from "react-router-dom";
 import { Camera } from "lucide-react";
 import { aesthetics } from "@/components/home/aesthetics";
 import { TopNav, TabBar, SiteFooter } from "@/components/v2/SiteNav";
-import { V2 } from "@/lib/redesign";
 import { composerTarget } from "@/lib/composerTarget";
 import HeroLoop from "@/components/home/v2/HeroLoop";
+import HeroMatch from "@/components/home/v2/HeroMatch";
+import { ED, caps, loadHomeSerif } from "@/components/home/v2/editorial";
 
-const display = { fontFamily: V2.display, fontWeight: 800 } as const;
+const HOW = [
+  { title: "Upload", text: "Add an outfit photo and pick your size." },
+  { title: "Your look", text: "We name every piece in the photo." },
+  { title: "Your price", text: "Choose budget, mid-range or vintage for each piece." },
+  { title: "Shop it", text: "Shop all six in your size, or just the ones you want." },
+];
+
+function HowStep({ n, title, text }: { n: number; title: string; text: string }) {
+  return (
+    <li className="flex gap-4 lg:gap-5 py-3 lg:py-[18px] border-b" style={{ borderColor: ED.hair }}>
+      <span className="text-[11px] lg:text-[12px] font-semibold tracking-[0.1em] pt-[3px]" style={{ color: ED.wine, fontVariantNumeric: "tabular-nums" }}>
+        {String(n).padStart(2, "0")}
+      </span>
+      <span className="flex flex-col gap-0.5 lg:gap-1">
+        <span className="text-[15px] lg:text-[18px] font-semibold">{title}</span>
+        <span className="text-[14px] lg:text-[16px] leading-normal" style={{ color: ED.body }}>{text}</span>
+      </span>
+    </li>
+  );
+}
 
 
 export default function HomeV2() {
@@ -20,6 +40,8 @@ export default function HomeV2() {
   // The sticky bar hides while the hero composer is on screen, so the page never shows two calls to action at once.
   const composerRef = useRef<HTMLFormElement>(null);
   const [composerVisible, setComposerVisible] = useState(true);
+
+  useEffect(loadHomeSerif, []);
 
   useEffect(() => {
     const el = composerRef.current;
@@ -37,80 +59,89 @@ export default function HomeV2() {
   };
 
   return (
-    <div className="min-h-screen pb-40 md:pb-28" style={{ background: V2.paper, color: V2.ink }}>
-      <TopNav active="home" />
+    <div className="min-h-screen pb-40 md:pb-28" style={{ background: ED.page, color: ED.ink }}>
+      <TopNav active="home" bg={ED.page} />
 
-      <section className="max-w-6xl mx-auto px-5 lg:px-8 pt-8 lg:pt-14 grid gap-8 lg:gap-x-12 lg:gap-y-6 lg:grid-cols-[minmax(0,1fr)_auto] items-center">
-        <div className="lg:col-start-1 lg:row-start-1 self-end">
-          <h1 className="text-[42px] sm:text-[56px] lg:text-[68px] leading-[0.98] tracking-[-1.5px]" style={display}>
-            See a look you love? <span style={{ color: V2.accent }}>Shop it in your size.</span>
+      <section className="max-w-6xl mx-auto px-5 lg:px-8 pt-8 pb-10 lg:pt-16 lg:pb-16 grid gap-10 lg:gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] items-start">
+        <div className="flex flex-col gap-5 lg:gap-7 lg:pt-6">
+          <p className={`m-0 text-[11px] lg:text-[12px] ${caps}`} style={{ color: ED.muted }}>Find it. Fit it. Shop it.</p>
+          <h1 className="m-0 text-[44px] sm:text-[60px] lg:text-[76px] leading-[0.98] tracking-[-1px] font-normal" style={{ fontFamily: ED.serif }}>
+            See a look you love? <span className="italic" style={{ color: ED.wine }}>Shop it in your size.</span>
           </h1>
-          <p className="mt-4 text-[16px] lg:text-[19px] leading-relaxed max-w-[520px]" style={{ color: V2.muted }}>
+          <p className="m-0 text-[16px] lg:text-[18px] leading-relaxed max-w-[460px]" style={{ color: ED.body }}>
             Drop in any outfit. We find every piece in your size, at the price you want, new or vintage.
           </p>
-        </div>
 
-        <div className="lg:col-start-2 lg:row-start-1 lg:row-span-2 flex justify-center">
-          <HeroLoop />
-        </div>
-
-        <form ref={composerRef} onSubmit={submit} className="lg:col-start-1 lg:row-start-2 self-start rounded-[22px] border-[1.5px] p-4 max-w-[560px] flex flex-col gap-3" style={{ background: V2.card, borderColor: V2.ink, boxShadow: `4px 4px 0 ${V2.ink}` }}>
-          <label htmlFor="home-composer" className="text-[14px] font-extrabold">Start with anything</label>
-          <div className="flex flex-wrap gap-2.5">
+          <form ref={composerRef} onSubmit={submit} className="flex flex-col gap-2.5 lg:gap-3 border-t pt-5 lg:pt-6 max-w-[520px]" style={{ borderColor: ED.ink }}>
+            <label htmlFor="home-composer" className={`text-[11px] lg:text-[12px] ${caps}`}>Start with anything</label>
             <input id="home-composer" value={text} onChange={(e) => { setText(e.target.value); setLinkNote(false); }} maxLength={2000}
               placeholder="Describe a look, or add a photo" enterKeyHint="go"
               aria-invalid={linkNote || undefined} aria-describedby={linkNote ? "home-composer-note" : undefined}
-              className="flex-[1_1_240px] min-w-0 h-12 rounded-[14px] border px-4 text-[16px] focus:outline-none focus:ring-2"
-              style={{ borderColor: linkNote ? V2.accent : V2.line, background: V2.paper }} />
-            <div className="grid grid-cols-2 gap-2 flex-[1_1_240px]">
-              <Link to="/analyzer" className="h-12 rounded-full border flex items-center justify-center gap-2 text-[14px] font-bold" style={{ borderColor: V2.ink, color: V2.ink }}>
-                <Camera className="w-[18px] h-[18px]" aria-hidden="true" />Add photo
+              className="h-[52px] border px-4 text-[16px] bg-white focus:outline-none focus:ring-2"
+              style={{ borderColor: linkNote ? ED.wine : ED.ink }} />
+            <div className="grid grid-cols-2 gap-2 lg:gap-2.5">
+              <Link to="/analyzer" className={`h-[52px] border flex items-center justify-center gap-2 text-[12px] lg:text-[13px] ${caps}`} style={{ borderColor: ED.ink, color: ED.ink }}>
+                <Camera className="w-[18px] h-[18px]" strokeWidth={1.5} aria-hidden="true" />Add photo
               </Link>
-              <button type="submit" className="h-12 rounded-full text-white text-[14px] font-bold" style={{ background: V2.fill }}>Match it</button>
+              <button type="submit" className={`h-[52px] text-white text-[12px] lg:text-[13px] ${caps}`} style={{ background: ED.wine }}>Match it</button>
             </div>
+            {linkNote ? (
+              <p id="home-composer-note" role="alert" className="m-0 text-[13px] font-semibold" style={{ color: ED.wine }}>
+                Links can't be matched. Save or screenshot the photo, then tap Add photo.
+              </p>
+            ) : (
+              <p className="m-0 text-[12px] lg:text-[13px]" style={{ color: ED.muted }}>Free to try. No account needed.</p>
+            )}
+          </form>
+        </div>
+
+        <HeroMatch />
+      </section>
+
+      <section className="border-t" style={{ borderColor: ED.ink }} aria-labelledby="what-it-is">
+        <div className="max-w-6xl mx-auto px-5 lg:px-8 py-7 lg:py-10 grid gap-3 lg:gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+          <h2 id="what-it-is" className="m-0 text-[26px] lg:text-[36px] font-normal" style={{ fontFamily: ED.serif }}>What MatchMyStyle is</h2>
+          <div className="flex flex-col gap-2 text-[16px] lg:text-[18px] leading-relaxed" style={{ color: ED.body }}>
+            <p className="m-0">The outfits you see online are rarely linked.</p>
+            <p className="m-0">When they are, the piece is out of budget or not in your size.</p>
+            <p className="m-0" style={{ color: ED.ink }}>MatchMyStyle finds every piece and shows real matches you can buy in your size, new or secondhand.</p>
           </div>
-          {linkNote ? (
-            <p id="home-composer-note" role="alert" className="text-[13px] font-semibold" style={{ color: V2.warnText }}>
-              Links can't be matched. Save or screenshot the photo, then tap Add photo.
-            </p>
-          ) : (
-            <p className="text-[12px]" style={{ color: V2.muted }}>Free to try. No account needed.</p>
-          )}
-        </form>
-      </section>
-
-      <section className="max-w-6xl mx-auto pt-14 lg:pt-20" aria-labelledby="by-aesthetic">
-        <h2 id="by-aesthetic" className="px-5 lg:px-8 mb-3 text-[24px] lg:text-[36px] tracking-[-0.5px]" style={display}>Shop by aesthetic</h2>
-        <div className="flex gap-3 overflow-x-auto px-5 lg:px-8 pb-2 lg:grid lg:grid-cols-4 lg:gap-4">
-          {aesthetics.map((a) => (
-            <Link key={a.slug} to={`/concierge?aesthetic=${a.slug}`} className="flex-shrink-0 w-[150px] lg:w-auto">
-              <img src={a.photo} alt={a.photoAlt} loading="lazy" className="w-full h-[190px] lg:h-[320px] object-cover rounded-[18px]" style={{ objectPosition: a.photoPosition }} />
-              <p className="mt-2 text-[15px] lg:text-[20px] leading-tight" style={{ fontFamily: V2.display, fontWeight: 700 }}>{a.name}</p>
-              <p className="text-[12px] lg:text-[14px]" style={{ color: V2.muted }}>{a.hood}</p>
-            </Link>
-          ))}
         </div>
       </section>
 
-<section className="max-w-6xl mx-auto px-5 lg:px-8 pt-14 lg:pt-20" aria-labelledby="what-it-is">
-        <h2 id="what-it-is" className="mb-3 text-[24px] lg:text-[36px] tracking-[-0.5px]" style={display}>What MatchMyStyle is</h2>
-        <div className="max-w-[640px] flex flex-col gap-2 text-[16px] lg:text-[18px] leading-relaxed" style={{ color: V2.muted }}>
-          <p>The outfits you see online are rarely linked.</p>
-          <p>When they are, the piece is out of budget or not in your size.</p>
-          <p style={{ color: V2.ink }}>MatchMyStyle finds every piece and shows real matches you can buy in your size, new or secondhand.</p>
+      <section id="how-it-works" className="border-t scroll-mt-6" style={{ borderColor: ED.ink, background: ED.band }} aria-labelledby="how-heading">
+        <div className="max-w-6xl mx-auto px-5 lg:px-8 py-8 lg:py-16 grid gap-6 lg:gap-20 lg:grid-cols-[minmax(0,1fr)_auto] items-center">
+          <div>
+            <p className={`m-0 mb-2 lg:mb-2.5 text-[11px] lg:text-[12px] ${caps}`} style={{ color: ED.muted }}>See it work</p>
+            <h2 id="how-heading" className="m-0 mb-0 lg:mb-8 text-[32px] lg:text-[52px] leading-[1.03] font-normal" style={{ fontFamily: ED.serif }}>
+              From one photo to <span className="italic" style={{ color: ED.wine }}>six pieces.</span>
+            </h2>
+            <ol className="hidden lg:block list-none m-0 p-0 border-t max-w-[520px]" style={{ borderColor: ED.ink }}>
+              {HOW.map((h, i) => <HowStep key={h.title} n={i + 1} {...h} />)}
+            </ol>
+          </div>
+          <div className="flex justify-center">
+            <HeroLoop />
+          </div>
+          <ol className="lg:hidden list-none m-0 p-0 border-t" style={{ borderColor: ED.ink }}>
+            {HOW.map((h, i) => <HowStep key={h.title} n={i + 1} {...h} />)}
+          </ol>
         </div>
       </section>
 
-      <section id="how-it-works" className="max-w-6xl mx-auto px-5 lg:px-8 pt-14 lg:pt-20 scroll-mt-6" aria-labelledby="how-heading">
-        <h2 id="how-heading" className="mb-5 text-[24px] lg:text-[36px] tracking-[-0.5px]" style={display}>How it works</h2>
-        <ol className="grid gap-3 md:grid-cols-3">
-          {["Add a photo or describe a look", "We name every piece", "Shop matches in your size, new or vintage"].map((step, i) => (
-            <li key={step} className="rounded-2xl border p-4" style={{ background: V2.card, borderColor: V2.line }}>
-              <span className="text-[13px] font-extrabold" style={{ color: V2.accent }}>Step {i + 1}</span>
-              <p className="mt-1 text-[17px] font-bold">{step}</p>
-            </li>
-          ))}
-        </ol>
+      <section className="border-t" style={{ borderColor: ED.ink }} aria-labelledby="by-aesthetic">
+        <div className="max-w-6xl mx-auto px-5 lg:px-8 pt-8 pb-4 lg:pt-14">
+          <h2 id="by-aesthetic" className="m-0 mb-4 lg:mb-7 text-[30px] lg:text-[44px] font-normal" style={{ fontFamily: ED.serif }}>Shop by aesthetic</h2>
+          <div className="grid grid-cols-2 gap-x-3.5 gap-y-5 lg:grid-cols-4 lg:gap-6">
+            {aesthetics.map((a) => (
+              <Link key={a.slug} to={`/concierge?aesthetic=${a.slug}`} className="flex flex-col gap-2 lg:gap-3">
+                <img src={a.photo} alt={a.photoAlt} loading="lazy" className="w-full aspect-[4/5] object-cover" style={{ objectPosition: a.photoPosition }} />
+                <span className="text-[17px] lg:text-[22px] leading-tight" style={{ fontFamily: ED.serif }}>{a.name}</span>
+                <span className={`text-[11px] lg:text-[12px] ${caps}`} style={{ color: ED.muted }}>{a.hood}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
       </section>
 
       <SiteFooter />
@@ -119,11 +150,11 @@ export default function HomeV2() {
         aria-hidden={composerVisible}
         className={`fixed z-30 left-3 right-3 bottom-[calc(76px+env(safe-area-inset-bottom))] md:bottom-5 md:left-1/2 md:right-auto md:w-[520px] md:-translate-x-1/2 transition-all duration-300 ${composerVisible ? "opacity-0 translate-y-3 pointer-events-none" : "opacity-100 translate-y-0"}`}
       >
-        <div className="rounded-[20px] border-[1.5px] pl-[18px] pr-2 py-2 flex items-center justify-between gap-3"
-          style={{ background: V2.card, borderColor: V2.ink, boxShadow: `4px 4px 0 ${V2.ink}` }}>
-          <span className="text-[14px] font-extrabold">Free to try. No account needed.</span>
+        <div className="border pl-[18px] pr-2 py-2 flex items-center justify-between gap-3 bg-white"
+          style={{ borderColor: ED.ink }}>
+          <span className="text-[14px] font-semibold">Free to try. No account needed.</span>
           <Link to="/analyzer" tabIndex={composerVisible ? -1 : undefined}
-            className="min-h-[44px] px-5 rounded-2xl flex items-center text-white text-[14px] font-bold whitespace-nowrap" style={{ background: V2.fill }}>
+            className={`min-h-[44px] px-5 flex items-center text-white text-[12px] whitespace-nowrap ${caps}`} style={{ background: ED.wine }}>
             Match a look
           </Link>
         </div>
