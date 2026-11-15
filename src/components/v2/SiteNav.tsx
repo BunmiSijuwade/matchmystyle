@@ -23,10 +23,10 @@ export function Logo() {
   );
 }
 
-export function TopNav({ active }: { active: NavKey }) {
+export function TopNav({ active, bg = V2.paper }: { active: NavKey; bg?: string }) {
   useEffect(loadRedesignFont, []);
   return (
-    <header className="border-b" style={{ background: V2.paper, borderColor: V2.line }}>
+    <header className="border-b" style={{ background: bg, borderColor: V2.line }}>
       <div className="max-w-6xl mx-auto px-5 lg:px-8 py-2.5 flex items-center justify-between gap-4">
         <Logo />
         <nav aria-label="Main" className="hidden md:flex items-center gap-1">
