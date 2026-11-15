@@ -11,7 +11,7 @@ export async function guardMcpCall() {
 }
 
 export const matchmystyleUrl = (q: string) =>
-  `https://matchmystyle.lovable.app/concierge?q=${encodeURIComponent(q)}&utm_source=mcp&utm_medium=agent`;
+  `https://matchmystyle.app/concierge?q=${encodeURIComponent(q)}&utm_source=mcp&utm_medium=agent`;
 
 type Raw = {
   productId?: string | null;

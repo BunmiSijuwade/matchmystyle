@@ -130,7 +130,7 @@ export async function renderLookCard(input: CardInput): Promise<CardResult> {
   ctx.font = `italic 36px ${SERIF}`; ctx.fillStyle = TAUPE; ctx.fillText("My", x, fy); x += my;
   ctx.font = `500 36px ${SANS}`; ctx.fillStyle = INK; ctx.fillText("Style", x, fy);
   ctx.font = `400 20px ${SANS}`; ctx.fillStyle = MUTED; ctx.textAlign = "right";
-  ctx.fillText("matchmystyle.lovable.app", W - M, fy + 38);
+  ctx.fillText("matchmystyle.app", W - M, fy + 38);
 
   const blob = await new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("toBlob failed"))), "image/png"));
   return { blob, url: URL.createObjectURL(blob), proxied: [...new Set(proxied)], failed };

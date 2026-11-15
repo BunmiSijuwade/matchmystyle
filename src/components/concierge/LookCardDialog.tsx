@@ -50,7 +50,7 @@ const LookCardDialog = ({ open, onOpenChange, input, occasion }: Props) => {
     if (!current) return;
     try {
       if (navigator.canShare?.({ files: [current.file] })) await navigator.share({ files: [current.file], title: "my look" });
-      else await navigator.share({ title: "my look", text: `my ${input.aesthetic ?? ""} look, styled on MatchMyStyle`.replace("  ", " "), url: "https://matchmystyle.lovable.app/concierge" });
+      else await navigator.share({ title: "my look", text: `my ${input.aesthetic ?? ""} look, styled on MatchMyStyle`.replace("  ", " "), url: "https://matchmystyle.app/concierge" });
     } catch { /* cancelled or unsupported */ }
   };
 

@@ -184,7 +184,7 @@ async function guardMcpCall() {
   const reason = await checkRateLimit("mcp", currentIp());
   if (reason !== "ok") throw new ToolError(rateLimitNotice("mcp", reason).message);
 }
-var matchmystyleUrl = (q) => `https://matchmystyle.lovable.app/concierge?q=${encodeURIComponent(q)}&utm_source=mcp&utm_medium=agent`;
+var matchmystyleUrl = (q) => `https://matchmystyle.app/concierge?q=${encodeURIComponent(q)}&utm_source=mcp&utm_medium=agent`;
 function toProduct(p) {
   const amount = (p.price?.amount ?? 0) / 100;
   return {
