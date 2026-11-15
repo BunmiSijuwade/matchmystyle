@@ -2,11 +2,10 @@ import { corsBase, withCors } from "../_shared/cors.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { AESTHETIC_NAMES, aestheticPromptBlock } from "../_shared/aesthetics.ts";
 import { INPUT_LIMITS, rateLimitResponse, limitedResponse } from "../_shared/rateLimit.ts";
-import { safePublicFetch } from "../_shared/safeFetch.ts";
 
 const corsHeaders = corsBase;
 
-import { ALLOWED_MIME, readCapped, sanitizeProfile } from "./inputs.ts";
+import { ALLOWED_MIME, sanitizeProfile } from "./inputs.ts";
 
 function sanitizeText(text: string): string {
   if (!text) return text;
@@ -46,51 +45,23 @@ serve(withCors(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  // Photos only. The server never downloads a caller-supplied link (removed Nov 15, 2026, to close an
+  // "anyone can make your app fetch websites" finding). Links are refused before the AI budget is charged.
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== "object") {
+    return new Response(JSON.stringify({ error: "invalid_request", message: "Please upload a photo." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+  if ("imageUrl" in body) {
+    return new Response(JSON.stringify({ error: "links_not_supported", message: "Links can't be matched. Save or screenshot the photo, then upload it." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
   const limited = await rateLimitResponse("analyze-outfit", req, corsHeaders);
   if (limited) return limited;
 
   try {
-    const body = await req.json();
-    const { imageUrl, profile } = body;
-    let { imageBase64, mimeType } = body;
-
-    if (imageUrl) {
-      if (typeof imageUrl !== "string" || imageUrl.length > 2048) {
-        return new Response(JSON.stringify({ error: "Invalid image URL" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      let imgResponse: Response;
-      try {
-        imgResponse = await safePublicFetch(imageUrl);
-      } catch (e) {
-        console.warn("analyze-outfit: blocked image URL", String(e));
-        return new Response(JSON.stringify({ error: "Failed to fetch image from URL" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      if (!imgResponse.ok) {
-        return new Response(
-          JSON.stringify({ error: "Failed to fetch image from URL" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      // Check the type before reading, then stream the body and stop at the size limit.
-      mimeType = (imgResponse.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
-      if (!ALLOWED_MIME.has(mimeType)) {
-        await imgResponse.body?.cancel();
-        return new Response(JSON.stringify({ error: "invalid_image", message: "Please use a JPG, PNG, WebP, GIF or HEIC image." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      if (Number(imgResponse.headers.get("content-length") ?? 0) > INPUT_LIMITS.maxImageBytes) {
-        await imgResponse.body?.cancel();
-        return new Response(JSON.stringify({ error: "image_too_large", message: "Image is too large (max 5 MB)." }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      const uint8Array = await readCapped(imgResponse, INPUT_LIMITS.maxImageBytes);
-      if (!uint8Array) {
-        return new Response(JSON.stringify({ error: "image_too_large", message: "Image is too large (max 5 MB)." }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      let binary = "";
-      for (let i = 0; i < uint8Array.length; i += 0x8000) {
-        binary += String.fromCharCode(...uint8Array.subarray(i, i + 0x8000));
-      }
-      imageBase64 = btoa(binary);
-    }
+    const { profile } = body as Record<string, unknown>;
+    const imageBase64 = (body as Record<string, unknown>).imageBase64 as string | undefined;
+    let mimeType = (body as Record<string, unknown>).mimeType as string | undefined;
 
     if (typeof imageBase64 === "string" && Math.floor(imageBase64.length * 3 / 4) > INPUT_LIMITS.maxImageBytes) {
       return new Response(JSON.stringify({ error: "image_too_large", message: "Image is too large (max 5 MB)." }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -101,7 +72,7 @@ serve(withCors(async (req) => {
     }
     if (!imageBase64 || !mimeType) {
       return new Response(
-        JSON.stringify({ error: "Either imageUrl or imageBase64+mimeType are required" }),
+        JSON.stringify({ error: "imageBase64 and mimeType are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

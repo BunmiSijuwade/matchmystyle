@@ -141,7 +141,8 @@ describe("Home composer routing", () => {
   it("sends links to the analyzer, words to the Concierge, empty to upload", async () => {
     const { composerTarget } = await import("@/lib/composerTarget");
     expect(composerTarget("")).toBe("/analyzer");
-    expect(composerTarget("https://instagram.com/p/abc")).toBe("/analyzer?tab=url&url=https%3A%2F%2Finstagram.com%2Fp%2Fabc");
+    expect(composerTarget("https://instagram.com/p/abc")).toBeNull();
+    expect(composerTarget("www.pinterest.com/pin/123")).toBeNull();
     expect(composerTarget("a camel coat look")).toBe("/concierge?q=a%20camel%20coat%20look");
     expect(composerTarget("javascript:alert(1)")).toBe("/concierge?q=javascript%3Aalert(1)");
   });

@@ -25,4 +25,10 @@ describe("Analyzer page: find clothes from a picture", () => {
     expect(screen.getByRole("heading", { name: "What to expect" })).toBeTruthy();
     expect(screen.getAllByRole("listitem").length).toBeGreaterThanOrEqual(EXAMPLE_RUN.pieces.length);
   });
+
+  it("has no link option: upload only", () => {
+    render(<MemoryRouter><AnalysisProvider><Analyzer /></AnalysisProvider></MemoryRouter>);
+    expect(screen.queryByText(/paste url/i)).toBeNull();
+    expect(document.querySelector('input[type="url"]')).toBeNull();
+  });
 });

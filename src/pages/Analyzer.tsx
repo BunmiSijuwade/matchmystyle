@@ -20,8 +20,6 @@ import { isRedesign } from "@/lib/redesign";
 import { TopNav, TabBar } from "@/components/v2/SiteNav";
 import { SeeItWork, WhatToExpect } from "@/components/analyzer/AnalyzerExample";
 
-type Tab = "url" | "file";
-
 const ANALYZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-outfit`;
 
 function fileToBase64(file: File): Promise<string> {
@@ -37,15 +35,6 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-function isValidUrl(str: string) {
-  try {
-    const url = new URL(str);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 const Analyzer = () => {
   const navigate = useNavigate();
   const [redesign] = useState(() => isRedesign());
@@ -57,9 +46,6 @@ const Analyzer = () => {
   });
   const [startTier, setStartTier] = useState<LookTier>("midRange");
 
-  const [activeTab, setActiveTab] = useState<Tab>(() =>
-    new URLSearchParams(window.location.search).get("tab") === "url" ? "url" : "file",
-  );
   const [profileNudgeDismissed, setProfileNudgeDismissed] = useState(() => {
     return localStorage.getItem("matchmystyle_profile_nudge_dismissed") === "true";
   });
@@ -82,9 +68,6 @@ const Analyzer = () => {
   const [useProfile, setUseProfile] = useState(hasProfile);
   const [dragOver, setDragOver] = useState(false);
 
-  // ?url= (redesign Home composer) pre-fills the link option.
-  const [pastedUrl, setPastedUrl] = useState(() => new URLSearchParams(window.location.search).get("url")?.slice(0, 2000) ?? "");
-  const [urlPreviewError, setUrlPreviewError] = useState(false);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -95,7 +78,6 @@ const Analyzer = () => {
 
   // Clipboard paste support via extracted hook
   const onImagePasted = useCallback((file: File) => {
-    setActiveTab("file");
     handleFile(file);
   }, []);
   useClipboardPaste({ onImagePasted, isEnabled: !analyzing });
@@ -104,8 +86,7 @@ const Analyzer = () => {
   const shrunkRef = useRef<{ file: File; small: Promise<File> } | null>(null);
   const { toast } = useToast();
 
-  const hasInput = activeTab === "url" ? isValidUrl(pastedUrl) : !!uploadedFile;
-  const previewSrc = activeTab === "url" ? (isValidUrl(pastedUrl) ? pastedUrl : null) : filePreviewUrl;
+  const hasInput = !!uploadedFile;
 
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
@@ -127,15 +108,6 @@ const Analyzer = () => {
     if (file) handleFile(file);
   };
 
-  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPastedUrl(e.target.value);
-    setUrlPreviewError(false);
-  };
-
-  const handleTabSwitch = (tab: Tab) => {
-    setActiveTab(tab);
-  };
-
   const handleAnalyze = async () => {
     if (!hasInput) return;
     setAnalyzing(true);
@@ -147,18 +119,12 @@ const Analyzer = () => {
     const stepTimer3 = setTimeout(() => setAnalyzeStep(3), 8500);
 
     try {
-      let imagePayload: { imageUrl?: string; imageBase64?: string; mimeType?: string };
-
-      if (activeTab === "url") {
-        imagePayload = { imageUrl: pastedUrl };
-      } else {
-        if (!uploadedFile) return;
-        const pending = shrunkRef.current?.file === uploadedFile ? shrunkRef.current.small : shrinkImage(uploadedFile);
-        const toSend = await pending;
-        if (import.meta.env.DEV) console.info("[analyzer] upload", { original: uploadedFile.size, sent: toSend.size, type: toSend.type });
-        const imageBase64 = await fileToBase64(toSend);
-        imagePayload = { imageBase64, mimeType: toSend.type };
-      }
+      if (!uploadedFile) return;
+      const pending = shrunkRef.current?.file === uploadedFile ? shrunkRef.current.small : shrinkImage(uploadedFile);
+      const toSend = await pending;
+      if (import.meta.env.DEV) console.info("[analyzer] upload", { original: uploadedFile.size, sent: toSend.size, type: toSend.type });
+      const imageBase64 = await fileToBase64(toSend);
+      const imagePayload: { imageBase64: string; mimeType: string } = { imageBase64, mimeType: toSend.type };
 
       const requestBody: Record<string, unknown> = { ...imagePayload };
 
@@ -208,7 +174,7 @@ const Analyzer = () => {
         return;
       }
 
-      const displayUrl = activeTab === "url" ? pastedUrl : filePreviewUrl;
+      const displayUrl = filePreviewUrl;
       setLookPrefs({ size: pickedSize, tier: startTier });
       setAnalysis(items, displayUrl, imagePayload, null, null, data.aesthetics ?? [], data.aestheticSummary ?? "");
       navigate("/results");
@@ -222,14 +188,6 @@ const Analyzer = () => {
       clearTimeout(stepTimer3);
       setAnalyzing(false);
     }
-  };
-
-  const handleReset = () => {
-    setPastedUrl("");
-    setUrlPreviewError(false);
-    setFilePreviewUrl(null);
-    setUploadedFile(null);
-    setFileError(null);
   };
 
   return (
@@ -252,82 +210,8 @@ const Analyzer = () => {
         <div className="max-w-2xl mx-auto lg:mx-0 lg:max-w-none w-full space-y-4">
           <div className="space-y-4">
 
-            {/* Tab bar */}
-            <div className="grid grid-cols-2 gap-2 bg-muted rounded-full p-1">
-              <button
-                onClick={() => handleTabSwitch("file")}
-                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-full text-[11px] font-medium tracking-[1px] uppercase transition-all duration-300 ease-out min-h-[44px] ${
-                  activeTab === "file"
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                📷 Upload File
-              </button>
-              <button
-                onClick={() => handleTabSwitch("url")}
-                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-full text-[11px] font-medium tracking-[1px] uppercase transition-all duration-300 ease-out min-h-[44px] ${
-                  activeTab === "url"
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                🔗 Paste URL
-              </button>
-            </div>
-
-            {/* URL Tab */}
-            {activeTab === "url" && (
-              <div className="space-y-3">
-                <input
-                  type="url"
-                  aria-label="Link to an outfit photo"
-                  value={pastedUrl}
-                  onChange={handleUrlChange}
-                  placeholder="https://example.com/outfit.jpg"
-                  className="w-full min-h-[48px] rounded-xl border border-border bg-card px-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
-                />
-                {pastedUrl.length > 0 && !isValidUrl(pastedUrl) && (
-                  <p className="text-destructive text-sm flex items-center gap-1.5">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                    Please enter a valid URL starting with https://
-                  </p>
-                )}
-                {(!pastedUrl || isValidUrl(pastedUrl)) && (
-                  <p className="text-xs text-muted-foreground">
-                    Paste a direct image link (ending in .jpg, .png or .webp). For Instagram, TikTok or Pinterest, save or screenshot the photo and upload it instead.
-                  </p>
-                )}
-                {previewSrc && !urlPreviewError && (
-                  <div className="bg-card border border-border rounded-2xl overflow-hidden relative">
-                    <img
-                      src={pastedUrl}
-                      alt="Outfit preview"
-                      className="w-full object-cover max-h-[400px]"
-                      onError={() => setUrlPreviewError(true)}
-                    />
-                    <button
-                      onClick={handleReset}
-                      className="absolute top-3 right-3 min-h-[44px] px-4 py-2 rounded-full bg-card/90 backdrop-blur-sm border border-border flex items-center gap-2 text-sm font-medium hover:border-primary transition-all"
-                    >
-                      <X className="w-4 h-4" />
-                      Clear
-                    </button>
-                  </div>
-                )}
-                {previewSrc && urlPreviewError && (
-                  <div className="rounded-2xl border border-border p-8 text-center bg-card">
-                    <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">Could not load image from this URL.</p>
-                    <p className="text-xs text-muted-foreground mt-1">Try a direct image link ending in .jpg, .png, or .webp</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* File Tab */}
-            {activeTab === "file" && (
-              <>
+            {/* Upload */}
+            <>
                 {!filePreviewUrl ? (
                   <div
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -393,11 +277,10 @@ const Analyzer = () => {
                     {fileError}
                   </p>
                 )}
-              </>
-            )}
+            </>
 
             {/* Paste tip strip – desktop only */}
-            {activeTab === "file" && <PasteTipStrip />}
+            <PasteTipStrip />
 
             {/* Profile toggle */}
             {hasProfile && (
@@ -437,7 +320,7 @@ const Analyzer = () => {
             </div>
 
             {/* Analyze button */}
-            {hasInput && !urlPreviewError && (
+            {hasInput && (
               <div className="space-y-3">
                 <GradientButton
                   onClick={handleAnalyze}

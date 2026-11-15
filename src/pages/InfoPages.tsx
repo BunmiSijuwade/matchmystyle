@@ -52,7 +52,7 @@ export function Privacy() {
     <Shell title="Privacy" updated>
       <p>This is a plain-language summary of what MatchMyStyle does with your information.</p>
       <H2>Photos and descriptions</H2>
-      <p>When you add a photo, paste an image link or describe a look, it is sent to our analysis service, which uses an AI model to identify the clothing. We don't save your photo to a database or file storage. The results are kept in your browser for the session.</p>
+      <p>When you add a photo or describe a look, it is sent to our analysis service, which uses an AI model to identify the clothing. We don't save your photo to a database or file storage. The results are kept in your browser for the session.</p>
       <H2>Measurements and preferences</H2>
       <p>Measurements you add in Closet, your Concierge conversation and recent searches are saved in your browser's local storage on your device. They are not tied to an account. Clearing your browser data removes them.</p>
       <H2>Usage limits</H2>

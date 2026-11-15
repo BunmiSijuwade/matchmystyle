@@ -1,7 +1,7 @@
 const steps = [
   {
     title: "Upload a look you love",
-    body: "A screenshot, a photo from your camera roll or a direct image link.",
+    body: "A screenshot, a photo from your camera roll, or an image you copied.",
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <rect className="mms-icon-fill" x="3" y="15" width="18" height="6" rx="1" />

@@ -9,7 +9,7 @@ const PAGES: Record<string, Meta> = {
   "/": {
     title: "MatchMyStyle: shop any outfit in your size",
     description:
-      "Upload any outfit photo or paste a link. MatchMyStyle finds every piece in your size, with budget, mid-range and vintage options side by side.",
+      "Upload a photo of any outfit. MatchMyStyle finds every piece in your size, with budget, mid-range and vintage options side by side.",
   },
   "/analyzer": {
     title: "Find clothes from a picture | MatchMyStyle",
