@@ -18,6 +18,7 @@ import { INPUT_LIMITS } from "../../supabase/functions/_shared/rateLimit";
 import { shrinkImage } from "@/lib/shrinkImage";
 import { isRedesign } from "@/lib/redesign";
 import { TopNav, TabBar } from "@/components/v2/SiteNav";
+import { SeeItWork, WhatToExpect } from "@/components/analyzer/AnalyzerExample";
 
 type Tab = "url" | "file";
 
@@ -235,20 +236,20 @@ const Analyzer = () => {
     <div className={`min-h-screen bg-background${redesign ? " theme-v2 pb-20 md:pb-0" : ""}`}>
       {redesign ? <><TopNav active="match" /><TabBar active="match" /></> : <Navbar />}
       <Toaster />
-      <div className={`container mx-auto px-4 sm:px-6 pb-16 ${redesign ? "pt-8 sm:pt-10" : "pt-24 sm:pt-28"}`}>
+      <div className={`container max-w-6xl mx-auto px-4 sm:px-6 pb-16 ${redesign ? "pt-8 sm:pt-10" : "pt-24 sm:pt-28"}`}>
         {/* Header */}
-        <div className="mb-8 sm:mb-10 text-center">
-          <p className="text-[10px] font-medium tracking-[1px] uppercase text-muted-foreground mb-4">AI Outfit Analyzer</p>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-light mb-3 tracking-[-1.2px]">
-            Identify Any{" "}
-            <span className="text-gradient italic font-normal">Outfit</span>
+        <div className="mb-8 sm:mb-10 max-w-[720px] mx-auto lg:mx-0">
+          <p className="text-[12px] font-bold tracking-[1px] uppercase text-muted-foreground mb-3">Outfit analyzer</p>
+          <h1 className="text-[38px] sm:text-5xl lg:text-[56px] leading-[1.04] tracking-[-1.4px] mb-3" style={{ fontFamily: '"Bricolage Grotesque", Manrope, sans-serif', fontWeight: 800 }}>
+            Find clothes from <span className="text-primary">a picture</span>
           </h1>
-          <p className="text-muted-foreground text-sm sm:text-base max-w-xl mx-auto leading-[1.7]">
-            Upload a photo of a look you love. We'll identify every piece and find similar ones to shop. Add your measurements for size-matched picks.
+          <p className="text-muted-foreground text-base sm:text-lg leading-[1.6]">
+            Upload a photo of an outfit you love. We spot each piece and find similar ones you can shop, in your size.
           </p>
         </div>
 
-        <div className="max-w-2xl mx-auto space-y-4">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-8 lg:items-start space-y-12 lg:space-y-0">
+        <div className="max-w-2xl mx-auto lg:mx-0 lg:max-w-none w-full space-y-4">
           <div className="space-y-4">
 
             {/* Tab bar */}
@@ -352,9 +353,18 @@ const Analyzer = () => {
                       <line style={{ stroke: "hsl(0, 0%, 10%)", strokeWidth: 2.5 }} x1="12" y1="8" x2="12" y2="16"/>
                       <line style={{ stroke: "hsl(0, 0%, 10%)", strokeWidth: 2.5 }} x1="8" y1="12" x2="16" y2="12"/>
                     </svg>
-                    <h2 className="text-sm font-medium mb-1 text-foreground">Drop your photo here</h2>
-                    <p className="text-muted-foreground text-xs mb-3">or click to browse files</p>
-                    <p className="text-[11px] text-muted-foreground">JPG, PNG, WEBP · Max 5MB</p>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                      className="min-h-[52px] w-full sm:w-auto px-7 rounded-full bg-primary text-primary-foreground text-base font-extrabold mb-3 hover:opacity-90 transition-opacity"
+                    >
+                      Choose a photo
+                    </button>
+                    <p className="text-muted-foreground text-sm mb-2">
+                      <span className="hidden md:inline">or drop it here</span>
+                      <span className="md:hidden">From your camera roll or a screenshot</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">JPG, PNG or WEBP, up to 5 MB. Screenshots from Instagram, TikTok or Pinterest work.</p>
                     {/* Paste hint – hidden on mobile */}
                     <span className="hidden md:inline-flex items-center gap-1 mt-3 bg-card border border-border rounded-full px-2.5 py-1 text-[10px] text-primary">
                       ⌘V · Ctrl+V to paste an image
@@ -518,6 +528,13 @@ const Analyzer = () => {
               </div>
             </div>
           )}
+        </div>
+
+        <SeeItWork />
+        </div>
+
+        <div className="mt-14">
+          <WhatToExpect />
         </div>
       </div>
     </div>
