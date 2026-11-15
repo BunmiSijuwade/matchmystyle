@@ -60,6 +60,16 @@ export function queriesFor(item: DetectedItem, sizePart: string): string[] {
   return out.filter((q, i) => q.length > g.length && out.indexOf(q) === i);
 }
 
+/** Extra search aimed at the Luxury tier, used only when the regular searches found nothing over $250. */
+export function luxuryQueryFor(item: DetectedItem, sizePart: string): string {
+  if (!takesClothingSize(item)) sizePart = "";
+  const what = [item.color, item.category].filter((x) => x?.trim()).join(" ").trim() || item.searchQuery?.trim() || item.description;
+  return `${CATALOG_GENDER} designer ${what}${sizePart}`.trim().slice(0, 300);
+}
+
+const count = (m: TieredMatches) => m.budget.length + m.midRange.length + m.luxury.length;
+const allTiersFilled = (m: TieredMatches) => m.budget.length > 0 && m.midRange.length > 0 && m.luxury.length > 0;
+
 export function useLiveMatches(items: DetectedItem[] | null, sizeOverride?: string | null) {
   const [state, setState] = useState<Record<string, LiveMatchState>>({});
   const size = sizeOverride ?? readProfileSize();
@@ -70,15 +80,16 @@ export function useLiveMatches(items: DetectedItem[] | null, sizeOverride?: stri
     let cancelled = false;
     const list = items.slice(0, MAX_ITEMS);
     const initial: Record<string, LiveMatchState> = {};
-    const toFetch: { item: DetectedItem; key: string; queries: string[] }[] = [];
+    const toFetch: { item: DetectedItem; key: string; queries: string[]; luxury: string }[] = [];
     const sizePart = size ? ` size ${size}` : "";
     for (const item of list) {
-      const key = `mms_live_matches:${item.description.toLowerCase()}:${size ?? "none"}:${CATALOG_GENDER}`;
+      // v2: results from the fuller search (Nov 15, 2026); old one-search results are ignored.
+      const key = `mms_live_matches:v2:${item.description.toLowerCase()}:${size ?? "none"}:${CATALOG_GENDER}`;
       const cached = readCache<TieredMatches>(key);
       if (cached) initial[item.id] = { status: "done", matches: cached };
       else {
         initial[item.id] = { status: "loading", matches: empty() };
-        toFetch.push({ item, key, queries: queriesFor(item, sizePart) });
+        toFetch.push({ item, key, queries: queriesFor(item, sizePart), luxury: luxuryQueryFor(item, sizePart) });
       }
     }
     // Pieces past MAX_ITEMS aren't searched; mark them done so they show "no match" instead of loading forever.
@@ -87,35 +98,41 @@ export function useLiveMatches(items: DetectedItem[] | null, sizeOverride?: stri
     console.log(`[LiveMatches] ${list.length} items, ${list.length - toFetch.length} from cache, ${toFetch.length} searches`);
     const t0 = performance.now();
     Promise.all(
-      toFetch.map(async ({ item, key, queries }, i) => {
+      toFetch.map(async ({ item, key, queries, luxury }, i) => {
         // Small stagger so the pieces don't all hit the catalog at the same instant (it throttles bursts
-        // with 429s). Each query gets one retry if it fails; if it comes back empty, try the next,
-        // simpler query, so a long description doesn't leave the piece without matches.
+        // with 429s). Each search gets one retry if it fails. Every search phrase runs, most specific first,
+        // and the results are combined, stopping early once Budget, Mid-range and Luxury all have a pick.
+        // If Luxury is still empty, one extra "designer" search tries to fill it. Real catalog products only.
         if (i) await sleep(i * STAGGER_MS);
         if (cancelled) return;
         let ok = false;
-        let products: CatalogProduct[] = [];
-        let used = queries[0];
-        for (const q of queries) {
-          used = q;
+        const products: CatalogProduct[] = [];
+        let searches = 0;
+        const run = async (q: string) => {
+          searches++;
           let res = await searchCatalog(q);
           if (!res.ok && !cancelled) {
             await sleep(RETRY_DELAY_MS);
             if (cancelled) return;
             res = await searchCatalog(q);
           }
-          if (cancelled) return;
           ok = ok || res.ok;
-          products = res.products;
-          const b = bucket(products);
-          if (b.budget.length + b.midRange.length + b.luxury.length > 0) break;
+          products.push(...res.products);
+        };
+        for (const q of queries) {
+          await run(q);
+          if (cancelled) return;
+          if (allTiersFilled(bucket(products))) break;
+        }
+        if (bucket(products).luxury.length === 0 && !queries.includes(luxury)) {
+          await run(luxury);
+          if (cancelled) return;
         }
         const matches = bucket(products);
-        const total = matches.budget.length + matches.midRange.length + matches.luxury.length;
-        if (ok && total > 0) writeCache(key, matches);
+        if (ok && count(matches) > 0) writeCache(key, matches);
         if (!cancelled) setState((s) => ({ ...s, [item.id]: { status: "done", matches } }));
         console.log(
-          `[LiveMatches] "${used}": budget ${matches.budget.length}, mid ${matches.midRange.length}, luxury ${matches.luxury.length}${ok ? "" : " (search failed)"}`,
+          `[LiveMatches] "${item.description}" (${searches} searches): budget ${matches.budget.length}, mid ${matches.midRange.length}, luxury ${matches.luxury.length}${ok ? "" : " (search failed)"}`,
         );
       }),
     ).then(() => console.log(`[LiveMatches] done in ${Math.round(performance.now() - t0)}ms`));

@@ -8,7 +8,7 @@ vi.mock("@/lib/shopCatalog", async (importOriginal) => {
   return { ...real, searchCatalog: (q: string) => search(q), readCache: () => null, writeCache: vi.fn(), readProfileSize: () => null };
 });
 
-import { queriesFor, useLiveMatches } from "@/hooks/useLiveMatches";
+import { luxuryQueryFor, queriesFor, useLiveMatches } from "@/hooks/useLiveMatches";
 
 const item = (id: string, over: Partial<DetectedItem> = {}): DetectedItem => ({
   id, category: "Coat", description: "oversized double-faced camel wool wrap coat with shawl lapel", color: "camel", style: "wrap",
@@ -51,7 +51,29 @@ describe("useLiveMatches", () => {
     const { result } = renderHook(() => useLiveMatches([item("a")]));
     await waitFor(() => expect(result.current.state.a?.status).toBe("done"));
     expect(result.current.state.a.matches.budget[0].key).toBe("coat1");
-    expect(search).toHaveBeenCalledTimes(2);
+    // 3 regular searches (none filled every tier) + 1 designer search for the empty Luxury tier
+    expect(search).toHaveBeenCalledTimes(4);
+  });
+
+  it("combines every search instead of stopping at the first one with results", async () => {
+    search.mockImplementation(async (q: string) => {
+      if (q.includes("shawl lapel")) return { ok: true, products: [product("cheap", 40)] };
+      if (q.includes("camel wrap coat")) return { ok: true, products: [product("mid", 150)] };
+      if (q.includes("designer")) return { ok: true, products: [product("lux", 900)] };
+      return { ok: true, products: [product("cheap", 40)] };
+    });
+    const { result } = renderHook(() => useLiveMatches([item("a")]));
+    await waitFor(() => expect(result.current.state.a?.status).toBe("done"));
+    const m = result.current.state.a.matches;
+    expect([m.budget[0]?.key, m.midRange[0]?.key, m.luxury[0]?.key]).toEqual(["cheap", "mid", "lux"]);
+    expect(search.mock.calls.map(([q]) => q).filter((q: string) => q.includes("designer"))).toHaveLength(1);
+  });
+
+  it("stops early once Budget, Mid-range and Luxury all have a pick", async () => {
+    search.mockResolvedValue({ ok: true, products: [product("b", 40), product("m", 150), product("l", 600)] });
+    const { result } = renderHook(() => useLiveMatches([item("a")]));
+    await waitFor(() => expect(result.current.state.a?.status).toBe("done"));
+    expect(search).toHaveBeenCalledTimes(1);
   });
 
   it("marks pieces past the search limit as done instead of loading forever", async () => {
@@ -61,5 +83,12 @@ describe("useLiveMatches", () => {
     await waitFor(() => expect(result.current.state.p5?.status).toBe("done"));
     expect(result.current.state.p6.status).toBe("done");
     expect(result.current.state.p6.matches.budget).toHaveLength(0);
+  });
+});
+
+describe("luxuryQueryFor", () => {
+  it("asks for designer pieces by color and category, keeping the size for clothing only", () => {
+    expect(luxuryQueryFor(item("a"), " size M")).toBe("women's designer camel Coat size M");
+    expect(luxuryQueryFor(item("b", { category: "Bag", color: "leopard", description: "puffy leopard clutch" }), " size M")).toBe("women's designer leopard Bag");
   });
 });
