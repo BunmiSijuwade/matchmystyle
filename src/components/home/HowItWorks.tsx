@@ -22,7 +22,7 @@ const steps = [
   },
   {
     title: "Find it in your size",
-    body: "Shop real pieces at budget, mid-range and luxury prices, with sizing advice for you.",
+    body: "Shop real pieces at Budget, Mid and Splurge prices, with sizing advice for you.",
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path className="mms-icon-fill" d="M6 6h17l-2 8H8z" />

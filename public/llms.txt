@@ -1,6 +1,6 @@
 # MatchMyStyle
 
-> See a look you love? Shop it in your size. MatchMyStyle analyzes outfit photos and finds real products to match, in your size, at budget, mid-range and vintage price points.
+> See a look you love? Shop it in your size. MatchMyStyle analyzes outfit photos and finds real products to match, in your size, at Budget, Mid and Splurge price points, plus vintage.
 
 MatchMyStyle is an AI fashion styling and shopping-discovery site, not a retailer. Upload a photo of an outfit, and it identifies each piece, names the look's aesthetic and finds matching products from real stores. A shopping concierge builds full looks from a description, an occasion or an aesthetic.
 
@@ -14,7 +14,7 @@ MatchMyStyle is an AI fashion styling and shopping-discovery site, not a retaile
 
 1. Add an outfit photo, or describe what you want to the concierge.
 2. MatchMyStyle identifies each piece (coat, top, trousers, shoes, bag, jewelry) and searches live store catalogs for matches in your size. Clothing sizes apply to clothing only; jewelry, bags and shoes are matched without one.
-3. The look is put together with a budget, mid-range and luxury option for each piece, plus vintage searches on Poshmark, Depop, ThredUp and Vestiaire. Any piece can be swapped in place.
+3. The look is put together with a Budget (under $75), Mid ($75 to $250) and Splurge ($250+) option for each piece, plus vintage searches on Poshmark, Depop, ThredUp and Vestiaire. Any piece can be swapped in place.
 
 Free to use, no account needed. Prices and stock come from the stores at the time of the search and can change. MatchMyStyle may earn a commission when people shop through its links; it never changes the price.
 

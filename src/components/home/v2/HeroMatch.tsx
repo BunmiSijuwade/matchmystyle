@@ -26,7 +26,7 @@ export default function HeroMatch() {
 
       <div className="flex flex-col">
         <p className="m-0 mb-1 text-[26px] lg:text-[28px] italic" style={{ fontFamily: ED.serif }}>This look, matched</p>
-        <p className="m-0 mb-4 text-[12px]" style={{ color: ED.muted }}>Size {MATCH_SIZE} · Mid-range</p>
+        <p className="m-0 mb-4 text-[12px]" style={{ color: ED.muted }}>Size {MATCH_SIZE} · Mid</p>
         <ol className="list-none m-0 p-0 border-t" style={{ borderColor: ED.ink }}>
           {PIECES.map((p, i) => (
             <li key={p.name} className="flex items-center gap-2.5 py-2 border-b text-[14px]"

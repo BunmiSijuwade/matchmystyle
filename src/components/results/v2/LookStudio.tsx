@@ -55,7 +55,7 @@ const SPOTS = [
 ];
 
 const display = { fontFamily: V2.display, fontWeight: 800 } as const;
-// One column per price range, so every piece shows its Budget, Mid-range and Luxury option side by side.
+// One column per price range, so every piece shows its Budget, Mid and Splurge option side by side.
 const RANGES: { tier: ShopTier; range: string }[] = [
   { tier: "budget", range: `under $${PRICE_TIERS.budgetMax}` },
   { tier: "midRange", range: `$${PRICE_TIERS.budgetMax}–${PRICE_TIERS.luxuryMin}` },
@@ -351,7 +351,8 @@ function Layer({ n, piece, p }: { n: number; piece: StudioPiece; p: LookStudioPr
       <p className={`${label} mt-4 mb-2`} style={{ color: V2.muted }}>Pick your price</p>
       <div className="grid grid-cols-3 gap-2">
         {cells.map((c) => (
-          <OptionCard key={c.tier} heading={TIER_NAMES[c.tier]} sub={c.range} product={c.product} on={c.on} onUse={() => c.product && p.onUse(item.id, c.product)} />
+          <OptionCard key={c.tier} heading={TIER_NAMES[c.tier]} sub={c.range} product={c.product} on={c.on} onUse={() => c.product && p.onUse(item.id, c.product)}
+            onMore={extra?.status === "done" ? undefined : () => p.onMore(item, shownKeys)} moreLoading={extra?.status === "loading"} />
         ))}
       </div>
       {extras.length > 0 && (
@@ -383,7 +384,7 @@ function Layer({ n, piece, p }: { n: number; piece: StudioPiece; p: LookStudioPr
   );
 }
 
-function OptionCard({ heading, sub, product, on, onUse }: { heading: string; sub: string | null; product: CatalogProduct | null; on: boolean; onUse: () => void }) {
+function OptionCard({ heading, sub, product, on, onUse, onMore, moreLoading }: { heading: string; sub: string | null; product: CatalogProduct | null; on: boolean; onUse: () => void; onMore?: () => void; moreLoading?: boolean }) {
   const head = (
     <span className="block mb-1.5">
       <span className="block text-[10px] font-extrabold uppercase tracking-[0.8px]" style={{ color: heading === "Budget" ? V2.ink : V2.accent }}>{heading}</span>
@@ -394,7 +395,15 @@ function OptionCard({ heading, sub, product, on, onUse }: { heading: string; sub
     return (
       <div className="rounded-xl p-1.5 flex flex-col" style={{ border: `1px dashed ${V2.line}` }}>
         {head}
-        <span className="flex-1 min-h-[120px] rounded-lg flex items-center justify-center text-center text-[11px] px-2" style={{ background: V2.sand, color: V2.muted }}>None in your size yet</span>
+        <span className="flex-1 min-h-[120px] rounded-lg flex flex-col items-center justify-center gap-1 text-center text-[11px] px-2" style={{ background: V2.sand, color: V2.muted }}>
+          <span>{!sub ? "No pick" : sub.startsWith("under") ? `No pick ${sub}` : `No ${sub} pick`} in your size yet</span>
+          {onMore && (
+            <button type="button" onClick={onMore} disabled={moreLoading}
+              className="min-h-[44px] px-2 text-[12px] font-bold underline underline-offset-4 disabled:opacity-60" style={{ color: V2.accent }}>
+              {moreLoading ? "Finding more" : "Try more options"}
+            </button>
+          )}
+        </span>
       </div>
     );
   }

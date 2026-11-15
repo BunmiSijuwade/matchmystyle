@@ -51,7 +51,7 @@ describe("useLiveMatches", () => {
     const { result } = renderHook(() => useLiveMatches([item("a")]));
     await waitFor(() => expect(result.current.state.a?.status).toBe("done"));
     expect(result.current.state.a.matches.budget[0].key).toBe("coat1");
-    // 3 regular searches (none filled every tier) + 1 designer search for the empty Luxury tier
+    // 3 regular searches (none filled every tier) + 1 designer search for the empty Splurge tier
     expect(search).toHaveBeenCalledTimes(4);
   });
 
@@ -69,7 +69,7 @@ describe("useLiveMatches", () => {
     expect(search.mock.calls.map(([q]) => q).filter((q: string) => q.includes("designer"))).toHaveLength(1);
   });
 
-  it("stops early once Budget, Mid-range and Luxury all have a pick", async () => {
+  it("stops early once Budget, Mid and Splurge all have a pick", async () => {
     search.mockResolvedValue({ ok: true, products: [product("b", 40), product("m", 150), product("l", 600)] });
     const { result } = renderHook(() => useLiveMatches([item("a")]));
     await waitFor(() => expect(result.current.state.a?.status).toBe("done"));

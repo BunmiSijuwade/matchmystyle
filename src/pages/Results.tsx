@@ -27,7 +27,7 @@ const VINTAGE_PLATFORMS = [
   { name: "ThredUp", url: (q: string) => `https://www.thredup.com/products?search_text=${q}` },
   { name: "Vestiaire", url: (q: string) => `https://www.vestiairecollective.com/search/?q=${q}` },
 ];
-const TABS: [LookTier, string][] = [["budget", "Budget"], ["midRange", "Mid-range"], ["vintage", "Vintage"]];
+const TABS: [LookTier, string][] = [["budget", "Budget"], ["midRange", "Mid"], ["vintage", "Vintage"]];
 const QUICK_CHIPS = ["make it cheaper", "add some color", "dress it up", "different shoes"];
 const usd = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 type Override = CatalogProduct | "removed";

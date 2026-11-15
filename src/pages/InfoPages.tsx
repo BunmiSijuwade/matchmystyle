@@ -36,7 +36,7 @@ export function About() {
   return (
     <Shell title="About MatchMyStyle">
       <p>The outfits you see online are rarely linked. When they are, the piece is often out of budget, sold out, or not made in your size.</p>
-      <p>MatchMyStyle closes that gap. Add a photo or describe a look, and we name every piece in it: the coat, the top, the trousers, the shoes. Then we show real products you can buy, at budget, mid-range and luxury prices, plus secondhand options from resale marketplaces.</p>
+      <p>MatchMyStyle closes that gap. Add a photo or describe a look, and we name every piece in it: the coat, the top, the trousers, the shoes. Then we show real products you can buy, at Budget, Mid and Splurge prices, plus secondhand options from resale marketplaces.</p>
       <p>Save your measurements once and the matches lean toward your size. You can also ask the Concierge to build a whole look for an occasion, swap pieces you don't love, and save a look card to share.</p>
       <H2 id="faq">FAQ</H2>
       <Q q="Do I need an account?">No. Everything works without signing up.</Q>

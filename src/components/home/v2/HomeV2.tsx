@@ -14,7 +14,7 @@ import { ED, caps, loadHomeSerif } from "@/components/home/v2/editorial";
 const HOW = [
   { title: "Upload", text: "Add an outfit photo and pick your size." },
   { title: "Your look", text: "We name every piece in the photo." },
-  { title: "Your price", text: "Choose budget, mid-range or vintage for each piece." },
+  { title: "Your price", text: "Choose Budget, Mid, Splurge or vintage for each piece." },
   { title: "Shop it", text: "Shop all six in your size, or just the ones you want." },
 ];
 

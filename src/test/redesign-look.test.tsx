@@ -42,7 +42,7 @@ function setup(over: Partial<LookStudioProps> = {}, pieces?: StudioPiece[]) {
     items: [coat, top],
     tier: "budget",
     onTier: vi.fn(),
-    tabs: [["budget", "Budget"], ["midRange", "Mid-range"], ["vintage", "Vintage"]],
+    tabs: [["budget", "Budget"], ["midRange", "Mid"], ["vintage", "Vintage"]],
     tierTotal: () => "$134",
     running: () => "$134",
     pieces: pieces ?? [
@@ -88,12 +88,14 @@ describe("LookStudio", () => {
     expect(screen.getByRole("button", { name: "Camel coat, in your look" }).getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("shows Budget, Mid-range and Luxury side by side with brands", () => {
+  it("shows Budget, Mid and Splurge side by side with brands", () => {
     setup();
     expect(screen.getAllByText("Budget").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Mid-range").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Luxury").length).toBe(2);
-    expect(screen.getAllByText("None in your size yet").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Mid").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Splurge").length).toBe(2);
+    expect(screen.queryByText("Luxury")).toBeNull();
+    expect(screen.getAllByText("No $250+ pick in your size yet").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "Try more options" }).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Store").length).toBeGreaterThan(2);
   });
 
