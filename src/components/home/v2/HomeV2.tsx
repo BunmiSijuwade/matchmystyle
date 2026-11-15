@@ -1,13 +1,14 @@
 // Redesigned Home (shown only with the redesign switch on). One composer: words go to the Concierge,
 // "Add photo" opens the analyzer, and a pasted link shows a note (links aren't analyzed). Aesthetic cards open the Concierge's
 // local (no-AI) aesthetic look via ?aesthetic=<slug>.
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Camera } from "lucide-react";
 import { aesthetics } from "@/components/home/aesthetics";
 import { TopNav, TabBar, SiteFooter } from "@/components/v2/SiteNav";
 import { V2 } from "@/lib/redesign";
 import { composerTarget } from "@/lib/composerTarget";
+import HeroLoop from "@/components/home/v2/HeroLoop";
 
 const display = { fontFamily: V2.display, fontWeight: 800 } as const;
 
@@ -15,11 +16,18 @@ const display = { fontFamily: V2.display, fontWeight: 800 } as const;
 export default function HomeV2() {
   const navigate = useNavigate();
   const [text, setText] = useState("");
-  const [photoFailed, setPhotoFailed] = useState(false);
   const [linkNote, setLinkNote] = useState(false);
-  const demo = aesthetics[0];
-  const pieces = demo.flatLayCaption.split(" · ");
-  const spots = demo.pieceSpots ?? [];
+  // The sticky bar hides while the hero composer is on screen, so the page never shows two calls to action at once.
+  const composerRef = useRef<HTMLFormElement>(null);
+  const [composerVisible, setComposerVisible] = useState(true);
+
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([entry]) => setComposerVisible(entry.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -29,73 +37,46 @@ export default function HomeV2() {
   };
 
   return (
-    <div className="min-h-screen pb-24 md:pb-0" style={{ background: V2.paper, color: V2.ink }}>
+    <div className="min-h-screen pb-40 md:pb-28" style={{ background: V2.paper, color: V2.ink }}>
       <TopNav active="home" />
 
-      <section className="max-w-6xl mx-auto px-5 lg:px-8 pt-8 lg:pt-14 flex flex-wrap gap-10 lg:gap-12 items-center">
-        <div className="flex-[999_1_440px] min-w-0">
+      <section className="max-w-6xl mx-auto px-5 lg:px-8 pt-8 lg:pt-14 grid gap-8 lg:gap-x-12 lg:gap-y-6 lg:grid-cols-[minmax(0,1fr)_auto] items-center">
+        <div className="lg:col-start-1 lg:row-start-1 self-end">
           <h1 className="text-[42px] sm:text-[56px] lg:text-[68px] leading-[0.98] tracking-[-1.5px]" style={display}>
             See a look you love? <span style={{ color: V2.accent }}>Shop it in your size.</span>
           </h1>
-          <p className="mt-4 mb-6 text-[16px] lg:text-[19px] leading-relaxed max-w-[520px]" style={{ color: V2.muted }}>
-            Drop in any outfit. We find every piece, check it in your size, and give you three ways to wear it.
+          <p className="mt-4 text-[16px] lg:text-[19px] leading-relaxed max-w-[520px]" style={{ color: V2.muted }}>
+            Drop in any outfit. We find every piece in your size, at the price you want, new or vintage.
           </p>
-
-          <form onSubmit={submit} className="rounded-[22px] border-[1.5px] p-4 max-w-[560px] flex flex-col gap-3" style={{ background: V2.card, borderColor: V2.ink, boxShadow: `4px 4px 0 ${V2.ink}` }}>
-            <label htmlFor="home-composer" className="text-[14px] font-extrabold">Start with anything</label>
-            <div className="flex flex-wrap gap-2.5">
-              <input id="home-composer" value={text} onChange={(e) => { setText(e.target.value); setLinkNote(false); }} maxLength={2000}
-                placeholder="Describe a look, or add a photo" enterKeyHint="go"
-                aria-invalid={linkNote || undefined} aria-describedby={linkNote ? "home-composer-note" : undefined}
-                className="flex-[1_1_240px] min-w-0 h-12 rounded-[14px] border px-4 text-[16px] focus:outline-none focus:ring-2"
-                style={{ borderColor: linkNote ? V2.accent : V2.line, background: V2.paper }} />
-              <div className="grid grid-cols-2 gap-2 flex-[1_1_240px]">
-                <Link to="/analyzer" className="h-12 rounded-full border flex items-center justify-center gap-2 text-[14px] font-bold" style={{ borderColor: V2.ink, color: V2.ink }}>
-                  <Camera className="w-[18px] h-[18px]" aria-hidden="true" />Add photo
-                </Link>
-                <button type="submit" className="h-12 rounded-full text-white text-[14px] font-bold" style={{ background: V2.fill }}>Match it</button>
-              </div>
-            </div>
-            {linkNote ? (
-              <p id="home-composer-note" role="alert" className="text-[13px] font-semibold" style={{ color: V2.warnText }}>
-                Links can't be matched. Save or screenshot the photo, then tap Add photo.
-              </p>
-            ) : (
-              <p className="text-[12px]" style={{ color: V2.muted }}>Free to try. No account needed.</p>
-            )}
-          </form>
         </div>
 
-        <div className="flex-[1_1_380px] min-w-0 grid grid-cols-[1.1fr_1fr] gap-3">
-          <div className="relative rounded-[20px] overflow-hidden aspect-[4/5]" style={{ background: V2.sand }}>
-            {!photoFailed && (
-              <img src={demo.photo} alt={demo.photoAlt} width={800} height={1000} onError={() => setPhotoFailed(true)} className="w-full h-full object-cover" />
-            )}
-            <span className="absolute left-2.5 bottom-2.5 text-[12px] font-bold px-2.5 py-1 rounded-full" style={{ background: V2.ink, color: V2.paper }}>Their photo</span>
-            {!photoFailed && spots.map((s, i) => (
-              <span key={i} aria-hidden="true" className="absolute w-7 h-7 rounded-full border-2 text-[12px] font-extrabold text-white flex items-center justify-center"
-                style={{ left: `${s.x}%`, top: `${s.y}%`, background: V2.fill, borderColor: V2.card }}>{i + 1}</span>
-            ))}
-          </div>
-          <div className="flex flex-col gap-2.5">
-            {pieces.map((piece, i) => (
-              <Link key={piece} to={`/concierge?q=${encodeURIComponent(piece.toLowerCase())}`} aria-label={`Shop ${piece}`}
-                className="min-h-[44px] rounded-2xl border px-3 py-2.5 flex items-center justify-between gap-2 transition-colors hover:border-current" style={{ background: V2.card, borderColor: V2.line }}>
-                <span>
-                  <span className="block text-[10px] font-extrabold tracking-[1px] uppercase" style={{ color: V2.muted }}>Piece {i + 1}</span>
-                  <span className="block text-[15px] font-bold capitalize">{piece}</span>
-                </span>
-                <span aria-hidden="true" className="text-[13px] font-bold" style={{ color: V2.accent }}>Shop</span>
+        <div className="lg:col-start-2 lg:row-start-1 lg:row-span-2 flex justify-center">
+          <HeroLoop />
+        </div>
+
+        <form ref={composerRef} onSubmit={submit} className="lg:col-start-1 lg:row-start-2 self-start rounded-[22px] border-[1.5px] p-4 max-w-[560px] flex flex-col gap-3" style={{ background: V2.card, borderColor: V2.ink, boxShadow: `4px 4px 0 ${V2.ink}` }}>
+          <label htmlFor="home-composer" className="text-[14px] font-extrabold">Start with anything</label>
+          <div className="flex flex-wrap gap-2.5">
+            <input id="home-composer" value={text} onChange={(e) => { setText(e.target.value); setLinkNote(false); }} maxLength={2000}
+              placeholder="Describe a look, or add a photo" enterKeyHint="go"
+              aria-invalid={linkNote || undefined} aria-describedby={linkNote ? "home-composer-note" : undefined}
+              className="flex-[1_1_240px] min-w-0 h-12 rounded-[14px] border px-4 text-[16px] focus:outline-none focus:ring-2"
+              style={{ borderColor: linkNote ? V2.accent : V2.line, background: V2.paper }} />
+            <div className="grid grid-cols-2 gap-2 flex-[1_1_240px]">
+              <Link to="/analyzer" className="h-12 rounded-full border flex items-center justify-center gap-2 text-[14px] font-bold" style={{ borderColor: V2.ink, color: V2.ink }}>
+                <Camera className="w-[18px] h-[18px]" aria-hidden="true" />Add photo
               </Link>
-            ))}
-            <p className="text-[12px] font-bold px-1" style={{ color: V2.okText }}>We find each piece in your size</p>
-            <div className="rounded-2xl p-3.5 flex-1 flex flex-col justify-center" style={{ background: V2.ink, color: V2.paper }}>
-              <p className="text-[12px] opacity-85">3 versions</p>
-              <p className="text-[17px] leading-tight" style={display}>Budget · Mid-range · Luxury</p>
-              <p className="text-[12px] opacity-85 mt-1">plus vintage</p>
+              <button type="submit" className="h-12 rounded-full text-white text-[14px] font-bold" style={{ background: V2.fill }}>Match it</button>
             </div>
           </div>
-        </div>
+          {linkNote ? (
+            <p id="home-composer-note" role="alert" className="text-[13px] font-semibold" style={{ color: V2.warnText }}>
+              Links can't be matched. Save or screenshot the photo, then tap Add photo.
+            </p>
+          ) : (
+            <p className="text-[12px]" style={{ color: V2.muted }}>Free to try. No account needed.</p>
+          )}
+        </form>
       </section>
 
       <section className="max-w-6xl mx-auto pt-14 lg:pt-20" aria-labelledby="by-aesthetic">
@@ -133,6 +114,20 @@ export default function HomeV2() {
       </section>
 
       <SiteFooter />
+
+      <div
+        aria-hidden={composerVisible}
+        className={`fixed z-30 left-3 right-3 bottom-[calc(76px+env(safe-area-inset-bottom))] md:bottom-5 md:left-1/2 md:right-auto md:w-[520px] md:-translate-x-1/2 transition-all duration-300 ${composerVisible ? "opacity-0 translate-y-3 pointer-events-none" : "opacity-100 translate-y-0"}`}
+      >
+        <div className="rounded-[20px] border-[1.5px] pl-[18px] pr-2 py-2 flex items-center justify-between gap-3"
+          style={{ background: V2.card, borderColor: V2.ink, boxShadow: `4px 4px 0 ${V2.ink}` }}>
+          <span className="text-[14px] font-extrabold">Free to try. No account needed.</span>
+          <Link to="/analyzer" tabIndex={composerVisible ? -1 : undefined}
+            className="min-h-[44px] px-5 rounded-2xl flex items-center text-white text-[14px] font-bold whitespace-nowrap" style={{ background: V2.fill }}>
+            Match a look
+          </Link>
+        </div>
+      </div>
 
       <TabBar active="home" />
     </div>
