@@ -8,7 +8,7 @@ export function loadHomeSerif() {
   const link = document.createElement("link");
   link.id = FONT_ID;
   link.rel = "stylesheet";
-  link.href = "https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;1,6..96,400&display=swap";
+  link.href = "https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400;1,6..96,500&display=swap";
   document.head.appendChild(link);
 }
 
