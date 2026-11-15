@@ -3,7 +3,7 @@ import type { LiveMatchState, TieredMatches } from "@/hooks/useLiveMatches";
 import { majorAmount, type CatalogProduct } from "@/lib/shopCatalog";
 
 export type ShopTier = keyof TieredMatches;
-export const TIER_NAMES: Record<ShopTier, string> = { budget: "Budget", midRange: "Mid-range", luxury: "Luxury" };
+export const TIER_NAMES: Record<ShopTier, string> = { budget: "Budget", midRange: "Mid", luxury: "Splurge" };
 const NEIGHBORS: Record<"budget" | "midRange", ShopTier[]> = {
   budget: ["budget", "midRange", "luxury"],
   midRange: ["midRange", "budget", "luxury"],

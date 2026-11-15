@@ -9,7 +9,7 @@ import { useAnalysis, type DetectedItem, type LookTier } from "@/contexts/Analys
 import { readProfileSize } from "@/lib/shopCatalog";
 
 const SIZE_CHIPS = ["XS", "S", "M", "L", "XL+"];
-const TIER_CHIPS: [LookTier, string][] = [["budget", "Budget"], ["midRange", "Mid-range"], ["vintage", "Vintage"]];
+const TIER_CHIPS: [LookTier, string][] = [["budget", "Budget"], ["midRange", "Mid"], ["vintage", "Vintage"]];
 const chipClass = (on: boolean) => `min-h-[44px] min-w-[44px] px-4 rounded-full border text-[12px] font-medium transition-all duration-300 ease-out ${on ? "bg-foreground text-background border-foreground" : "bg-card border-border text-foreground hover:border-primary"}`;
 import { Switch } from "@/components/ui/switch";
 import PasteTipStrip from "@/components/PasteTipStrip";

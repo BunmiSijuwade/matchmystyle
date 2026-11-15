@@ -176,7 +176,7 @@ export default function HeroCarousel({ ctaHref = "/analyzer" }: Props) {
             See a look you love?<br /><em>Shop it in your size.</em>
           </h1>
           <p className="mms-hero__line">
-            Upload a screenshot or photo. We name every piece, tell you its aesthetic, and find real matches at budget, mid-range and vintage, in your size.
+            Upload a screenshot or photo. We name every piece, tell you its aesthetic, and find real matches at Budget, Mid, Splurge and vintage, in your size.
           </p>
           <div className="mms-hero__actions">
             <Link className="mms-btn" to={ctaHref}>

@@ -11,7 +11,7 @@ const points = [
   },
   {
     title: "Any budget",
-    body: "See budget, mid-range and luxury options side by side, so you choose where to spend.",
+    body: "See Budget, Mid and Splurge options side by side, so you choose where to spend.",
   },
 ];
 

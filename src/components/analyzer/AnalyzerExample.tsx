@@ -63,7 +63,7 @@ export function SeeItWork() {
               <div className="text-[17px] font-extrabold" style={{ color: V2.ink }}>${EXAMPLE_RUN.totals.budget}</div>
             </div>
             <div className="rounded-[10px] px-1 py-2 text-center" style={{ background: V2.ink, color: V2.paper }}>
-              <div className="text-xs whitespace-nowrap">Mid-range</div>
+              <div className="text-xs whitespace-nowrap">Mid</div>
               <div className="text-[17px] font-extrabold">${EXAMPLE_RUN.totals.midRange}</div>
             </div>
             <div className="rounded-[10px] px-1 py-2 text-center" style={{ color: V2.okText }}>
@@ -81,7 +81,7 @@ export function SeeItWork() {
               </li>
             ))}
           </ul>
-          <p className="text-[13px]" style={{ color: V2.muted }}>{EXAMPLE_RUN.pieces.length} pieces at mid-range. Swap any piece or price range.</p>
+          <p className="text-[13px]" style={{ color: V2.muted }}>{EXAMPLE_RUN.pieces.length} pieces at Mid prices. Swap any piece or price range.</p>
         </div>
       </div>
 

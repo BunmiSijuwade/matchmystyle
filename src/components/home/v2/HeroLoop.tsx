@@ -12,7 +12,7 @@ const STEPS = ["Upload", "Your look", "Your price", "Shop it"];
 const SIZES = ["XS", "S", "M", "L", "XL+"];
 const TIERS = [
   { label: "Budget", value: TOTALS.budget, on: false },
-  { label: "Mid-range", value: TOTALS.mid, on: true },
+  { label: "Mid", value: TOTALS.mid, on: true },
   { label: "Vintage", value: TOTALS.vintage, on: false },
 ];
 const tiny = `text-[8px] lg:text-[9px] ${caps}`;

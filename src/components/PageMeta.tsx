@@ -9,7 +9,7 @@ const PAGES: Record<string, Meta> = {
   "/": {
     title: "MatchMyStyle: shop any outfit in your size",
     description:
-      "Upload a photo of any outfit. MatchMyStyle finds every piece in your size, with budget, mid-range and vintage options side by side.",
+      "Upload a photo of any outfit. MatchMyStyle finds every piece in your size, with Budget, Mid and Splurge picks plus vintage, side by side.",
   },
   "/analyzer": {
     title: "Find clothes from a picture | MatchMyStyle",
@@ -41,7 +41,7 @@ const PAGES: Record<string, Meta> = {
   },
   "/results": {
     title: "Your Look | MatchMyStyle",
-    description: "Your analyzed outfit, rebuilt from real products in your size across budget, mid-range and vintage.",
+    description: "Your analyzed outfit, rebuilt from real products in your size across Budget, Mid, Splurge and vintage.",
     noindex: true,
   },
 };
