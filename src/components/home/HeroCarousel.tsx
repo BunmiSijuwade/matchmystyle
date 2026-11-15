@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Link2, Upload } from "lucide-react";
+import { ArrowRight, Upload } from "lucide-react";
 import { aesthetics } from "./aesthetics";
 import ConciergeComposer from "@/components/concierge/ConciergeComposer";
 import { CHOICES } from "@/components/concierge/ConciergeStart";
@@ -181,9 +181,6 @@ export default function HeroCarousel({ ctaHref = "/analyzer" }: Props) {
           <div className="mms-hero__actions">
             <Link className="mms-btn" to={ctaHref}>
               <Upload size={18} strokeWidth={1.75} aria-hidden="true" /> Upload a look
-            </Link>
-            <Link className="mms-btn mms-btn--ghost" to={`${ctaHref}?tab=url`}>
-              <Link2 size={18} strokeWidth={1.75} aria-hidden="true" /> Paste a link
             </Link>
           </div>
 

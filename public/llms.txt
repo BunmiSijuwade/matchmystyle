@@ -2,7 +2,7 @@
 
 > See a look you love? Shop it in your size. MatchMyStyle analyzes outfit photos and finds real products to match, in your size, at budget, mid-range and vintage price points.
 
-MatchMyStyle is an AI fashion styling and shopping-discovery site, not a retailer. Upload a photo or paste an image link, and it identifies each piece, names the look's aesthetic and finds matching products from real stores. A shopping concierge builds full looks from a description, an occasion or an aesthetic.
+MatchMyStyle is an AI fashion styling and shopping-discovery site, not a retailer. Upload a photo of an outfit, and it identifies each piece, names the look's aesthetic and finds matching products from real stores. A shopping concierge builds full looks from a description, an occasion or an aesthetic.
 
 ## Pages
 
@@ -12,7 +12,7 @@ MatchMyStyle is an AI fashion styling and shopping-discovery site, not a retaile
 
 ## How it works
 
-1. Add an outfit photo or image link, or describe what you want to the concierge.
+1. Add an outfit photo, or describe what you want to the concierge.
 2. MatchMyStyle identifies each piece (coat, top, trousers, shoes, bag, jewelry) and searches live store catalogs for matches in your size. Clothing sizes apply to clothing only; jewelry, bags and shoes are matched without one.
 3. The look is put together with a budget, mid-range and luxury option for each piece, plus vintage searches on Poshmark, Depop, ThredUp and Vestiaire. Any piece can be swapped in place.
 

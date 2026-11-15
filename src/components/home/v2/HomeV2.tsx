@@ -1,5 +1,5 @@
-// Redesigned Home (shown only with the redesign switch on). One composer: a link goes to the analyzer,
-// words go to the Concierge, "Add photo" opens the analyzer. Aesthetic cards open the Concierge's
+// Redesigned Home (shown only with the redesign switch on). One composer: words go to the Concierge,
+// "Add photo" opens the analyzer, and a pasted link shows a note (links aren't analyzed). Aesthetic cards open the Concierge's
 // local (no-AI) aesthetic look via ?aesthetic=<slug>.
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -16,13 +16,16 @@ export default function HomeV2() {
   const navigate = useNavigate();
   const [text, setText] = useState("");
   const [photoFailed, setPhotoFailed] = useState(false);
+  const [linkNote, setLinkNote] = useState(false);
   const demo = aesthetics[0];
   const pieces = demo.flatLayCaption.split(" · ");
   const spots = demo.pieceSpots ?? [];
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    navigate(composerTarget(text));
+    const to = composerTarget(text);
+    if (!to) { setLinkNote(true); return; }
+    navigate(to);
   };
 
   return (
@@ -41,10 +44,11 @@ export default function HomeV2() {
           <form onSubmit={submit} className="rounded-[22px] border-[1.5px] p-4 max-w-[560px] flex flex-col gap-3" style={{ background: V2.card, borderColor: V2.ink, boxShadow: `4px 4px 0 ${V2.ink}` }}>
             <label htmlFor="home-composer" className="text-[14px] font-extrabold">Start with anything</label>
             <div className="flex flex-wrap gap-2.5">
-              <input id="home-composer" value={text} onChange={(e) => setText(e.target.value)} maxLength={2000}
-                placeholder="Paste a link or describe a look" enterKeyHint="go"
+              <input id="home-composer" value={text} onChange={(e) => { setText(e.target.value); setLinkNote(false); }} maxLength={2000}
+                placeholder="Describe a look, or add a photo" enterKeyHint="go"
+                aria-invalid={linkNote || undefined} aria-describedby={linkNote ? "home-composer-note" : undefined}
                 className="flex-[1_1_240px] min-w-0 h-12 rounded-[14px] border px-4 text-[16px] focus:outline-none focus:ring-2"
-                style={{ borderColor: V2.line, background: V2.paper }} />
+                style={{ borderColor: linkNote ? V2.accent : V2.line, background: V2.paper }} />
               <div className="grid grid-cols-2 gap-2 flex-[1_1_240px]">
                 <Link to="/analyzer" className="h-12 rounded-full border flex items-center justify-center gap-2 text-[14px] font-bold" style={{ borderColor: V2.ink, color: V2.ink }}>
                   <Camera className="w-[18px] h-[18px]" aria-hidden="true" />Add photo
@@ -52,7 +56,13 @@ export default function HomeV2() {
                 <button type="submit" className="h-12 rounded-full text-white text-[14px] font-bold" style={{ background: V2.fill }}>Match it</button>
               </div>
             </div>
-            <p className="text-[12px]" style={{ color: V2.muted }}>Free to try. No account needed.</p>
+            {linkNote ? (
+              <p id="home-composer-note" role="alert" className="text-[13px] font-semibold" style={{ color: V2.warnText }}>
+                Links can't be matched. Save or screenshot the photo, then tap Add photo.
+              </p>
+            ) : (
+              <p className="text-[12px]" style={{ color: V2.muted }}>Free to try. No account needed.</p>
+            )}
           </form>
         </div>
 

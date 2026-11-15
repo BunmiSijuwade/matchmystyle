@@ -42,7 +42,6 @@ export interface AestheticResult {
 }
 
 export interface ImagePayload {
-  imageUrl?: string;
   imageBase64?: string;
   mimeType?: string;
 }
