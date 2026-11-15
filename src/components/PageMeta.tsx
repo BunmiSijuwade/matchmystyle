@@ -12,9 +12,9 @@ const PAGES: Record<string, Meta> = {
       "Upload any outfit photo or paste a link. MatchMyStyle finds every piece in your size, with budget, mid-range and vintage options side by side.",
   },
   "/analyzer": {
-    title: "Outfit Analyzer: shop a look | MatchMyStyle",
+    title: "Find clothes from a picture | MatchMyStyle",
     description:
-      "Upload or paste an outfit photo. We spot every piece, name its aesthetic and pull real products in your size at three price points.",
+      "Upload a photo of any outfit to find the clothes in it. We spot each piece and pull similar ones to shop in your size, at three price points plus vintage.",
   },
   "/concierge": {
     title: "Shopping Concierge | MatchMyStyle",
