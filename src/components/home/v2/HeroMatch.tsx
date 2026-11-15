@@ -2,7 +2,7 @@
 // credit. Everything shown comes from heroMatchData.ts (one dated analyzer run), never edited by hand.
 import { Link } from "react-router-dom";
 import { ED, caps } from "@/components/home/v2/editorial";
-import { MATCH_DATE, MATCH_SIZE, OUTFIT, PIECE_IMG, PIECES, TOTALS } from "@/components/home/v2/heroMatchData";
+import { MATCH_SIZE, OUTFIT, PIECE_IMG, PIECES, TOTALS } from "@/components/home/v2/heroMatchData";
 
 const tabular = { fontVariantNumeric: "tabular-nums" } as const;
 
@@ -20,7 +20,7 @@ export default function HeroMatch() {
           </span>
         ))}
         <figcaption className={`lg:hidden absolute left-0 bottom-0 bg-white px-3 py-2 text-[10px] lg:text-[11px] font-semibold ${caps}`} style={{ color: ED.ink }}>
-          One real match · {MATCH_DATE}
+          One real match
         </figcaption>
       </figure>
 

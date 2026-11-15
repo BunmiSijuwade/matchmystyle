@@ -9,7 +9,7 @@ import { TopNav, TabBar, SiteFooter } from "@/components/v2/SiteNav";
 import { composerTarget } from "@/lib/composerTarget";
 import HeroLoop from "@/components/home/v2/HeroLoop";
 import HeroMatch from "@/components/home/v2/HeroMatch";
-import { MATCH_DATE, MATCH_SIZE } from "@/components/home/v2/heroMatchData";
+import { MATCH_SIZE } from "@/components/home/v2/heroMatchData";
 import { ED, caps, loadHomeSerif } from "@/components/home/v2/editorial";
 
 const HOW = [
@@ -66,7 +66,7 @@ export default function HomeV2() {
       {/* Desktop: labels share one row; then text, photo and piece list share one top and one bottom line. */}
       <section className="max-w-6xl mx-auto px-5 lg:px-8 pt-8 pb-10 lg:pt-14 lg:pb-16 grid gap-x-8 gap-y-5 lg:gap-y-[22px] lg:grid-cols-[minmax(0,0.44fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,0.6fr)_minmax(0,1fr)] lg:grid-rows-[auto_1fr] items-stretch">
         <p className={`m-0 text-[11px] lg:text-[12px] ${caps}`} style={{ color: ED.muted }}>Find it. Fit it. Shop it.</p>
-        <p className={`hidden lg:block m-0 text-[12px] ${caps}`} style={{ color: ED.muted }}>One real match · {MATCH_DATE} · Size {MATCH_SIZE} · Mid</p>
+        <p className={`hidden lg:block m-0 text-[12px] ${caps}`} style={{ color: ED.muted }}>One real match · Size {MATCH_SIZE} · Mid</p>
         <div className="flex flex-col gap-5 mb-5 lg:mb-0">
           <h1 className="m-0 text-[44px] sm:text-[56px] lg:text-[42px] xl:text-[52px] leading-[1.04] tracking-[-1px] font-medium" style={{ fontFamily: ED.serif }}>
             See a look you love? <span className="block italic pl-[0.05em]" style={{ color: ED.wine }}>Shop it in your size.</span>
