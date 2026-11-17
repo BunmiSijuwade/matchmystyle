@@ -129,6 +129,17 @@ export default function HomeV2() {
         <HeroPhoto />
       </section>
 
+      <section className="border-t" style={{ borderColor: V2.line }} aria-labelledby="what-it-is">
+        <div className="max-w-6xl mx-auto px-5 lg:px-8 py-8 lg:py-12 grid gap-3 lg:gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+          <h2 id="what-it-is" className="m-0 text-[24px] lg:text-[34px] leading-[1.05] uppercase" style={display}>What MatchMyStyle is</h2>
+          <div className="flex flex-col gap-2 text-[16px] lg:text-[18px] leading-relaxed" style={{ color: V2.muted }}>
+            <p className="m-0">The outfits you see online are rarely linked.</p>
+            <p className="m-0">When they are, the piece is out of budget or not in your size.</p>
+            <p className="m-0 text-[19px] lg:text-[21px] italic" style={{ color: V2.ink, fontFamily: V2.serif }}>MatchMyStyle finds every piece and shows real matches you can buy in your size, new or secondhand.</p>
+          </div>
+        </div>
+      </section>
+
       <section id="how-it-works" className="border-y scroll-mt-6" style={{ borderColor: V2.line }} aria-label="How it works">
         <ol className="max-w-6xl mx-auto px-5 lg:px-8 list-none m-0 grid sm:grid-cols-3">
           {HOW.map((h, i) => (
