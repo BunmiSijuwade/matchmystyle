@@ -1,11 +1,10 @@
 // Redesigned Home (Nov 17, 2026 mockup): hero with the real Nov 15 match photo and numbered piece tags, How it works,
-// a navy band with the app loop, Shop by aesthetic. One composer: words go to the Concierge,
+// a navy band with the app loop. One composer: words go to the Concierge,
 // "Add photo" opens the analyzer, and a pasted link shows a note (links aren't analyzed). Aesthetic cards open the Concierge's
 // local (no-AI) aesthetic look via ?aesthetic=<slug>.
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Upload } from "lucide-react";
-import { aesthetics } from "@/components/home/aesthetics";
 import { TopNav, TabBar, SiteFooter } from "@/components/v2/SiteNav";
 import { composerTarget } from "@/lib/composerTarget";
 import HeroLoop from "@/components/home/v2/HeroLoop";
@@ -171,20 +170,8 @@ export default function HomeV2() {
         </div>
       </section>
 
-      <section aria-labelledby="by-aesthetic">
-        <div className="max-w-6xl mx-auto px-5 lg:px-8 pt-10 pb-4 lg:pt-14">
-          <h2 id="by-aesthetic" className="m-0 mb-5 lg:mb-7 text-[26px] lg:text-[36px] uppercase" style={display}>Shop by aesthetic</h2>
-          <div className="grid grid-cols-2 gap-x-3.5 gap-y-5 lg:grid-cols-4 lg:gap-6">
-            {aesthetics.map((a) => (
-              <Link key={a.slug} to={`/concierge?aesthetic=${a.slug}`} className="flex flex-col gap-2 lg:gap-3">
-                <img src={a.photo} alt={a.photoAlt} loading="lazy" className="w-full aspect-[4/5] object-cover" style={{ objectPosition: a.photoPosition }} />
-                <span className="text-[17px] lg:text-[22px] leading-tight" style={{ fontFamily: V2.serif }}>{a.name}</span>
-                <span className={`text-[11px] lg:text-[12px] ${caps}`} style={{ color: V2.muted }}>{a.hood}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Shop by aesthetic removed from Home for now (Nov 17, 2026); the cards live in components/home/aesthetics
+          and open /concierge?aesthetic=<slug> if it comes back. */}
 
       <SiteFooter />
 
