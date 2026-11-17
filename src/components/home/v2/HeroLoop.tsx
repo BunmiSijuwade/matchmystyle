@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Pause, Play } from "lucide-react";
 import { ED, caps } from "@/components/home/v2/editorial";
 import { MATCH_SIZE, OUTFIT, PIECE_IMG, PIECES, TOTALS } from "@/components/home/v2/heroMatchData";
+import { V2 } from "@/lib/redesign";
 
 const STEP_MS = 3000;
 const STEPS = ["Upload", "Your look", "Your price", "Shop it"];
@@ -16,6 +17,15 @@ const TIERS = [
   { label: "Vintage", value: TOTALS.vintage, on: false },
 ];
 const tiny = `text-[8px] lg:text-[9px] ${caps}`;
+// Same layered layout as the Your look board (components/results/v2/LookStudio.tsx), as % of the board.
+const BOARD = [
+  { l: 3, t: 3, w: 50, h: 56, r: -4 },
+  { l: 48, t: 5, w: 44, h: 46, r: 3 },
+  { l: 33, t: 43, w: 42, h: 52, r: -2 },
+  { l: 4, t: 61, w: 36, h: 36, r: 4 },
+  { l: 68, t: 57, w: 29, h: 33, r: 7 },
+  { l: 60, t: 30, w: 28, h: 28, r: -5 },
+];
 const tabular = { fontVariantNumeric: "tabular-nums" } as const;
 
 function prefersReducedMotion() {
@@ -66,19 +76,39 @@ export default function HeroLoop() {
             </div>
           </div>
 
-          {/* 2. Your look */}
+          {/* 2. Your look: the new Your look screen (layered board, tier tabs), drawn from the same real run */}
           <div className={screen(1)} aria-hidden={step !== 1}>
-            <div className="flex items-center gap-2.5 pb-2.5 border-b" style={{ borderColor: ED.ink }}>
+            <div className="flex items-end gap-2">
               <img src={OUTFIT} alt="" className="w-7 h-9 lg:w-8 lg:h-10 object-cover" />
               <div className="flex flex-col gap-0.5">
-                <span className="text-[17px] lg:text-[20px] leading-none" style={{ fontFamily: ED.serif }}>Your look</span>
-                <span className={tiny} style={{ color: ED.accent }}>Off-Duty Muse</span>
+                <span className={tiny} style={{ color: ED.accent }}>The Mid look</span>
+                <span className="text-[16px] lg:text-[19px] leading-none uppercase" style={{ fontFamily: V2.display, fontWeight: 800, fontStretch: "115%" }}>Your look</span>
               </div>
             </div>
-            <div className="flex-1 min-h-0">
-              <img src={`${PIECE_IMG}/board.jpg`} alt="" className="w-full h-full object-contain" />
+            <div className="grid grid-cols-3 border-y" style={{ borderColor: ED.hair }}>
+              {TIERS.map((t) => (
+                <div key={t.label} className="py-1 flex flex-col text-center" style={{ boxShadow: t.on ? `inset 0 -2px 0 ${ED.ink}` : undefined }}>
+                  <span className="text-[7px] lg:text-[8px] uppercase tracking-[0.08em]" style={{ fontWeight: t.on ? 800 : 500 }}>{t.label}</span>
+                  <span className="text-[10px] lg:text-[12px] font-bold" style={tabular}>{t.value}</span>
+                </div>
+              ))}
             </div>
-            <span className="text-[9px] lg:text-[10px] text-center" style={{ color: ED.muted }}>6 pieces found</span>
+            <div className="relative flex-1 min-h-0" style={{ background: V2.sand }}>
+              {PIECES.slice(0, BOARD.length).map((p, i) => {
+                const s = BOARD[i];
+                return (
+                  <div key={p.name} className="absolute bg-white p-[3px] pb-0 flex flex-col"
+                    style={{ left: `${s.l}%`, top: `${s.t}%`, width: `${s.w}%`, height: `${s.h}%`, transform: `rotate(${s.r}deg)`, zIndex: i + 1, boxShadow: "0 2px 6px rgba(10,30,50,0.16)" }}>
+                    <img src={`${PIECE_IMG}/${p.img}`} alt="" className="w-full flex-1 min-h-0 object-cover" />
+                    <span className="flex justify-between gap-1 py-[2px] text-[6px] lg:text-[7px]">
+                      <span className="font-bold truncate">{p.name}</span>
+                      <span style={tabular}>{p.price}</span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <span className="text-[9px] lg:text-[10px] text-center" style={{ color: ED.muted }}>{PIECES.length} pieces · tap one to change it</span>
           </div>
 
           {/* 3. Your price */}
