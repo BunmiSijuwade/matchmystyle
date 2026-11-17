@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 import { AESTHETICS, type AestheticInfo } from "@/data/aesthetics";
 import { dropColor, dropSize, hasColor } from "@/lib/loosenSearch";
 import { readProfileSize, searchCatalog, readCache, writeCache, majorAmount, type CatalogProduct as ShopProduct } from "@/lib/shopCatalog";
-import ConciergeStart, { CHOICES, FOLLOW_UPS, PhotoSoon, type ChoiceId } from "@/components/concierge/ConciergeStart";
+import ConciergeStart, { CHOICES, ConciergeHeadV2, FOLLOW_UPS, PhotoSoon, type ChoiceId } from "@/components/concierge/ConciergeStart";
 import ConciergeComposer from "@/components/concierge/ConciergeComposer";
 import { isRedesign } from "@/lib/redesign";
 import { TopNav } from "@/components/v2/SiteNav";
@@ -30,6 +30,22 @@ const Bubble = ({ from, children }: { from: "me" | "you"; children: React.ReactN
     <p className={`max-w-[85%] px-5 py-3 text-base leading-6 mono-card ${from === "you" ? "mono-ink-bg" : "mono-panel"}`}>{children}</p>
   </div>
 );
+
+// Redesign: your words as a navy block on the right; the concierge as a stylist's note in the serif.
+const BubbleV2 = ({ from, children }: { from: "me" | "you"; children: React.ReactNode }) =>
+  from === "you" ? (
+    <div className="flex justify-end">
+      <p className="mono-ink-bg max-w-[85%] px-4 py-3 text-[15px] leading-6">{children}</p>
+    </div>
+  ) : (
+    <div className="grid max-w-[640px] grid-cols-[36px_minmax(0,1fr)] items-start gap-3">
+      <span aria-hidden="true" className="mono-ink-bg flex h-9 w-9 items-center justify-center rounded-full text-[17px] italic" style={{ fontFamily: "Newsreader, Georgia, serif" }}>C</span>
+      <p className="m-0 pt-1 text-[18px] leading-[1.45] sm:text-[20px]" style={{ fontFamily: "Newsreader, Georgia, serif" }}>
+        <span className="sr-only">Concierge: </span>
+        {children}
+      </p>
+    </div>
+  );
 
 const shortLabel = (label: string) => label.replace(/^the\s+/, "");
 const refinementsFor = (plan: Plan) => [
@@ -476,6 +492,16 @@ const Concierge = () => {
     ? plan.pieces.map((pc) => ({ label: pc.label, product: look[pc.label] ?? null }))
     : null;
   const removeFromLook = (label: string) => setLook((prev) => ({ ...(prev ?? {}), [label]: null }));
+  const Say = redesign ? BubbleV2 : Bubble;
+  // Redesign "Your brief": what the concierge understood, read straight from its plan (display only).
+  const briefSize = readProfileSize();
+  const brief: [string, string][] = plan ? ([
+    plan.aesthetic ? ["Aesthetic", plan.aesthetic] : null,
+    plan.budget ? ["Budget", `$${plan.budget}`] : plan.maxPrice ? ["Under", `$${plan.maxPrice}`] : null,
+    briefSize ? ["Size", briefSize] : null,
+    plan.pieces.length ? ["Pieces", plan.pieces.map((pc) => shortLabel(pc.label)).join(", ")] : null,
+  ].filter(Boolean) as [string, string][]) : [];
+  const briefBar = <ConciergeComposer brief value={query} placeholder={plan ? "change anything, or start fresh" : undefined} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />;
 
   return (
     <div className={`theme-concierge flex min-h-screen flex-col${redesign ? " theme-v2" : ""}`}>
@@ -483,13 +509,29 @@ const Concierge = () => {
 
       <main className={`mx-auto w-full max-w-6xl flex-1 px-4 pb-10 sm:px-6 lg:flex lg:gap-10 ${redesign ? "pt-8 sm:pt-10" : "pt-[104px] sm:pt-[120px]"}`}>
         <div className="min-w-0 flex-1">
-        {started && <h1 className="sr-only">MatchMyStyle shopping concierge</h1>}
-        {!started && <ConciergeStart onChoose={setChoice} onAesthetic={startAesthetic} composer={<ConciergeComposer inline value={query} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />} />}
+        {started && !redesign && <h1 className="sr-only">MatchMyStyle shopping concierge</h1>}
+        {started && redesign && (
+          <div className="mb-8">
+            <ConciergeHeadV2 compact />
+            {briefBar}
+            {brief.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="mr-1 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: "#4A5866" }}>Your brief</span>
+                {brief.map(([k, v]) => (
+                  <span key={k} className="border bg-white px-3 py-2 text-[13px]" style={{ borderColor: "#0A1E32" }}>
+                    <span style={{ color: "#4A5866" }}>{k}:</span> <strong>{v}</strong>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {!started && <ConciergeStart redesign={redesign} onChoose={setChoice} onAesthetic={startAesthetic} composer={redesign ? briefBar : <ConciergeComposer inline value={query} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />} />}
 
         {started && (
-          <section aria-label="conversation" className="mx-auto max-w-2xl space-y-3">
-            {chosen && <Bubble from="you">{chosen.label}</Bubble>}
-            {followUp && <Bubble from="me">{followUp.question}</Bubble>}
+          <section aria-label="conversation" className={redesign ? "space-y-5" : "mx-auto max-w-2xl space-y-3"}>
+            {chosen && <Say from="you">{chosen.label}</Say>}
+            {followUp && <Say from="me">{followUp.question}</Say>}
             {followUp && turns.length === 0 && (
               <div className="flex flex-wrap gap-2 pt-1">
                 {followUp.examples.map((ex) => (
@@ -499,9 +541,9 @@ const Concierge = () => {
                 ))}
               </div>
             )}
-            {turns.map((t, i) => <Bubble key={i} from={t.from}>{t.text}</Bubble>)}
-            {pending && <Bubble from="me">{pending}</Bubble>}
-            {!pending && status === "loading" && !plan && lastSearch && <Bubble from="me">pulling a rail...</Bubble>}
+            {turns.map((t, i) => <Say key={i} from={t.from}>{t.text}</Say>)}
+            {pending && <Say from="me">{pending}</Say>}
+            {!pending && status === "loading" && !plan && lastSearch && <Say from="me">pulling a rail...</Say>}
             {plan && chips && status === "done" && !pending && (
               <div className="space-y-2 pt-1">
                 <div className="flex flex-wrap gap-2">
@@ -633,7 +675,8 @@ const Concierge = () => {
 
       <div className="sticky bottom-0 z-20">
         {slots && <LookBar slots={slots} budget={plan?.budget} caps={plan ? pieceCaps(plan) : {}} onRemove={removeFromLook} onSwap={swapPiece} aesthetic={plan?.aesthetic} request={history[0] ?? null} />}
-        {started ? (
+        {/* Redesign: the brief bar sits at the top, so only the Your look bar stays at the bottom. */}
+        {redesign ? null : started ? (
           <ConciergeComposer value={query} placeholder={plan ? "change anything, or start fresh" : undefined} loading={status === "loading"} onChange={setQuery} onSubmit={handleSubmit} />
         ) : (
           <div className="mono-bg px-4 pb-4 pt-3 sm:px-6"><PhotoSoon className="mx-auto max-w-6xl" /></div>

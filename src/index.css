@@ -271,7 +271,12 @@ html:has(.theme-concierge), body:has(.theme-concierge) { overflow-x: clip; }
   --concierge-font-display: 'Archivo', 'Manrope', sans-serif;
   --concierge-border: 1px solid #D5D2CB;
   --concierge-border-dashed: 1px dashed #D5D2CB;
+  --concierge-radius-tile: 0;
+  --concierge-radius-card: 0;
+  --concierge-radius-pill: 0;
 }
+/* Square product images and cards in the redesigned Concierge (small round avatars use rounded-full and stay). */
+.theme-concierge.theme-v2 [class*="rounded-["] { border-radius: 0; }
 .theme-v2 .mono-display { font-weight: 800; letter-spacing: -0.5px; }
 .theme-v2 .mono-display em { font-style: normal; color: #75633F; }
 .theme-v2 .mono-accent-text { color: #75633F; }
