@@ -207,7 +207,7 @@ const Analyzer = () => {
           <ReviewPieces items={review.items} imageUrl={review.imageUrl} initialSize={pickedSize}
             onBack={() => { setReview(null); setFilePreviewUrl(null); setUploadedFile(null); }}
             onConfirm={(sizes, skip) => {
-              setLookPrefs({ size: pickedSize, tier: startTier, sizes, skip });
+              setLookPrefs({ size: sizes.tops ?? sizes.bottoms ?? pickedSize, tier: startTier, sizes, skip });
               setAnalysis(review.items, review.imageUrl, review.imagePayload, null, null, review.aesthetics, review.summary);
               navigate("/results");
             }} />
@@ -314,7 +314,8 @@ const Analyzer = () => {
 
             {/* Look preferences */}
             <div className="space-y-4 bg-card border border-border rounded-xl p-4">
-              <div className="space-y-2">
+              {/* Redesign asks for sizes once, on the review step (per kind of piece), so not here. */}
+              {!redesign && <div className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-[10px] font-medium tracking-[1px] uppercase text-muted-foreground">Your size</p>
                   <RouterLink to="/profile" className="text-primary hover:underline text-xs font-medium min-h-[44px] inline-flex items-center">Add measurements</RouterLink>
@@ -324,7 +325,7 @@ const Analyzer = () => {
                     <button key={s} type="button" aria-pressed={pickedSize === s} onClick={() => setPickedSize(pickedSize === s ? null : s)} className={chipClass(pickedSize === s)}>{s}</button>
                   ))}
                 </div>
-              </div>
+              </div>}
               <div className="space-y-2">
                 <p className="text-[10px] font-medium tracking-[1px] uppercase text-muted-foreground">Start with</p>
                 <div className="flex flex-wrap gap-2" role="group" aria-label="Start with">
