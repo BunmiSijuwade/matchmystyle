@@ -5,7 +5,8 @@ import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { useAnalysis, type DetectedItem, type LookTier } from "@/contexts/AnalysisContext";
+import { useAnalysis, type DetectedItem, type LookTier, type AestheticResult } from "@/contexts/AnalysisContext";
+import ReviewPieces from "@/components/analyzer/ReviewPieces";
 import { readProfileSize } from "@/lib/shopCatalog";
 
 const SIZE_CHIPS = ["XS", "S", "M", "L", "XL+"];
@@ -75,6 +76,8 @@ const Analyzer = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [analyzeStep, setAnalyzeStep] = useState(0);
+  // Redesign: after the photo is read, step 2 (review pieces and sizes) shows before matching starts.
+  const [review, setReview] = useState<{ items: DetectedItem[]; imageUrl: string | null; imagePayload: { imageBase64: string; mimeType: string }; aesthetics: AestheticResult[]; summary: string } | null>(null);
 
   // Clipboard paste support via extracted hook
   const onImagePasted = useCallback((file: File) => {
@@ -175,6 +178,11 @@ const Analyzer = () => {
       }
 
       const displayUrl = filePreviewUrl;
+      if (redesign) {
+        setReview({ items, imageUrl: displayUrl, imagePayload, aesthetics: data.aesthetics ?? [], summary: data.aestheticSummary ?? "" });
+        window.scrollTo({ top: 0 });
+        return;
+      }
       setLookPrefs({ size: pickedSize, tier: startTier });
       setAnalysis(items, displayUrl, imagePayload, null, null, data.aesthetics ?? [], data.aestheticSummary ?? "");
       navigate("/results");
@@ -195,6 +203,15 @@ const Analyzer = () => {
       {redesign ? <><TopNav active="match" /><TabBar active="match" /></> : <Navbar />}
       <Toaster />
       <div className={`container max-w-6xl mx-auto px-4 sm:px-6 pb-16 ${redesign ? "pt-8 sm:pt-10" : "pt-24 sm:pt-28"}`}>
+        {redesign && review ? (
+          <ReviewPieces items={review.items} imageUrl={review.imageUrl} initialSize={pickedSize}
+            onBack={() => { setReview(null); setFilePreviewUrl(null); setUploadedFile(null); }}
+            onConfirm={(sizes, skip) => {
+              setLookPrefs({ size: pickedSize, tier: startTier, sizes, skip });
+              setAnalysis(review.items, review.imageUrl, review.imagePayload, null, null, review.aesthetics, review.summary);
+              navigate("/results");
+            }} />
+        ) : (<>
         {/* Header */}
         <div className="mb-8 sm:mb-10 max-w-[720px] mx-auto lg:mx-0">
           <p className="text-[12px] font-bold tracking-[1px] uppercase text-muted-foreground mb-3">Outfit analyzer</p>
@@ -419,6 +436,7 @@ const Analyzer = () => {
         <div className="mt-14">
           <WhatToExpect />
         </div>
+        </>)}
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ import { getAesthetic } from "@/data/aesthetics";
 import { buildLookHandoff } from "@/lib/buildLookRequest";
 import { alternativesFor, assembleLook, lookReady, TIER_NAMES, type LookPiece, type ShopTier } from "@/lib/assembleLook";
 import { useAnalysis, type DetectedItem, type LookTier } from "@/contexts/AnalysisContext";
-import { useLiveMatches } from "@/hooks/useLiveMatches";
+import { useLiveMatches, sizeForItem } from "@/hooks/useLiveMatches";
 import { CATALOG_GENDER, formatPrice, majorAmount, readProfileSize, searchCatalog, type CatalogProduct } from "@/lib/shopCatalog";
 import { getSizeRecommendation, brandFitNote, type UserMeasurements } from "@/services/sizingService";
 import { isRedesign } from "@/lib/redesign";
@@ -49,7 +49,11 @@ const Results = () => {
   const [ask, setAsk] = useState("");
   const [redesign] = useState(() => isRedesign());
   const [more, setMore] = useState<Record<string, { status: "loading" | "done" | "error"; products: CatalogProduct[] }>>({});
-  useEffect(() => setOverrides({}), [items]);
+  // Pieces unticked on the Analyzer's review step start removed (in both price tiers) so they can be added back.
+  useEffect(() => {
+    const skip = lookPrefs.skip ?? [];
+    setOverrides(Object.fromEntries(skip.flatMap((id) => [[`budget:${id}`, "removed" as const], [`midRange:${id}`, "removed" as const]])));
+  }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Original items (without profile) for reverting
   const [originalItems, setOriginalItems] = useState<DetectedItem[] | null>(null);
@@ -85,13 +89,13 @@ const Results = () => {
   }, [profileData, useProfile]);
 
   const size = lookPrefs.size ?? readProfileSize();
-  const { state: liveState } = useLiveMatches(items, lookPrefs.size);
+  const { state: liveState } = useLiveMatches(items, lookPrefs.size, lookPrefs.sizes);
   const sizeNoteFor = useCallback((p: CatalogProduct, item: DetectedItem): string | null => {
     const title = `${p.merchantName ?? ""} ${p.title}`;
     const rec = userMeasurements ? getSizeRecommendation(title, item.description, userMeasurements) : null;
     if (rec) return `${rec.brandRunsSmall ? "Runs small, " : rec.brandRunsLarge ? "Runs large, " : ""}order ${rec.recommendedSize}`;
-    return brandFitNote(title, size) ?? item.sizeNote ?? null;
-  }, [userMeasurements, size]);
+    return brandFitNote(title, sizeForItem(item, lookPrefs.sizes, size) ?? size) ?? item.sizeNote ?? null;
+  }, [userMeasurements, size, lookPrefs.sizes]);
 
   useEffect(() => {
     if (!items || items.length === 0) {

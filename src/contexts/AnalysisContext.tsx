@@ -58,7 +58,11 @@ interface AnalysisState {
 }
 
 export type LookTier = "budget" | "midRange" | "vintage";
-export interface LookPrefs { size: string | null; tier: LookTier }
+/** Sizes picked on the Analyzer's review step, per kind of piece. null = not picked (falls back to `size`). */
+export interface PieceSizes { tops: string | null; bottoms: string | null; shoes: string | null }
+/** size: the general clothing size. sizes: per-kind sizes from the review step. skip: piece ids unticked on the
+ *  review step; they're still matched but start removed on Your look so they can be added back. */
+export interface LookPrefs { size: string | null; tier: LookTier; sizes?: PieceSizes; skip?: string[] }
 
 interface AnalysisContextType extends AnalysisState {
   lookPrefs: LookPrefs;
