@@ -1,38 +1,60 @@
-// Redesigned Home, editorial look (Nov 15, 2026): hero match, what it is, See it work app loop, Shop by aesthetic. One composer: words go to the Concierge,
+// Redesigned Home (Nov 17, 2026 mockup): hero with the real Nov 15 match photo and numbered piece tags, How it works,
+// a navy band with the app loop, Shop by aesthetic. One composer: words go to the Concierge,
 // "Add photo" opens the analyzer, and a pasted link shows a note (links aren't analyzed). Aesthetic cards open the Concierge's
 // local (no-AI) aesthetic look via ?aesthetic=<slug>.
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Camera } from "lucide-react";
+import { Upload } from "lucide-react";
 import { aesthetics } from "@/components/home/aesthetics";
 import { TopNav, TabBar, SiteFooter } from "@/components/v2/SiteNav";
 import { composerTarget } from "@/lib/composerTarget";
 import HeroLoop from "@/components/home/v2/HeroLoop";
-import HeroMatch from "@/components/home/v2/HeroMatch";
-import { MATCH_SIZE } from "@/components/home/v2/heroMatchData";
+import { MATCH_SIZE, OUTFIT, PIECES, TOTALS } from "@/components/home/v2/heroMatchData";
+import { V2 } from "@/lib/redesign";
 import { ED, caps, loadHomeSerif } from "@/components/home/v2/editorial";
 
 const HOW = [
-  { title: "Upload", text: "Add an outfit photo and pick your size." },
-  { title: "Your look", text: "We name every piece in the photo." },
-  { title: "Your price", text: "Choose Budget, Mid, Splurge or vintage for each piece." },
-  { title: "Shop it", text: "Shop all six in your size, or just the ones you want." },
+  { title: "Upload", text: "A screenshot, a street photo, a post you saved." },
+  { title: "We spot each piece", text: "Numbered right on the photo, so you can drop what you don't want." },
+  { title: "Shop in your size", text: "Budget, Mid, Splurge or vintage, with fit notes for every piece." },
 ];
+const display = { fontFamily: V2.display, fontWeight: 800, fontStretch: "115%" } as const;
 
-function HowStep({ n, title, text }: { n: number; title: string; text: string }) {
+/** The real Nov 15 run's outfit photo with a numbered tag on each matched piece (from heroMatchData.ts). */
+function HeroPhoto() {
   return (
-    <li className="flex gap-4 lg:gap-5 py-3 lg:py-[18px] border-b" style={{ borderColor: ED.hair }}>
-      <span className="text-[11px] lg:text-[12px] font-semibold tracking-[0.1em] pt-[3px]" style={{ color: ED.accent, fontVariantNumeric: "tabular-nums" }}>
-        {String(n).padStart(2, "0")}
-      </span>
-      <span className="flex flex-col gap-0.5 lg:gap-1">
-        <span className="text-[15px] lg:text-[18px] font-semibold">{title}</span>
-        <span className="text-[14px] lg:text-[16px] leading-normal" style={{ color: ED.body }}>{text}</span>
-      </span>
-    </li>
+    <div>
+    <figure className="relative m-0 w-full aspect-[896/1200] max-h-[680px]" style={{ background: V2.sand }}>
+      <img src={OUTFIT} alt="Woman in a lilac fleece vest over a denim shirt, white tee and light jeans, holding a leopard clutch. Numbered tags name each matched piece."
+        className="w-full h-full object-cover block" />
+      {PIECES.map((p, i) => {
+        const right = p.dot[0] > 62;
+        return (
+          <span key={p.name} aria-hidden="true" className={`absolute -translate-y-1/2 flex items-center gap-1.5 ${right ? "flex-row-reverse -translate-x-full" : ""}`}
+            style={{ left: `calc(${p.dot[0]}% ${right ? "+ 13px" : "- 13px"})`, top: `${p.dot[1]}%` }}>
+            <span className="w-[26px] h-[26px] rounded-full bg-white border-2 flex items-center justify-center text-[11px] font-bold flex-shrink-0"
+              style={{ borderColor: V2.red, color: V2.ink, fontVariantNumeric: "tabular-nums" }}>{i + 1}</span>
+            <span className="hidden sm:inline px-2 py-1 text-[10px] lg:text-[11px] font-semibold uppercase tracking-[0.08em] whitespace-nowrap" style={{ background: V2.ink, color: V2.paper }}>{p.name}</span>
+          </span>
+        );
+      })}
+      <figcaption className="absolute left-0 bottom-0 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: V2.ink }}>
+        One real match · Size {MATCH_SIZE} · Mid {TOTALS.mid}
+      </figcaption>
+    </figure>
+    {/* Phones show numbers only on the photo, so the piece names are listed underneath. */}
+    <ol className="sm:hidden list-none m-0 mt-3 p-0 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[13px]">
+      {PIECES.map((p, i) => (
+        <li key={p.name} className="flex items-baseline gap-2">
+          <span className="font-bold" style={{ color: V2.accent, fontVariantNumeric: "tabular-nums" }}>{i + 1}</span>
+          <span className="flex-1 min-w-0">{p.name}</span>
+          <span style={{ fontVariantNumeric: "tabular-nums" }}>{p.price}</span>
+        </li>
+      ))}
+    </ol>
+    </div>
   );
 }
-
 
 export default function HomeV2() {
   const navigate = useNavigate();
@@ -63,84 +85,90 @@ export default function HomeV2() {
     <div className="min-h-screen pb-40 md:pb-28" style={{ background: ED.page, color: ED.ink }}>
       <TopNav active="home" bg={ED.page} />
 
-      {/* Desktop: labels share one row; then text, photo and piece list share one top and one bottom line. */}
-      <section className="max-w-6xl mx-auto px-5 lg:px-8 pt-8 pb-10 lg:pt-14 lg:pb-16 grid gap-x-8 gap-y-5 lg:gap-y-[22px] lg:grid-cols-[minmax(0,0.44fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,0.6fr)_minmax(0,1fr)] lg:grid-rows-[auto_1fr] items-stretch">
-        <p className={`m-0 text-[11px] lg:text-[12px] ${caps}`} style={{ color: ED.muted }}>Find it. Fit it. Shop it.</p>
-        <p className={`hidden lg:block m-0 text-[12px] ${caps}`} style={{ color: ED.muted }}>One real match · Size {MATCH_SIZE} · Mid</p>
-        <div className="flex flex-col gap-5 mb-5 lg:mb-0">
-          <h1 className="m-0 text-[44px] sm:text-[56px] lg:text-[42px] xl:text-[52px] leading-[1.04] tracking-[-1px] font-medium" style={{ fontFamily: ED.serif }}>
-            See a look you love? <span className="block italic pl-[0.05em]" style={{ color: ED.accent }}>Shop it in your size.</span>
-          </h1>
-          <p className="m-0 text-[16px] lg:text-[18px] leading-relaxed max-w-[460px]" style={{ color: ED.body }}>
-            Drop in any outfit. We find every piece in your size, at the price you want, new or vintage.
+      <section className="max-w-6xl mx-auto px-5 lg:px-8 pt-8 pb-12 lg:pt-14 lg:pb-16 grid gap-10 lg:gap-12 lg:grid-cols-2 items-center">
+        <div className="flex flex-col gap-5 lg:gap-6">
+          <p className="m-0 flex items-center gap-3">
+            <span aria-hidden="true" className="block w-7 h-[3px]" style={{ background: V2.red }} />
+            <span className="text-[12px] lg:text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: V2.accent }}>Outfit finder</span>
           </p>
+          <h1 className="m-0 text-[38px] sm:text-[52px] lg:text-[56px] xl:text-[64px] leading-[0.98] tracking-[-0.01em] uppercase" style={display}>
+            Saw the look? Shop it in your size.
+          </h1>
+          <p className="m-0 max-w-[34rem] text-[19px] lg:text-[22px] leading-[1.4] italic" style={{ fontFamily: V2.serif, color: V2.muted }}>
+            Upload any outfit photo. We spot each piece and find it at your price, cut for your size.
+          </p>
+          <div className="flex flex-wrap gap-3 mt-1">
+            <Link to="/analyzer" className="min-h-[56px] px-8 flex items-center gap-2.5 text-white text-[14px] font-bold uppercase tracking-[0.12em]" style={{ background: V2.fill, fontStretch: "115%" }}>
+              <Upload className="w-[18px] h-[18px]" strokeWidth={1.8} aria-hidden="true" />Upload a photo
+            </Link>
+            <Link to="/analyzer" className="min-h-[56px] px-7 flex items-center border-[1.5px] text-[14px] font-bold uppercase tracking-[0.12em]" style={{ borderColor: V2.ink, color: V2.ink, fontStretch: "115%" }}>
+              Or drop it here
+            </Link>
+          </div>
 
-          <form ref={composerRef} onSubmit={submit} className="flex flex-col gap-2.5 lg:gap-3 border-t pt-5 max-w-[520px] lg:mt-auto" style={{ borderColor: ED.ink }}>
-            <label htmlFor="home-composer" className={`text-[11px] lg:text-[12px] ${caps}`}>Start with anything</label>
-            <input id="home-composer" value={text} onChange={(e) => { setText(e.target.value); setLinkNote(false); }} maxLength={2000}
-              placeholder="Describe a look, or add a photo" enterKeyHint="go"
-              aria-invalid={linkNote || undefined} aria-describedby={linkNote ? "home-composer-note" : undefined}
-              className="h-[52px] border px-4 text-[16px] bg-white focus:outline-none focus:ring-2"
-              style={{ borderColor: linkNote ? ED.error : ED.ink }} />
-            <div className="grid grid-cols-2 gap-2 lg:gap-2.5">
-              <Link to="/analyzer" className={`h-[52px] border flex items-center justify-center gap-2 text-[12px] lg:text-[13px] ${caps}`} style={{ borderColor: ED.ink, color: ED.ink }}>
-                <Camera className="w-[18px] h-[18px]" strokeWidth={1.5} aria-hidden="true" />Add photo
-              </Link>
-              <button type="submit" className={`h-[52px] text-white text-[12px] lg:text-[13px] ${caps}`} style={{ background: ED.fill }}>Match it</button>
+          <form ref={composerRef} onSubmit={submit} className="flex flex-col gap-2 border-t pt-5 mt-2 max-w-[560px]" style={{ borderColor: V2.line }}>
+            <label htmlFor="home-composer" className="text-[19px] italic" style={{ fontFamily: V2.serif }}>No photo? Ask the concierge</label>
+            <div className="flex flex-wrap gap-2">
+              <input id="home-composer" value={text} onChange={(e) => { setText(e.target.value); setLinkNote(false); }} maxLength={2000}
+                placeholder="e.g. a camel coat that works with wide-leg jeans" enterKeyHint="go"
+                aria-invalid={linkNote || undefined} aria-describedby={linkNote ? "home-composer-note" : undefined}
+                className="flex-[1_1_260px] min-w-0 h-[52px] border-[1.5px] px-4 text-[16px] bg-white focus:outline-none focus:ring-2"
+                style={{ borderColor: linkNote ? V2.redInk : V2.muted }} />
+              <button type="submit" className="h-[52px] px-6 text-white text-[13px] font-bold uppercase tracking-[0.12em]" style={{ background: V2.fill }}>Ask</button>
             </div>
             {linkNote ? (
-              <p id="home-composer-note" role="alert" className="m-0 text-[13px] font-semibold" style={{ color: ED.error }}>
-                Links can't be matched. Save or screenshot the photo, then tap Add photo.
+              <p id="home-composer-note" role="alert" className="m-0 text-[13px] font-semibold" style={{ color: V2.redInk }}>
+                Links can't be matched. Save or screenshot the photo, then tap Upload a photo.
               </p>
             ) : (
-              <p className="m-0 text-[12px] lg:text-[13px]" style={{ color: ED.muted }}>Free to try. No account needed.</p>
+              <p className="m-0 text-[13px]" style={{ color: V2.muted }}>Free to try. No account needed.</p>
             )}
           </form>
         </div>
 
-        <HeroMatch />
+        <HeroPhoto />
       </section>
 
-      <section className="border-t" style={{ borderColor: ED.ink }} aria-labelledby="what-it-is">
-        <div className="max-w-6xl mx-auto px-5 lg:px-8 py-7 lg:py-10 grid gap-3 lg:gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-          <h2 id="what-it-is" className="m-0 text-[26px] lg:text-[36px] font-normal" style={{ fontFamily: ED.serif }}>What MatchMyStyle is</h2>
-          <div className="flex flex-col gap-2 text-[16px] lg:text-[18px] leading-relaxed" style={{ color: ED.body }}>
-            <p className="m-0">The outfits you see online are rarely linked.</p>
-            <p className="m-0">When they are, the piece is out of budget or not in your size.</p>
-            <p className="m-0" style={{ color: ED.ink }}>MatchMyStyle finds every piece and shows real matches you can buy in your size, new or secondhand.</p>
-          </div>
-        </div>
+      <section id="how-it-works" className="border-y scroll-mt-6" style={{ borderColor: V2.line }} aria-label="How it works">
+        <ol className="max-w-6xl mx-auto px-5 lg:px-8 list-none m-0 grid sm:grid-cols-3">
+          {HOW.map((h, i) => (
+            <li key={h.title} className={`py-7 lg:py-8 flex flex-col gap-2 sm:px-6 sm:first:pl-0 sm:last:pr-0 ${i ? "border-t sm:border-t-0 sm:border-l" : ""}`} style={{ borderColor: V2.line }}>
+              <span className="text-[34px] leading-none" style={{ fontFamily: V2.serif }} aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+              <h2 className="m-0 text-[18px] uppercase" style={display}>{h.title}</h2>
+              <p className="m-0 text-[15px] leading-relaxed" style={{ color: V2.muted }}>{h.text}</p>
+            </li>
+          ))}
+        </ol>
       </section>
 
-      <section id="how-it-works" className="border-t scroll-mt-6" style={{ borderColor: ED.ink, background: ED.band }} aria-labelledby="how-heading">
-        <div className="max-w-6xl mx-auto px-5 lg:px-8 py-8 lg:py-16 grid gap-6 lg:gap-20 lg:grid-cols-[minmax(0,1fr)_auto] items-center">
-          <div>
-            <p className={`m-0 mb-2 lg:mb-2.5 text-[11px] lg:text-[12px] ${caps}`} style={{ color: ED.muted }}>See it work</p>
-            <h2 id="how-heading" className="m-0 mb-0 lg:mb-8 text-[32px] lg:text-[52px] leading-[1.03] font-normal" style={{ fontFamily: ED.serif }}>
-              From one photo to <span className="italic" style={{ color: ED.accent }}>six pieces.</span>
-            </h2>
-            <ol className="hidden lg:block list-none m-0 p-0 border-t max-w-[520px]" style={{ borderColor: ED.ink }}>
-              {HOW.map((h, i) => <HowStep key={h.title} n={i + 1} {...h} />)}
-            </ol>
+      <section style={{ background: V2.ink, color: V2.paper }} aria-labelledby="phone-heading">
+        <div className="max-w-6xl mx-auto px-5 lg:px-8 py-14 lg:py-20 grid gap-10 lg:gap-14 lg:grid-cols-[minmax(0,1fr)_auto] items-center">
+          <div className="flex flex-col gap-4 lg:gap-5">
+            <p className="m-0 text-[13px] font-semibold uppercase tracking-[0.16em]">On your phone</p>
+            <h2 id="phone-heading" className="m-0 text-[32px] lg:text-[46px] leading-[1] uppercase" style={{ ...display, color: V2.paper }}>One photo in. A full look out.</h2>
+            <p className="m-0 max-w-[30rem] text-[19px] lg:text-[21px] leading-[1.45] italic" style={{ fontFamily: V2.serif }}>
+              Every look comes as Budget, Mid, Splurge or vintage, with the total and a fit note for each piece.
+            </p>
+            <Link to="/analyzer" className="self-start min-h-[52px] px-7 flex items-center border-[1.5px] text-[13px] font-bold uppercase tracking-[0.12em] focus-visible:outline-white"
+              style={{ borderColor: V2.paper, color: V2.paper }}>
+              See an example look
+            </Link>
           </div>
-          <div className="flex justify-center">
+          <div className="justify-self-center bg-white px-5 py-6 lg:px-8 lg:py-8">
             <HeroLoop />
           </div>
-          <ol className="lg:hidden list-none m-0 p-0 border-t" style={{ borderColor: ED.ink }}>
-            {HOW.map((h, i) => <HowStep key={h.title} n={i + 1} {...h} />)}
-          </ol>
         </div>
       </section>
 
-      <section className="border-t" style={{ borderColor: ED.ink }} aria-labelledby="by-aesthetic">
-        <div className="max-w-6xl mx-auto px-5 lg:px-8 pt-8 pb-4 lg:pt-14">
-          <h2 id="by-aesthetic" className="m-0 mb-4 lg:mb-7 text-[30px] lg:text-[44px] font-normal" style={{ fontFamily: ED.serif }}>Shop by aesthetic</h2>
+      <section aria-labelledby="by-aesthetic">
+        <div className="max-w-6xl mx-auto px-5 lg:px-8 pt-10 pb-4 lg:pt-14">
+          <h2 id="by-aesthetic" className="m-0 mb-5 lg:mb-7 text-[26px] lg:text-[36px] uppercase" style={display}>Shop by aesthetic</h2>
           <div className="grid grid-cols-2 gap-x-3.5 gap-y-5 lg:grid-cols-4 lg:gap-6">
             {aesthetics.map((a) => (
               <Link key={a.slug} to={`/concierge?aesthetic=${a.slug}`} className="flex flex-col gap-2 lg:gap-3">
                 <img src={a.photo} alt={a.photoAlt} loading="lazy" className="w-full aspect-[4/5] object-cover" style={{ objectPosition: a.photoPosition }} />
-                <span className="text-[17px] lg:text-[22px] leading-tight" style={{ fontFamily: ED.serif }}>{a.name}</span>
-                <span className={`text-[11px] lg:text-[12px] ${caps}`} style={{ color: ED.muted }}>{a.hood}</span>
+                <span className="text-[17px] lg:text-[22px] leading-tight" style={{ fontFamily: V2.serif }}>{a.name}</span>
+                <span className={`text-[11px] lg:text-[12px] ${caps}`} style={{ color: V2.muted }}>{a.hood}</span>
               </Link>
             ))}
           </div>

@@ -1,5 +1,5 @@
 // One real analyzer run (Nov 15, 2026): the Firefly outfit, Off-Duty Muse, size M, Mid-range $428.
-// Shared by the Home hero (HeroMatch) and the app preview (HeroLoop). Never edit products, prices or totals by
+// Shared by the Home hero photo (HomeV2) and the app preview (HeroLoop). Never edit products, prices or totals by
 // hand: rerun the analyzer and replace the images, pieces and totals together (see AGENTS.md).
 // dot = where each piece's number sits on the outfit photo, as % of width and height (placed by hand).
 
