@@ -1,6 +1,6 @@
 // Redesigned "Your look" (shown only with the redesign switch on, see src/lib/redesign.ts). Layout follows the
-// Nov 17, 2026 mockup: look tabs, a flat-lay board you pick pieces on, one "pick your price" panel for the picked
-// piece, then the piece list.
+// Nov 17, 2026 mockup, simplified after a real run looked too busy: look tabs, a clean grid board, a "pick your
+// price" panel that opens only for the piece you pick, then a light piece list.
 // Presentation only: every product comes from the same assembleLook / useLiveMatches / overrides state Results
 // already owns (tabs and price picks call onUse / onTier / onRemove), so this screen can't show a product the
 // catalog didn't return.
@@ -47,16 +47,15 @@ export interface LookStudioProps {
   footer: ReactNode;
 }
 
-// Flat-lay spots, as % of the board (back to front). No tilt: pieces overlap a little, like a laid-out outfit.
+// The board: pieces laid out in layers, slightly tilted, back to front (as % of the board).
 const SPOTS = [
-  { l: 5, t: 4, w: 42, h: 50 },
-  { l: 50, t: 6, w: 36, h: 36 },
-  { l: 30, t: 44, w: 34, h: 52 },
-  { l: 68, t: 64, w: 27, h: 30 },
-  { l: 4, t: 60, w: 26, h: 34 },
-  { l: 70, t: 36, w: 24, h: 26 },
+  { l: 3, t: 3, w: 50, h: 56, r: -4 },
+  { l: 48, t: 5, w: 44, h: 46, r: 3 },
+  { l: 33, t: 43, w: 42, h: 52, r: -2 },
+  { l: 4, t: 61, w: 36, h: 36, r: 4 },
+  { l: 68, t: 57, w: 29, h: 33, r: 7 },
+  { l: 60, t: 30, w: 28, h: 28, r: -5 },
 ];
-
 const SHOP_TIERS: ShopTier[] = ["budget", "midRange", "luxury"];
 const RANGE: Record<ShopTier, string> = {
   budget: `under $${PRICE_TIERS.budgetMax}`,
@@ -69,14 +68,6 @@ const label = "text-[11px] font-bold uppercase tracking-[0.12em]";
 const eyebrow = "text-[12px] font-semibold uppercase tracking-[0.16em]";
 const usd = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 
-/** Numbered piece marker: white dot, red ring, navy number (red is decoration only, never behind text). */
-function Dot({ n, muted = false }: { n: number; muted?: boolean }) {
-  return (
-    <span aria-hidden="true" className="w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-extrabold flex-shrink-0 border-2"
-      style={{ background: muted ? V2.sand : V2.card, borderColor: muted ? V2.line : V2.red, color: muted ? V2.muted : V2.ink }}>{n}</span>
-  );
-}
-
 export default function LookStudio(p: LookStudioProps) {
   useEffect(loadRedesignFont, []);
   const [view, setView] = useState<View>("board");
@@ -87,8 +78,12 @@ export default function LookStudio(p: LookStudioProps) {
   const bought = shown.filter((x) => x.product);
   const stylePieces: StylePiece[] = bought.slice(0, 4).map((x) => ({ label: x.item.category, title: x.product!.title, imageUrl: x.product!.imageUrl }));
   const activeView: View = vintage ? "original" : view;
-  const num = (id: string) => all.findIndex((x) => x.item.id === id) + 1;
-  const sel = all.find((x) => x.item.id === selId) ?? shown[0] ?? all[0] ?? null;
+  // The price panel opens only once a piece is picked (on the board or with Change in the list).
+  const sel = selId ? all.find((x) => x.item.id === selId) ?? null : null;
+  const pick = (id: string, scroll = false) => {
+    setSelId(id);
+    if (scroll) setTimeout(() => document.getElementById("piece-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+  };
 
   const matchesOf = (id: string) => p.liveState[id]?.matches;
   /** Which price range a piece's product comes from; null when it came from More options. */
@@ -134,35 +129,35 @@ export default function LookStudio(p: LookStudioProps) {
   const lookName = current === "mix" ? "Your mix" : current === "vintage" ? "Vintage finds" : `The ${TIER_NAMES[current]} look`;
   const shopLabel = current === "mix" ? "Shop your mix" : "Shop the full look";
 
+  // Tier labels only matter once tiers are mixed; in a one-tier look they'd all say the same thing.
+  const showTier = current === "mix";
+  const onBoard = shown.filter((x) => x.product).slice(0, SPOTS.length);
   const board = (
-    <div className="relative h-[440px] lg:h-[520px] overflow-hidden" style={{ background: V2.sand }}>
-      {shown.slice(0, SPOTS.length).map((x, i) => {
-        const s = SPOTS[i];
-        const on = sel?.item.id === x.item.id;
-        const n = num(x.item.id);
-        return (
-          <button key={x.item.id} onClick={() => setSelId(x.item.id)} aria-pressed={on}
-            aria-label={`${n} ${x.item.category}, ${x.product ? tierName(x) : "no match yet"}${on ? ", selected" : ""}. Change this piece`}
-            className="absolute bg-white p-1.5 flex flex-col text-left"
-            style={{ left: `${s.l}%`, top: `${s.t}%`, width: `${s.w}%`, height: `${s.h}%`, zIndex: on ? 10 : i + 1, boxShadow: "0 2px 10px rgba(10,30,50,0.12)", outline: on ? `3px solid ${V2.ink}` : "none" }}>
-            {x.product ? (
-              <img src={x.product.imageUrl} alt="" className="w-full flex-1 min-h-0 object-cover bg-muted" loading="lazy" />
-            ) : (
-              <span className={`w-full flex-1 min-h-0 flex items-center justify-center text-[11px] text-center px-2 ${x.status === "loading" ? "animate-pulse" : ""}`} style={{ background: V2.sand, color: V2.muted }}>
-                {x.status === "loading" ? "finding…" : "no match yet"}
-              </span>
-            )}
-            <span className="absolute top-2.5 left-2.5"><Dot n={n} /></span>
-            {x.product && (
-              <span className="absolute bottom-2.5 left-2.5 px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-[0.1em]" style={{ background: V2.card, borderColor: V2.ink, color: V2.ink }}>{tierName(x)}</span>
-            )}
-          </button>
-        );
-      })}
-      {!shown.length && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-center px-6">
-          <p className="text-[18px] uppercase" style={display}>Your board is empty</p>
-          <p className="text-[14px]" style={{ color: V2.muted }}>Add a piece back from the row below.</p>
+    <div style={{ background: V2.sand }}>
+      {onBoard.length ? (
+        <div className="relative h-[420px] lg:h-[480px]">
+          {onBoard.map((x, i) => {
+            const s = SPOTS[i];
+            const on = sel?.item.id === x.item.id;
+            return (
+              <button key={x.item.id} onClick={() => pick(x.item.id)} aria-pressed={on}
+                aria-label={`${x.item.category}, ${tierName(x)}${on ? ", selected" : ""}. Change this piece`}
+                className="absolute bg-white p-1.5 pb-0 flex flex-col text-left"
+                style={{ left: `${s.l}%`, top: `${s.t}%`, width: `${s.w}%`, height: `${s.h}%`, transform: `rotate(${s.r}deg)`, zIndex: on ? 20 : i + 1,
+                  boxShadow: "0 4px 12px rgba(10,30,50,0.16)", outline: on ? `2px solid ${V2.ink}` : "none" }}>
+                <img src={x.product!.imageUrl} alt="" className="w-full flex-1 min-h-0 object-cover bg-white" loading="lazy" />
+                <span className="flex justify-between gap-1 py-1 px-0.5 text-[11px]" style={{ color: V2.ink }}>
+                  <span className="font-bold truncate">{x.item.category}</span>
+                  <span className="font-semibold">{formatPrice(x.product!.price)}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="py-16 flex flex-col items-center justify-center gap-1 text-center px-6">
+          <p className="text-[18px] uppercase" style={display}>{shown.some((x) => x.status === "loading") ? "Finding your pieces…" : "Your board is empty"}</p>
+          {!shown.some((x) => x.status === "loading") && <p className="text-[14px]" style={{ color: V2.muted }}>Add a piece back from the list.</p>}
         </div>
       )}
     </div>
@@ -203,23 +198,8 @@ export default function LookStudio(p: LookStudioProps) {
     </section>
   );
 
-  const strip = !vintage && all.length > 0 && (
-    <div role="group" aria-label="Choose a piece" className="flex flex-wrap gap-2 mt-3">
-      {all.map((x) => {
-        const on = sel?.item.id === x.item.id;
-        return (
-          <button key={x.item.id} onClick={() => setSelId(x.item.id)} aria-pressed={on}
-            className="min-h-[52px] pl-1.5 pr-3 py-1 border inline-flex items-center gap-2 text-left"
-            style={on ? { background: V2.ink, color: V2.paper, borderColor: V2.ink } : { background: V2.card, color: V2.ink, borderColor: V2.ink }}>
-            <Dot n={num(x.item.id)} muted={x.removed} />
-            <span className="flex flex-col">
-              <span className={`text-[14px] font-bold leading-tight ${x.removed ? "line-through" : ""}`}>{x.item.category}</span>
-              <span className="text-[11px] uppercase tracking-[0.06em]">{x.removed ? "Removed" : x.product ? tierName(x) : x.status === "loading" ? "Finding" : "No match"}</span>
-            </span>
-          </button>
-        );
-      })}
-    </div>
+  const strip = !vintage && !sel && onBoard.length > 0 && (
+    <p className="mt-2.5 text-[13px]" style={{ color: V2.muted }}>Tap a piece to change its price or swap it.</p>
   );
 
   const totals = !vintage && (
@@ -313,7 +293,7 @@ export default function LookStudio(p: LookStudioProps) {
           <div className="lg:w-[500px] lg:flex-shrink-0">
             {stage}
             {strip}
-            {!vintage && sel && <PiecePanel key={sel.item.id} n={num(sel.item.id)} piece={sel} p={p} />}
+            {!vintage && sel && <PiecePanel key={sel.item.id} piece={sel} p={p} onClose={() => setSelId(null)} />}
             {totals}
             {actions}
             {concierge}
@@ -347,7 +327,7 @@ export default function LookStudio(p: LookStudioProps) {
                   <h2 className="text-[22px] uppercase" style={display}>The pieces</h2>
                   <span className="text-[13px]" style={{ color: V2.muted }}>{bought.length} pieces · {p.running(p.tier)}</span>
                 </div>
-                {all.map((x) => <PieceRow key={x.item.id} n={num(x.item.id)} piece={x} p={p} tier={tierName(x)} onPick={() => setSelId(x.item.id)} />)}
+                {all.map((x) => <PieceRow key={x.item.id} piece={x} p={p} tier={showTier ? tierName(x) : null} onPick={() => pick(x.item.id, true)} />)}
               </section>
             )}
             <p className="mt-4 text-[12px] leading-relaxed" style={{ color: V2.muted }}>
@@ -374,91 +354,82 @@ export default function LookStudio(p: LookStudioProps) {
 }
 
 /** The picked piece: pick your price, more options, remove / add back. */
-function PiecePanel({ n, piece, p }: { n: number; piece: StudioPiece; p: LookStudioProps }) {
+function PiecePanel({ piece, p, onClose }: { piece: StudioPiece; p: LookStudioProps; onClose: () => void }) {
   const { item, product, removed, status } = piece;
   const matches = p.liveState[item.id]?.matches;
   const extra = p.more[item.id];
-  const cells = SHOP_TIERS.map((tier) => {
-    const list = matches?.[tier] ?? [];
-    const pick = (product && list.find((x) => x.key === product.key)) || list[0] || null;
-    return { tier, product: pick, on: !!(pick && product && pick.key === product.key) };
-  });
-  const shownKeys = [product?.key, ...cells.map((c) => c.product?.key)].filter(Boolean) as string[];
-  const extras = extra?.status === "done" ? extra.products.filter((x) => !shownKeys.includes(x.key)) : [];
+  // One row of options, not split by price range: what's in the look first, then the best matches from every
+  // range (and any More options results), cheapest first.
+  const pool: CatalogProduct[] = [];
+  const seen = new Set<string>();
+  const add = (x: CatalogProduct | null | undefined) => { if (x && !seen.has(x.key)) { seen.add(x.key); pool.push(x); } };
+  add(product);
+  const others: CatalogProduct[] = [
+    ...SHOP_TIERS.flatMap((t) => (matches?.[t] ?? []).slice(0, 2)),
+    ...(extra?.status === "done" ? extra.products : []),
+  ].sort((a, b) => majorAmount(a.price) - majorAmount(b.price));
+  others.forEach(add);
+  const options = pool.slice(0, extra?.status === "done" ? 12 : 6);
+  const shownKeys = options.map((x) => x.key);
   const note = product ? p.sizeNoteFor(product, item) : null;
   const loadMore = () => p.onMore(item, shownKeys);
+  const textBtn = "min-h-[44px] text-[13px] font-bold uppercase tracking-[0.06em] underline underline-offset-4 inline-flex items-center gap-1.5";
 
   return (
-    <section aria-label={`${item.category} options`} className="mt-4 border-[1.5px] p-4" style={{ borderColor: V2.ink }}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <section id="piece-panel" aria-label={`${item.category} options`} className="mt-3 border-[1.5px] p-4 scroll-mt-24" style={{ borderColor: V2.ink, background: V2.card }}>
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <Dot n={n} muted={removed} />
-          <h2 className="text-[17px] font-bold">{item.category}</h2>
+          <h2 className="text-[16px] font-bold truncate">{item.category}</h2>
+          {note && !removed && <span className="hidden sm:inline text-[12px] truncate" style={{ color: V2.muted }}>· {note}</span>}
         </div>
-        {removed ? (
-          <button onClick={() => p.onRestore(item.id)} className="min-h-[44px] px-4 border text-[13px] font-bold inline-flex items-center gap-1.5" style={{ borderColor: V2.ink }}>
-            <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />Add back to look
-          </button>
-        ) : (
-          <button onClick={() => p.onRemove(item.id)} className="min-h-[44px] px-1 text-[13px] font-bold uppercase tracking-[0.06em] underline underline-offset-4 inline-flex items-center gap-1" style={{ color: V2.ink }}>
-            <X className="w-3.5 h-3.5" aria-hidden="true" />Remove from look
-          </button>
-        )}
+        <button onClick={onClose} aria-label="Close" className="w-11 h-11 -mr-2 flex items-center justify-center flex-shrink-0" style={{ color: V2.ink }}>
+          <X className="w-5 h-5" aria-hidden="true" />
+        </button>
       </div>
 
       {removed ? (
-        <p className="mt-2 text-[14px]" style={{ color: V2.muted }}>This piece is off your board and out of your total. Add it back any time.</p>
+        <div className="mt-1">
+          <p className="text-[14px]" style={{ color: V2.muted }}>Off your look and out of your total.</p>
+          <button onClick={() => p.onRestore(item.id)} className="mt-2 min-h-[44px] px-4 border text-[13px] font-bold inline-flex items-center gap-1.5" style={{ borderColor: V2.ink }}>
+            <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />Add back to look
+          </button>
+        </div>
       ) : status === "loading" ? (
-        <p className="mt-3 text-[14px] flex items-center gap-2" style={{ color: V2.muted }}><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />Finding matches in your size…</p>
+        <p className="mt-2 text-[14px] flex items-center gap-2" style={{ color: V2.muted }}><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />Finding matches in your size…</p>
       ) : (
         <>
-          <p className={`${label} mt-4 mb-2`} style={{ color: V2.accent }}>Pick your price</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {cells.map((c) => (
-              <OptionCard key={c.tier} heading={TIER_NAMES[c.tier]} sub={RANGE[c.tier]} product={c.product} on={c.on} onUse={() => c.product && p.onUse(item.id, c.product)}
-                onMore={extra?.status === "done" ? undefined : loadMore} moreLoading={extra?.status === "loading"} />
-            ))}
-            <div className="p-2 flex flex-col gap-1.5" style={{ border: `1px solid ${V2.line}` }}>
-              <span className="block text-[10px] font-extrabold uppercase tracking-[0.8px]" style={{ color: V2.vintage }}>Vintage</span>
-              <span className="block text-[11px]" style={{ color: V2.muted }}>Pre-owned, prices vary</span>
-              {p.vintagePlatforms.map((pl) => (
-                <a key={pl.name} href={pl.url(encodeURIComponent(item.description))} target="_blank" rel="noopener noreferrer"
-                  className="min-h-[36px] px-2 border text-[12px] font-bold inline-flex items-center justify-between gap-1" style={{ borderColor: V2.vintage, color: V2.vintage }}>
-                  {pl.name} <ExternalLink className="w-3 h-3" aria-hidden="true" />
-                </a>
+          <p className={`${label} mt-3 mb-2`} style={{ color: V2.accent }}>Options</p>
+          {options.length ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-5">
+              {options.map((x) => (
+                <OptionCard key={x.key} product={x} on={x.key === product?.key} onUse={() => p.onUse(item.id, x)} />
               ))}
             </div>
-          </div>
-
-          {product && (
-            <p className="mt-3 text-[14px] leading-snug">
-              <strong>In your look:</strong> {product.merchantName ? `${product.merchantName} · ` : ""}{product.title} · {formatPrice(product.price)}
-              {note && <span className="ml-1.5 text-[11px] font-bold px-2 py-0.5 inline-block" style={{ background: V2.blush, color: V2.warnText }}>{note}</span>}
-            </p>
+          ) : (
+            <p className="text-[14px]" style={{ color: V2.muted }}>No matches in your size yet. Try More options or the concierge.</p>
           )}
 
-          {extras.length > 0 && (
-            <>
-              <p className={`${label} mt-4 mb-2`} style={{ color: V2.muted }}>More {item.category.toLowerCase()} options</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {extras.map((x) => (
-                  <OptionCard key={x.key} heading="More" sub={null} product={x} on={x.key === product?.key} onUse={() => p.onUse(item.id, x)} />
-                ))}
-              </div>
-            </>
-          )}
-          <div className="flex flex-wrap gap-x-5 mt-2">
+          <p className="mt-3 flex flex-wrap items-center gap-x-3 text-[13px]">
+            <span className="font-bold uppercase tracking-[0.06em] text-[11px]" style={{ color: V2.vintage }}>Vintage</span>
+            {p.vintagePlatforms.map((pl) => (
+              <a key={pl.name} href={pl.url(encodeURIComponent(item.description))} target="_blank" rel="noopener noreferrer"
+                className="min-h-[44px] inline-flex items-center gap-1 font-semibold underline underline-offset-4" style={{ color: V2.vintage }}>
+                {pl.name}<ExternalLink className="w-3 h-3" aria-hidden="true" />
+              </a>
+            ))}
+          </p>
+
+          <div className="flex flex-wrap items-center gap-x-5 mt-1 pt-2 border-t" style={{ borderColor: V2.line }}>
             {extra?.status !== "done" && (
-              <button onClick={loadMore} disabled={extra?.status === "loading"}
-                className="min-h-[44px] text-[13px] font-bold uppercase tracking-[0.06em] underline underline-offset-4 inline-flex items-center gap-1.5 disabled:opacity-60" style={{ color: V2.ink }}>
-                {extra?.status === "loading" ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />Finding more</> : `More ${item.category.toLowerCase()} options`}
+              <button onClick={loadMore} disabled={extra?.status === "loading"} className={`${textBtn} disabled:opacity-60`} style={{ color: V2.ink }}>
+                {extra?.status === "loading" ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />Finding more</> : "More options"}
               </button>
             )}
             {extra?.status === "error" && <span role="alert" className="min-h-[44px] inline-flex items-center text-[13px]" style={{ color: V2.redInk }}>Couldn't load more. Try again.</span>}
-            <button onClick={() => p.onHandoff(`a different ${item.category.toLowerCase()} for this look`)}
-              className="min-h-[44px] text-[16px] italic underline underline-offset-4 inline-flex items-center gap-1.5" style={{ color: V2.ink, fontFamily: V2.serif }}>
-              Still not right? Ask the concierge<ArrowRight className="w-4 h-4" aria-hidden="true" />
+            <button onClick={() => p.onHandoff(`a different ${item.category.toLowerCase()} for this look`)} className={textBtn} style={{ color: V2.ink }}>
+              Ask the concierge<ArrowRight className="w-4 h-4" aria-hidden="true" />
             </button>
+            <button onClick={() => p.onRemove(item.id)} className={`${textBtn} sm:ml-auto`} style={{ color: V2.muted }}>Remove from look</button>
           </div>
         </>
       )}
@@ -466,95 +437,74 @@ function PiecePanel({ n, piece, p }: { n: number; piece: StudioPiece; p: LookStu
   );
 }
 
-/** One row in the piece list: what's in the look, its fit note and a direct Shop link. */
-function PieceRow({ n, piece, p, tier, onPick }: { n: number; piece: StudioPiece; p: LookStudioProps; tier: string; onPick: () => void }) {
+/** One row in the piece list: what's in the look, its price and a direct Shop link. */
+function PieceRow({ piece, p, tier, onPick }: { piece: StudioPiece; p: LookStudioProps; tier: string | null; onPick: () => void }) {
   const { item, product, status, removed } = piece;
   const note = product ? p.sizeNoteFor(product, item) : null;
   return (
-    <div id={`layer-${item.id}`} className="py-4 border-b grid grid-cols-[auto_72px_1fr] gap-3 items-start scroll-mt-24" style={{ borderColor: V2.line }}>
-      <div className="pt-1"><Dot n={n} muted={removed} /></div>
+    <div id={`layer-${item.id}`} className="py-3.5 border-b flex gap-3 items-center scroll-mt-24" style={{ borderColor: V2.line }}>
       {product && !removed ? (
-        <button onClick={onPick} aria-label={`Change ${item.category}`} className="p-0 border-0">
-          <img src={product.imageUrl} alt="" className="w-[72px] h-[88px] object-cover bg-muted" loading="lazy" />
-        </button>
+        <img src={product.imageUrl} alt="" className="w-14 h-14 object-contain bg-white border flex-shrink-0" style={{ borderColor: V2.line }} loading="lazy" />
       ) : (
-        <span className={`w-[72px] h-[88px] ${status === "loading" && !removed ? "animate-pulse" : ""}`} style={{ background: V2.sand, opacity: removed ? 0.5 : 1 }} />
+        <span className={`w-14 h-14 flex-shrink-0 ${status === "loading" && !removed ? "animate-pulse" : ""}`} style={{ background: V2.sand, opacity: removed ? 0.5 : 1 }} />
       )}
-      <div className="min-w-0">
-        <p className={label} style={{ color: V2.muted }}>{item.category}</p>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: V2.muted }}>
+          {item.category}{tier && <span className="ml-1.5 px-1 py-px" style={{ background: V2.ink, color: V2.paper }}>{tier}</span>}
+        </p>
         {removed ? (
-          <>
-            <p className="text-[14px] mt-0.5" style={{ color: V2.muted }}>Removed from the look</p>
-            <button onClick={() => p.onRestore(item.id)} className="mt-2 min-h-[44px] px-4 border text-[13px] font-bold inline-flex items-center gap-1.5" style={{ borderColor: V2.ink }}>
-              <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />Add back
-            </button>
-          </>
+          <p className="text-[14px]" style={{ color: V2.muted }}>Removed from the look</p>
         ) : status === "loading" ? (
-          <p className="text-[13px] mt-0.5" style={{ color: V2.muted }}>Finding matches in your size…</p>
+          <p className="text-[13px]" style={{ color: V2.muted }}>Finding matches…</p>
         ) : product ? (
           <>
-            <div className="flex justify-between gap-3 mt-0.5">
-              <p className="text-[15px] font-bold leading-snug line-clamp-2">{product.title}</p>
-              <span className="font-extrabold text-[15px] whitespace-nowrap">{formatPrice(product.price)}</span>
-            </div>
-            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
-              <span className="px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-[0.1em]" style={{ borderColor: V2.ink }}>{tier}</span>
-              {product.merchantName && <span className="text-[13px]" style={{ color: V2.muted }}>{product.merchantName}</span>}
+            <p className="text-[14px] font-bold leading-snug truncate">{product.title}</p>
+            <p className="text-[13px] truncate" style={{ color: V2.muted }}>
+              <span className="font-bold" style={{ color: V2.ink }}>{formatPrice(product.price)}</span>
+              {product.merchantName ? ` · ${product.merchantName}` : ""}{note ? ` · ${note}` : ""}
             </p>
-            {note && <p className="text-[13px] mt-1"><strong>Fit:</strong> {note}</p>}
-            <a href={product.productUrl} target="_blank" rel="noopener noreferrer"
-              className="mt-2.5 min-h-[44px] w-full text-[12px] font-bold uppercase tracking-[0.1em] inline-flex items-center justify-center" style={{ background: V2.ink, color: V2.paper }}>
-              Shop this piece
+          </>
+        ) : (
+          <p className="text-[13px] truncate" style={{ color: V2.muted }}>No verified match yet</p>
+        )}
+      </div>
+      <div className="flex items-center gap-1 flex-shrink-0">
+        {removed ? (
+          <button onClick={() => p.onRestore(item.id)} className="min-h-[44px] px-3 border text-[12px] font-bold inline-flex items-center gap-1.5" style={{ borderColor: V2.ink }}>
+            <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />Add back
+          </button>
+        ) : status === "loading" ? null : product ? (
+          <>
+            <button onClick={onPick} aria-label={`Change ${item.category}`} className="min-h-[44px] px-2 text-[12px] font-bold uppercase tracking-[0.06em] underline underline-offset-4" style={{ color: V2.ink }}>Change</button>
+            <a href={product.productUrl} target="_blank" rel="noopener noreferrer" aria-label={`Shop ${product.title}`}
+              className="min-h-[44px] px-4 text-[12px] font-bold uppercase tracking-[0.08em] inline-flex items-center" style={{ background: V2.ink, color: V2.paper }}>
+              Shop
             </a>
           </>
         ) : (
-          <>
-            <p className="text-[14px] font-bold leading-snug line-clamp-2 mt-0.5">{item.description}</p>
-            <p className="text-[12px]" style={{ color: V2.muted }}>No verified match yet.</p>
-            <a href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(item.description)}`} target="_blank" rel="noopener noreferrer"
-              className="mt-2 min-h-[44px] px-3 border text-[13px] font-bold inline-flex items-center gap-1" style={{ borderColor: V2.ink }}>
-              <Search className="w-3.5 h-3.5" aria-hidden="true" />Search the web
-            </a>
-          </>
+          <a href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(item.description)}`} target="_blank" rel="noopener noreferrer"
+            className="min-h-[44px] px-3 border text-[12px] font-bold inline-flex items-center gap-1" style={{ borderColor: V2.ink }}>
+            <Search className="w-3.5 h-3.5" aria-hidden="true" />Search
+          </a>
         )}
       </div>
     </div>
   );
 }
 
-function OptionCard({ heading, sub, product, on, onUse, onMore, moreLoading }: { heading: string; sub: string | null; product: CatalogProduct | null; on: boolean; onUse: () => void; onMore?: () => void; moreLoading?: boolean }) {
-  const head = (
-    <span className="block mb-1.5">
-      <span className="block text-[10px] font-extrabold uppercase tracking-[0.8px]" style={{ color: V2.ink }}>{heading}</span>
-      {sub && <span className="block text-[11px]" style={{ color: V2.muted }}>{sub}</span>}
-    </span>
-  );
-  if (!product) {
-    return (
-      <div className="p-2 flex flex-col" style={{ border: `1px dashed ${V2.muted}` }}>
-        {head}
-        <span className="flex-1 min-h-[120px] flex flex-col items-center justify-center gap-1 text-center text-[11px] px-2" style={{ background: V2.sand, color: V2.muted }}>
-          <span>{!sub ? "No pick" : sub.startsWith("under") ? `No pick ${sub}` : `No ${sub} pick`} in your size yet</span>
-          {onMore && (
-            <button type="button" onClick={onMore} disabled={moreLoading}
-              className="min-h-[44px] px-2 text-[12px] font-bold underline underline-offset-4 disabled:opacity-60" style={{ color: V2.ink }}>
-              {moreLoading ? "Finding more" : "Try more options"}
-            </button>
-          )}
-        </span>
-      </div>
-    );
-  }
+/** One option for a piece, like a product tile: photo, brand, name, price, and add / in your look. */
+function OptionCard({ product, on, onUse }: { product: CatalogProduct; on: boolean; onUse: () => void }) {
   return (
-    <button onClick={() => !on && onUse()} aria-pressed={on} aria-label={on ? `${product.title}, in your look` : `Use ${product.title}`}
-      className="text-left p-2 flex flex-col" style={{ background: on ? V2.sand : V2.card, border: on ? `2px solid ${V2.ink}` : `1px solid ${V2.line}` }}>
-      {head}
-      <img src={product.imageUrl} alt="" className="w-full aspect-[4/5] object-cover bg-muted" loading="lazy" />
-      {product.merchantName && <span className="block text-[10px] font-extrabold uppercase tracking-[0.6px] mt-1.5 truncate">{product.merchantName}</span>}
-      <span className="block text-[12px] font-semibold leading-tight line-clamp-2">{product.title}</span>
-      <span className="block text-[13px] font-extrabold mt-0.5">{formatPrice(product.price)}</span>
-      <span className="mt-1.5 min-h-[36px] flex items-center justify-center text-center text-[12px] font-bold"
-        style={on ? { background: V2.ink, color: V2.paper } : { border: `1px solid ${V2.ink}` }}>{on ? "✓ In your look" : "Use this"}</span>
-    </button>
+    <div className="flex flex-col">
+      <img src={product.imageUrl} alt="" className="w-full aspect-[4/5] object-cover bg-white border" style={{ borderColor: on ? V2.ink : V2.line, borderWidth: on ? 2 : 1 }} loading="lazy" />
+      {product.merchantName && <span className="block text-[10px] font-semibold uppercase tracking-[0.1em] mt-2 truncate" style={{ color: V2.muted }}>{product.merchantName}</span>}
+      <span className="block text-[13px] leading-snug mt-0.5 line-clamp-2">{product.title}</span>
+      <span className="block text-[14px] font-bold mt-0.5">{formatPrice(product.price)}</span>
+      <button onClick={() => !on && onUse()} aria-pressed={on} aria-label={on ? `${product.title}, in your look` : `Use ${product.title}`}
+        className="mt-2 self-start min-h-[44px] px-4 text-[12px] font-bold border"
+        style={on ? { background: V2.ink, color: V2.paper, borderColor: V2.ink } : { background: V2.card, color: V2.ink, borderColor: V2.ink }}>
+        {on ? "✓ In your look" : "Add to look"}
+      </button>
+    </div>
   );
 }

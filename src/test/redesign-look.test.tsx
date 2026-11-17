@@ -81,33 +81,38 @@ function setup(over: Partial<LookStudioProps> = {}, pieces?: StudioPiece[]) {
 describe("LookStudio", () => {
   afterEach(cleanup);
 
-  it("lists each piece with a direct shop link and opens the first piece's price picker", () => {
+  it("lists each piece with a direct shop link; the price picker opens only once a piece is picked", () => {
     setup();
     expect(screen.getByRole("heading", { name: "The pieces" })).toBeTruthy();
-    expect(screen.getAllByRole("link", { name: "Shop this piece" }).length).toBe(2);
+    expect(screen.getAllByRole("link", { name: /^Shop / }).length).toBe(2);
+    expect(screen.queryByRole("button", { name: "Use Dark wool coat" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Change Coat" }));
     expect(screen.getByRole("button", { name: "Use Dark wool coat" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Camel coat, in your look" }).getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("shows Budget, Mid, Splurge and Vintage looks as tabs, and Budget, Mid and Splurge prices per piece", () => {
+  it("shows Budget, Mid, Splurge and Vintage looks as tabs, and one row of options per piece with brands", () => {
     setup();
     const tabs = screen.getAllByRole("tab").map((t) => t.textContent ?? "");
     for (const name of ["Budget", "Mid", "Splurge", "Vintage"]) expect(tabs.some((t) => t.startsWith(name))).toBe(true);
     expect(screen.queryByText("Luxury")).toBeNull();
-    expect(screen.getByText("No $250+ pick in your size yet")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Try more options" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^Coat,/ }));
+    expect(screen.getByText("Options")).toBeTruthy();
+    expect(screen.queryByText("Pick your price")).toBeNull();
+    expect(screen.getByRole("button", { name: "More options" })).toBeTruthy();
     expect(screen.getAllByText("Store").length).toBeGreaterThan(0);
   });
 
   it("picking a piece on the board shows that piece's options", () => {
     setup();
-    fireEvent.click(screen.getByRole("button", { name: /^2 Top, Budget/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Top, Budget/ }));
     expect(screen.getByRole("region", { name: "Top options" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Black tank, in your look" })).toBeTruthy();
   });
 
   it("swaps a piece in place", () => {
     const props = setup();
+    fireEvent.click(screen.getByRole("button", { name: /^Coat,/ }));
     fireEvent.click(screen.getByRole("button", { name: "Use Dark wool coat" }));
     expect(props.onUse).toHaveBeenCalledWith("c", coatAlt);
   });
@@ -123,6 +128,7 @@ describe("LookStudio", () => {
 
   it("removes a piece and offers to add it back", () => {
     const props = setup();
+    fireEvent.click(screen.getByRole("button", { name: /^Coat,/ }));
     fireEvent.click(screen.getByRole("button", { name: "Remove from look" }));
     expect(props.onRemove).toHaveBeenCalledWith("c");
     cleanup();
