@@ -81,22 +81,29 @@ function setup(over: Partial<LookStudioProps> = {}, pieces?: StudioPiece[]) {
 describe("LookStudio", () => {
   afterEach(cleanup);
 
-  it("shows each piece as a numbered layer with swap options from the catalog matches", () => {
+  it("lists each piece with a direct shop link and opens the first piece's price picker", () => {
     setup();
-    expect(screen.getByRole("heading", { name: "Layers" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "The pieces" })).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Shop this piece" }).length).toBe(2);
     expect(screen.getByRole("button", { name: "Use Dark wool coat" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Camel coat, in your look" }).getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("shows Budget, Mid and Splurge side by side with brands", () => {
+  it("shows Budget, Mid, Splurge and Vintage looks as tabs, and Budget, Mid and Splurge prices per piece", () => {
     setup();
-    expect(screen.getAllByText("Budget").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Mid").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Splurge").length).toBe(2);
+    const tabs = screen.getAllByRole("tab").map((t) => t.textContent ?? "");
+    for (const name of ["Budget", "Mid", "Splurge", "Vintage"]) expect(tabs.some((t) => t.startsWith(name))).toBe(true);
     expect(screen.queryByText("Luxury")).toBeNull();
-    expect(screen.getAllByText("No $250+ pick in your size yet").length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("button", { name: "Try more options" }).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Store").length).toBeGreaterThan(2);
+    expect(screen.getByText("No $250+ pick in your size yet")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try more options" })).toBeTruthy();
+    expect(screen.getAllByText("Store").length).toBeGreaterThan(0);
+  });
+
+  it("picking a piece on the board shows that piece's options", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: /^2 Top, Budget/ }));
+    expect(screen.getByRole("region", { name: "Top options" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Black tank, in your look" })).toBeTruthy();
   });
 
   it("swaps a piece in place", () => {
@@ -105,9 +112,18 @@ describe("LookStudio", () => {
     expect(props.onUse).toHaveBeenCalledWith("c", coatAlt);
   });
 
-  it("removes a layer and offers to add it back", () => {
+  it("shows Your mix once pieces come from different price ranges", () => {
+    setup({}, [
+      { item: coat, status: "done", product: coatAlt, fromTier: null, removed: false, swapped: true },
+      { item: top, status: "done", product: topPick, fromTier: "budget", removed: false, swapped: false },
+    ]);
+    expect(screen.getByRole("tab", { name: /Your mix/ }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getAllByText("1 Budget · 1 Mid").length).toBeGreaterThan(0);
+  });
+
+  it("removes a piece and offers to add it back", () => {
     const props = setup();
-    fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Remove from look" }));
     expect(props.onRemove).toHaveBeenCalledWith("c");
     cleanup();
     const p2 = setup({}, [
@@ -132,9 +148,9 @@ describe("LookStudio", () => {
     expect(screen.getAllByAltText(/photo you matched/i).length).toBe(2);
   });
 
-  it("vintage shows marketplace searches instead of layers", () => {
+  it("vintage shows marketplace searches instead of the piece list", () => {
     setup({ tier: "vintage", tierTotal: () => "Varies", running: () => "Varies" });
-    expect(screen.queryByRole("heading", { name: "Layers" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "The pieces" })).toBeNull();
     expect(screen.getAllByRole("link", { name: /Depop/ }).length).toBe(2);
   });
 });
