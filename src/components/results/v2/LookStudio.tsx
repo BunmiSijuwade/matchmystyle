@@ -62,6 +62,15 @@ const RANGES: { tier: ShopTier; range: string }[] = [
   { tier: "luxury", range: `$${PRICE_TIERS.luxuryMin}+` },
 ];
 const label = "text-[10px] font-extrabold uppercase tracking-[1px]";
+const TAB_LABEL: Partial<Record<LookTier, string>> = { budget: "The Budget look", midRange: "The Mid look", vintage: "Vintage finds" };
+
+/** Numbered piece marker: white dot, red ring, navy number (red is decoration only, never behind text). */
+function Dot({ n, muted = false }: { n: number; muted?: boolean }) {
+  return (
+    <span aria-hidden="true" className="w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-extrabold flex-shrink-0 border-2"
+      style={{ background: muted ? V2.sand : V2.card, borderColor: muted ? V2.line : V2.red, color: muted ? V2.muted : V2.ink }}>{n}</span>
+  );
+}
 
 export default function LookStudio(p: LookStudioProps) {
   useEffect(loadRedesignFont, []);
@@ -71,20 +80,23 @@ export default function LookStudio(p: LookStudioProps) {
   const bought = shown.filter((x) => x.product);
   const stylePieces: StylePiece[] = bought.slice(0, 4).map((x) => ({ label: x.item.category, title: x.product!.title, imageUrl: x.product!.imageUrl }));
   const activeView: View = vintage ? "original" : view;
+  // "Your mix" once any piece in the look isn't one of the current tier's matches (picked from another price
+  // range or from More options).
+  const mixed = !vintage && shown.some((x) => x.product && !(p.liveState[x.item.id]?.matches?.[p.tier as ShopTier] ?? []).some((m) => m.key === x.product!.key));
   const jump = (id: string) => document.getElementById(`layer-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   const views: [View, string][] = [["board", "Board"], ["ai", "On a model · AI"], ...(p.imageUrl ? [["original", "Original"] as [View, string]] : [])];
 
   const stage = (
-    <section aria-label="The look" className="rounded-3xl border-[1.5px] overflow-hidden" style={{ background: V2.card, borderColor: V2.ink, boxShadow: `4px 4px 0 ${V2.ink}` }}>
+    <section aria-label="The look" className="border overflow-hidden" style={{ background: V2.card, borderColor: V2.ink }}>
       {!vintage && (
-        <div role="tablist" aria-label="View" className="flex flex-wrap gap-1.5 p-2.5 pb-0">
+        <div role="tablist" aria-label="View" className="flex flex-wrap border-b" style={{ borderColor: V2.ink }}>
           {views.map(([id, name]) => {
             const on = view === id;
             return (
               <button key={id} role="tab" aria-selected={on} onClick={() => setView(id)}
-                className="min-h-[44px] px-4 rounded-full text-[13px] font-bold transition-colors duration-200"
-                style={on ? { background: V2.ink, color: V2.paper } : { border: `1px solid ${V2.line}`, background: V2.card, color: V2.ink }}>
+                className="flex-1 min-h-[44px] px-2 text-[11px] uppercase tracking-[0.04em] whitespace-nowrap transition-colors duration-200 border-l first:border-l-0"
+                style={on ? { background: V2.ink, color: V2.paper, fontWeight: 800, borderColor: V2.ink } : { background: V2.card, color: V2.ink, fontWeight: 600, borderColor: V2.ink }}>
                 {id === "ai" && <Sparkles className="inline w-3.5 h-3.5 mr-1 -mt-0.5" aria-hidden="true" />}{name}
               </button>
             );
@@ -94,7 +106,7 @@ export default function LookStudio(p: LookStudioProps) {
 
       {activeView === "board" && (
         <>
-          <div className="relative mx-1 mt-1.5 h-[420px] lg:h-[480px]">
+          <div className="relative h-[420px] lg:h-[480px]" style={{ background: V2.sand }}>
             {shown.slice(0, SPOTS.length).map((x, i) => {
               const s = SPOTS[i];
               const style = { left: `${s.l}%`, top: `${s.t}%`, width: `${s.w}%`, height: `${s.h}%`, transform: `rotate(${s.r}deg)`, zIndex: i + 1, boxShadow: "0 4px 12px rgba(10,30,50,0.16)" };
@@ -116,7 +128,15 @@ export default function LookStudio(p: LookStudioProps) {
               );
             })}
           </div>
-          <p className="px-4 pb-3.5 text-[12px]" style={{ color: V2.muted }}>Tap a piece to jump to its options.</p>
+          <div className="px-3 pt-3 pb-1 flex flex-wrap gap-2" role="group" aria-label="Pieces in this look">
+            {shown.map((x, i) => (
+              <button key={x.item.id} onClick={() => jump(x.item.id)} aria-label={`${i + 1} ${x.item.category}: jump to its options`}
+                className="min-h-[44px] pl-1.5 pr-3 border inline-flex items-center gap-2 text-[13px] font-bold" style={{ borderColor: V2.ink, background: V2.card, color: V2.ink }}>
+                <Dot n={i + 1} />{x.item.category}
+              </button>
+            ))}
+          </div>
+          <p className="px-4 pb-3.5 pt-1 text-[12px]" style={{ color: V2.muted }}>Pick a piece to change its price, swap it or take it off.</p>
         </>
       )}
 
@@ -125,14 +145,14 @@ export default function LookStudio(p: LookStudioProps) {
           {stylePieces.length ? (
             <LookStyledTab pieces={stylePieces} aesthetic={p.aestheticName} occasion={null} onImage={() => {}} />
           ) : (
-            <p className="aspect-[4/5] rounded-lg flex items-center justify-center text-sm" style={{ background: V2.sand, color: V2.muted }}>Waiting for your pieces…</p>
+            <p className="aspect-[4/5] flex items-center justify-center text-sm" style={{ background: V2.sand, color: V2.muted }}>Waiting for your pieces…</p>
           )}
         </div>
       )}
 
       {activeView === "original" && p.imageUrl && (
         <div className="p-2.5">
-          <img src={p.imageUrl} alt="The photo you matched" className="w-full max-h-[480px] object-cover rounded-2xl bg-muted" />
+          <img src={p.imageUrl} alt="The photo you matched" className="w-full max-h-[480px] object-cover bg-muted" />
           <p className="px-1.5 pt-2.5 pb-1 text-[12px]" style={{ color: V2.muted }}>The photo you matched.</p>
         </div>
       )}
@@ -141,10 +161,10 @@ export default function LookStudio(p: LookStudioProps) {
 
   const actions = (
     <div className="hidden lg:flex flex-wrap gap-2.5 mt-4">
-      <button onClick={p.onShop} disabled={!bought.length} className="min-h-[52px] px-7 rounded-full text-white text-[15px] font-bold disabled:opacity-50" style={{ background: V2.fill }}>
+      <button onClick={p.onShop} disabled={!bought.length} className="flex-1 min-h-[56px] px-7 text-white text-[14px] font-bold uppercase tracking-[0.1em] disabled:opacity-50" style={{ background: V2.fill, fontStretch: "115%" }}>
         Shop all {bought.length} · {p.running(p.tier)}
       </button>
-      <button onClick={p.onCard} disabled={!bought.length} className="min-h-[52px] px-6 rounded-full border-[1.5px] text-[15px] font-bold disabled:opacity-50" style={{ borderColor: V2.ink }}>Look card</button>
+      <button onClick={p.onCard} disabled={!bought.length} className="min-h-[56px] px-6 border-[1.5px] text-[14px] font-bold uppercase tracking-[0.1em] disabled:opacity-50" style={{ borderColor: V2.ink }}>Look card</button>
     </div>
   );
 
@@ -152,7 +172,7 @@ export default function LookStudio(p: LookStudioProps) {
     <div className="min-h-screen" style={{ background: V2.paper, color: V2.ink }}>
       <div className="max-w-6xl mx-auto px-5 lg:px-8 pt-24 sm:pt-28 pb-40 lg:pb-16">
         <button onClick={p.onBack} className="inline-flex items-center gap-2 min-h-[44px] text-[14px] font-bold" style={{ color: V2.ink }}>
-          <ArrowLeft className="w-4 h-4" /> New photo
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" /> <span className="uppercase tracking-[0.1em] text-[13px]">New photo</span>
         </button>
 
         <div className="lg:flex lg:gap-12 lg:items-start mt-2">
@@ -161,14 +181,15 @@ export default function LookStudio(p: LookStudioProps) {
             <div className="flex items-center gap-3 mb-3">
               {p.imageUrl && (
                 <button onClick={() => setView("original")} aria-label="See the original photo full size"
-                  className="relative flex-shrink-0 w-[64px] h-[80px] rounded-xl overflow-hidden border-[1.5px]" style={{ borderColor: V2.ink }}>
+                  className="relative flex-shrink-0 w-[64px] h-[80px] overflow-hidden border" style={{ borderColor: V2.ink }}>
                   <img src={p.imageUrl} alt="The photo you matched" className="w-full h-full object-cover" />
                   <span className="absolute inset-x-0 bottom-0 text-[9px] font-extrabold uppercase tracking-[0.6px] py-0.5 text-center" style={{ background: V2.ink, color: V2.paper }}>Original</span>
                 </button>
               )}
               <div className="min-w-0">
-                <h1 className="text-[32px] leading-none" style={display}>Your look</h1>
-                {p.aestheticName && <span className={`${label} inline-block mt-2 px-2.5 py-1 rounded-full`} style={{ background: "#E7D5C0" }}>{p.aestheticName}</span>}
+                <p className="text-[12px] font-semibold uppercase tracking-[0.16em] mb-1.5" style={{ color: V2.accent }}>{mixed ? "Your mix" : TAB_LABEL[p.tier] ?? "Your look"}</p>
+                <h1 className="text-[32px] leading-none uppercase" style={display}>Your look</h1>
+                {p.aestheticName && <span className={`${label} inline-block mt-2 px-2.5 py-1`} style={{ background: V2.sand }}>{p.aestheticName}</span>}
               </div>
             </div>
             {stage}
@@ -178,17 +199,17 @@ export default function LookStudio(p: LookStudioProps) {
           {/* Right: tiers and layers */}
           <div className="flex-1 min-w-0 mt-6 lg:mt-0">
             {p.profileToggle}
-            <div role="tablist" aria-label="Price tier" className="grid grid-cols-3 gap-1 p-1 rounded-[18px] mt-3 lg:mt-0" style={{ background: V2.sand }}>
+            <div role="tablist" aria-label="Price tier" className="grid grid-cols-3 border-y mt-3 lg:mt-0" style={{ borderColor: V2.line }}>
               {p.tabs.map(([id, name]) => {
                 const on = p.tier === id;
                 const total = p.tierTotal(id);
                 return (
                   <button key={id} role="tab" aria-selected={on} onClick={() => p.onTier(id)}
-                    className="min-h-[60px] rounded-[14px] flex flex-col items-center justify-center transition-colors duration-200"
-                    style={on ? { background: id === "vintage" ? V2.vintage : V2.ink, color: "#fff" } : { color: id === "vintage" ? V2.vintage : V2.ink }}>
-                    <span className="text-[12px] font-bold">{name}</span>
+                    className="min-h-[64px] flex flex-col items-center justify-center transition-colors duration-200"
+                    style={{ color: id === "vintage" ? V2.vintage : V2.ink, boxShadow: on ? `inset 0 -3px 0 ${id === "vintage" ? V2.vintage : V2.ink}` : "none", fontWeight: on ? 800 : 500 }}>
+                    <span className="text-[12px] uppercase tracking-[0.1em]">{name}</span>
                     {total ? <span className="text-[17px] leading-tight" style={display}>{total}</span>
-                      : <span aria-label="Loading total" className="mt-1 h-3 w-12 rounded animate-pulse" style={{ background: "rgba(0,0,0,0.12)" }} />}
+                      : <span aria-label="Loading total" className="mt-1 h-3 w-12 animate-pulse" style={{ background: "rgba(0,0,0,0.12)" }} />}
                   </button>
                 );
               })}
@@ -203,7 +224,7 @@ export default function LookStudio(p: LookStudioProps) {
 
               {vintage ? (
                 <section aria-label="Vintage" className="mt-5">
-                  <p className="rounded-2xl px-4 py-3 text-[13px] font-bold" style={{ background: V2.okBg, color: V2.okText }}>
+                  <p className="px-4 py-3 text-[13px] font-bold" style={{ background: V2.okBg, color: V2.okText }}>
                     Pre-loved pieces from Poshmark, Depop, ThredUp and Vestiaire. Prices vary.
                   </p>
                   {p.items.map((item, i) => (
@@ -213,7 +234,7 @@ export default function LookStudio(p: LookStudioProps) {
                       <div className="flex flex-wrap gap-2 mt-3">
                         {p.vintagePlatforms.map((pl) => (
                           <a key={pl.name} href={pl.url(encodeURIComponent(item.description))} target="_blank" rel="noopener noreferrer"
-                            className="min-h-[44px] px-4 rounded-full border text-[13px] font-bold inline-flex items-center gap-1.5" style={{ borderColor: V2.vintage, color: V2.vintage }}>
+                            className="min-h-[44px] px-4 border text-[13px] font-bold inline-flex items-center gap-1.5" style={{ borderColor: V2.vintage, color: V2.vintage }}>
                             {pl.name} <ExternalLink className="w-3 h-3" aria-hidden="true" />
                           </a>
                         ))}
@@ -224,7 +245,7 @@ export default function LookStudio(p: LookStudioProps) {
               ) : (
                 <section aria-label="Layers" className="mt-6">
                   <div className="flex justify-between items-baseline">
-                    <h2 className="text-[24px]" style={display}>Layers</h2>
+                    <h2 className="text-[22px] uppercase" style={display}>Layers</h2>
                     <span className="text-[13px]" style={{ color: V2.muted }}>{bought.length} pieces · {p.running(p.tier)}</span>
                   </div>
                   <p className="text-[13px] mb-1" style={{ color: V2.muted }}>Swap any layer.{p.size ? ` Matched to size ${p.size}.` : ""}</p>
@@ -235,12 +256,12 @@ export default function LookStudio(p: LookStudioProps) {
               )}
             </div>
 
-            <section className="mt-6 rounded-[20px] p-4" style={{ background: V2.blush }}>
-              <h2 className="text-[20px]" style={display}>Ask the concierge</h2>
-              <p className="text-[13px] mb-3" style={{ color: "#4A3F37" }}>Change the whole look in words. It keeps your size.</p>
+            <section className="mt-6 p-4 border" style={{ background: V2.sand, borderColor: V2.line }}>
+              <h2 className="text-[18px] uppercase" style={display}>Ask the concierge</h2>
+              <p className="text-[16px] italic mb-3" style={{ color: V2.muted, fontFamily: V2.serif }}>Change the whole look in words. It keeps your size.</p>
               <div className="flex flex-wrap gap-2 mb-3">
                 {p.quickChips.map((c) => (
-                  <button key={c} onClick={() => p.onHandoff(c)} className="min-h-[44px] px-4 rounded-full border text-[13px] font-semibold" style={{ borderColor: V2.ink, background: V2.card }}>{c}</button>
+                  <button key={c} onClick={() => p.onHandoff(c)} className="min-h-[44px] px-4 border text-[13px] font-semibold" style={{ borderColor: V2.ink, background: V2.card }}>{c}</button>
                 ))}
               </div>
               <div className="hidden lg:flex items-center gap-2">{p.askField}</div>
@@ -257,10 +278,10 @@ export default function LookStudio(p: LookStudioProps) {
       {/* Phone bottom bar */}
       {!vintage && (
         <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-3 grid grid-cols-[52px_1fr] gap-2" style={{ background: V2.card, borderColor: V2.line, paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
-          <button onClick={p.onCard} disabled={!bought.length} aria-label="Look card" className="h-[52px] rounded-full border-[1.5px] flex items-center justify-center disabled:opacity-50" style={{ borderColor: V2.ink }}>
+          <button onClick={p.onCard} disabled={!bought.length} aria-label="Look card" className="h-[52px] border-[1.5px] flex items-center justify-center disabled:opacity-50" style={{ borderColor: V2.ink }}>
             <Bookmark className="w-5 h-5" aria-hidden="true" />
           </button>
-          <button onClick={p.onShop} disabled={!bought.length} className="h-[52px] rounded-full text-white text-[15px] font-bold disabled:opacity-50" style={{ background: V2.fill }}>
+          <button onClick={p.onShop} disabled={!bought.length} className="h-[52px] text-white text-[13px] font-bold uppercase tracking-[0.1em] disabled:opacity-50" style={{ background: V2.fill }}>
             Shop all {bought.length} · {p.running(p.tier)}
           </button>
         </div>
@@ -271,16 +292,14 @@ export default function LookStudio(p: LookStudioProps) {
 
 function Layer({ n, piece, p }: { n: number; piece: StudioPiece; p: LookStudioProps }) {
   const { item, product, status, removed } = piece;
-  const head = (
-    <span className="w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-extrabold flex-shrink-0" style={{ background: removed ? V2.sand : V2.ink, color: removed ? V2.muted : V2.paper }}>{n}</span>
-  );
+  const head = <Dot n={n} muted={removed} />;
 
   if (removed) {
     return (
       <div id={`layer-${item.id}`} className="py-4 border-b flex items-center gap-3 scroll-mt-24" style={{ borderColor: V2.line }}>
         {head}
         <p className="flex-1 text-[14px]" style={{ color: V2.muted }}>{item.category} removed from the look</p>
-        <button onClick={() => p.onRestore(item.id)} className="min-h-[44px] px-4 rounded-full border text-[13px] font-bold inline-flex items-center gap-1.5" style={{ borderColor: V2.ink }}>
+        <button onClick={() => p.onRestore(item.id)} className="min-h-[44px] px-4 border text-[13px] font-bold inline-flex items-center gap-1.5" style={{ borderColor: V2.ink }}>
           <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />Add back
         </button>
       </div>
@@ -291,7 +310,7 @@ function Layer({ n, piece, p }: { n: number; piece: StudioPiece; p: LookStudioPr
     return (
       <div id={`layer-${item.id}`} className="py-4 border-b flex items-center gap-3 scroll-mt-24" style={{ borderColor: V2.line }}>
         {head}
-        <span className="w-16 h-[76px] rounded-[10px] animate-pulse" style={{ background: V2.sand }} />
+        <span className="w-16 h-[76px] animate-pulse" style={{ background: V2.sand }} />
         <div className="flex-1 space-y-2"><p className={label} style={{ color: V2.muted }}>{item.category}</p><p className="text-[13px]" style={{ color: V2.muted }}>Finding matches in your size…</p></div>
       </div>
     );
@@ -314,9 +333,9 @@ function Layer({ n, piece, p }: { n: number; piece: StudioPiece; p: LookStudioPr
       <div className="flex items-center gap-3">
         {head}
         {product ? (
-          <img src={product.imageUrl} alt="" className="w-16 h-[76px] rounded-[10px] object-cover bg-muted flex-shrink-0" loading="lazy" />
+          <img src={product.imageUrl} alt="" className="w-16 h-[76px] object-cover bg-muted flex-shrink-0" loading="lazy" />
         ) : (
-          <span className="w-16 h-[76px] rounded-[10px] flex-shrink-0" style={{ background: V2.sand }} />
+          <span className="w-16 h-[76px] flex-shrink-0" style={{ background: V2.sand }} />
         )}
         <div className="flex-1 min-w-0">
           <p className={label} style={{ color: V2.muted }}>{item.category}</p>
@@ -326,7 +345,7 @@ function Layer({ n, piece, p }: { n: number; piece: StudioPiece; p: LookStudioPr
               <p className="text-[15px] font-bold leading-snug line-clamp-2">{product.title}</p>
               <p className="flex flex-wrap items-center gap-1.5 mt-0.5">
                 <span className="font-extrabold text-[14px]">{formatPrice(product.price)}</span>
-                {note && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: V2.blush, color: V2.warnText }}>{note}</span>}
+                {note && <span className="text-[11px] font-bold px-2 py-0.5" style={{ background: V2.blush, color: V2.warnText }}>{note}</span>}
               </p>
             </>
           ) : (
@@ -337,12 +356,12 @@ function Layer({ n, piece, p }: { n: number; piece: StudioPiece; p: LookStudioPr
           )}
         </div>
         {product ? (
-          <a href={product.productUrl} target="_blank" rel="noopener noreferrer" className="min-h-[44px] px-4 rounded-full text-[13px] font-bold inline-flex items-center gap-1 flex-shrink-0" style={{ background: V2.ink, color: V2.paper }}>
+          <a href={product.productUrl} target="_blank" rel="noopener noreferrer" className="min-h-[44px] px-4 text-[12px] font-bold uppercase tracking-[0.08em] inline-flex items-center gap-1 flex-shrink-0" style={{ background: V2.ink, color: V2.paper }}>
             Shop
           </a>
         ) : (
           <a href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(item.description)}`} target="_blank" rel="noopener noreferrer"
-            className="min-h-[44px] px-3 rounded-full border text-[13px] font-bold inline-flex items-center gap-1 flex-shrink-0" style={{ borderColor: V2.ink }}>
+            className="min-h-[44px] px-3 border text-[13px] font-bold inline-flex items-center gap-1 flex-shrink-0" style={{ borderColor: V2.ink }}>
             <Search className="w-3.5 h-3.5" aria-hidden="true" />Web
           </a>
         )}
@@ -393,9 +412,9 @@ function OptionCard({ heading, sub, product, on, onUse, onMore, moreLoading }: {
   );
   if (!product) {
     return (
-      <div className="rounded-xl p-1.5 flex flex-col" style={{ border: `1px dashed ${V2.line}` }}>
+      <div className="p-1.5 flex flex-col" style={{ border: `1px dashed ${V2.muted}` }}>
         {head}
-        <span className="flex-1 min-h-[120px] rounded-lg flex flex-col items-center justify-center gap-1 text-center text-[11px] px-2" style={{ background: V2.sand, color: V2.muted }}>
+        <span className="flex-1 min-h-[120px] flex flex-col items-center justify-center gap-1 text-center text-[11px] px-2" style={{ background: V2.sand, color: V2.muted }}>
           <span>{!sub ? "No pick" : sub.startsWith("under") ? `No pick ${sub}` : `No ${sub} pick`} in your size yet</span>
           {onMore && (
             <button type="button" onClick={onMore} disabled={moreLoading}
@@ -409,14 +428,14 @@ function OptionCard({ heading, sub, product, on, onUse, onMore, moreLoading }: {
   }
   return (
     <button onClick={() => !on && onUse()} aria-pressed={on} aria-label={on ? `${product.title}, in your look` : `Use ${product.title}`}
-      className="text-left rounded-xl p-1.5 flex flex-col" style={{ background: V2.card, border: on ? `2px solid ${V2.ink}` : `1px solid ${V2.line}` }}>
+      className="text-left p-1.5 flex flex-col" style={{ background: on ? V2.sand : V2.card, border: on ? `2px solid ${V2.ink}` : `1px solid ${V2.line}` }}>
       {head}
-      <img src={product.imageUrl} alt="" className="w-full aspect-[4/5] object-cover rounded-lg bg-muted" loading="lazy" />
+      <img src={product.imageUrl} alt="" className="w-full aspect-[4/5] object-cover bg-muted" loading="lazy" />
       {product.merchantName && <span className="block text-[10px] font-extrabold uppercase tracking-[0.6px] mt-1.5 truncate">{product.merchantName}</span>}
       <span className="block text-[12px] font-semibold leading-tight line-clamp-2">{product.title}</span>
       <span className="block text-[13px] font-extrabold mt-0.5">{formatPrice(product.price)}</span>
-      <span className="mt-1.5 min-h-[36px] rounded-full flex items-center justify-center text-[12px] font-bold"
-        style={on ? { background: V2.ink, color: V2.paper } : { border: `1px solid ${V2.ink}` }}>{on ? "In your look" : "Use this"}</span>
+      <span className="mt-1.5 min-h-[36px] flex items-center justify-center text-center text-[12px] font-bold"
+        style={on ? { background: V2.ink, color: V2.paper } : { border: `1px solid ${V2.ink}` }}>{on ? "✓ In your look" : "Use this"}</span>
     </button>
   );
 }
