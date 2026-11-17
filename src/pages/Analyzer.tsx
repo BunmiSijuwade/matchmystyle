@@ -16,7 +16,7 @@ import PasteTipStrip from "@/components/PasteTipStrip";
 import { useClipboardPaste } from "@/hooks/useClipboardPaste";
 import { INPUT_LIMITS } from "../../supabase/functions/_shared/rateLimit";
 import { shrinkImage } from "@/lib/shrinkImage";
-import { isRedesign } from "@/lib/redesign";
+import { isRedesign, V2 } from "@/lib/redesign";
 import { TopNav, TabBar } from "@/components/v2/SiteNav";
 import { SeeItWork, WhatToExpect } from "@/components/analyzer/AnalyzerExample";
 
@@ -198,7 +198,7 @@ const Analyzer = () => {
         {/* Header */}
         <div className="mb-8 sm:mb-10 max-w-[720px] mx-auto lg:mx-0">
           <p className="text-[12px] font-bold tracking-[1px] uppercase text-muted-foreground mb-3">Outfit analyzer</p>
-          <h1 className="text-[38px] sm:text-5xl lg:text-[56px] leading-[1.04] tracking-[-1.4px] mb-3" style={{ fontFamily: '"Bricolage Grotesque", Manrope, sans-serif', fontWeight: 800 }}>
+          <h1 className="text-[38px] sm:text-5xl lg:text-[56px] leading-[1.04] tracking-[-1.4px] mb-3" style={{ fontFamily: V2.display, fontWeight: 800 }}>
             Find clothes from <span className="text-primary">a picture</span>
           </h1>
           <p className="text-muted-foreground text-base sm:text-lg leading-[1.6]">
@@ -221,7 +221,7 @@ const Analyzer = () => {
                     className={`rounded-2xl border-2 border-dashed p-10 sm:p-16 text-center cursor-pointer transition-all duration-300 min-h-[240px] flex flex-col items-center justify-center ${
                       dragOver
                         ? "border-primary bg-muted"
-                        : "border-[hsl(28,18%,78%)] bg-muted/50 hover:border-primary hover:bg-muted"
+                        : `${redesign ? "border-muted-foreground/50" : "border-[hsl(28,18%,78%)]"} bg-muted/50 hover:border-primary hover:bg-muted`
                     }`}
                   >
                     <input
@@ -233,9 +233,9 @@ const Analyzer = () => {
                     />
                     {/* Upload icon */}
                     <svg width="56" height="56" viewBox="0 0 24 24" className="mb-4">
-                      <rect style={{ fill: "hsl(28, 24%, 44%)", opacity: 0.4 }} x="3" y="3" width="18" height="18" rx="2"/>
-                      <line style={{ stroke: "hsl(0, 0%, 10%)", strokeWidth: 2.5 }} x1="12" y1="8" x2="12" y2="16"/>
-                      <line style={{ stroke: "hsl(0, 0%, 10%)", strokeWidth: 2.5 }} x1="8" y1="12" x2="16" y2="12"/>
+                      <rect style={{ fill: redesign ? V2.line : "hsl(28, 24%, 44%)", opacity: redesign ? 1 : 0.4 }} x="3" y="3" width="18" height="18" rx="2"/>
+                      <line style={{ stroke: redesign ? V2.ink : "hsl(0, 0%, 10%)", strokeWidth: 2.5 }} x1="12" y1="8" x2="12" y2="16"/>
+                      <line style={{ stroke: redesign ? V2.ink : "hsl(0, 0%, 10%)", strokeWidth: 2.5 }} x1="8" y1="12" x2="16" y2="12"/>
                     </svg>
                     <button
                       type="button"

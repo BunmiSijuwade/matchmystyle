@@ -84,7 +84,7 @@ export default function LookStudio(p: LookStudioProps) {
             return (
               <button key={id} role="tab" aria-selected={on} onClick={() => setView(id)}
                 className="min-h-[44px] px-4 rounded-full text-[13px] font-bold transition-colors duration-200"
-                style={on ? { background: V2.ink, color: V2.paper } : { border: `1px solid #CFC3B4`, background: V2.card, color: V2.ink }}>
+                style={on ? { background: V2.ink, color: V2.paper } : { border: `1px solid ${V2.line}`, background: V2.card, color: V2.ink }}>
                 {id === "ai" && <Sparkles className="inline w-3.5 h-3.5 mr-1 -mt-0.5" aria-hidden="true" />}{name}
               </button>
             );
@@ -97,7 +97,7 @@ export default function LookStudio(p: LookStudioProps) {
           <div className="relative mx-1 mt-1.5 h-[420px] lg:h-[480px]">
             {shown.slice(0, SPOTS.length).map((x, i) => {
               const s = SPOTS[i];
-              const style = { left: `${s.l}%`, top: `${s.t}%`, width: `${s.w}%`, height: `${s.h}%`, transform: `rotate(${s.r}deg)`, zIndex: i + 1, boxShadow: "0 4px 12px rgba(27,23,20,0.18)" };
+              const style = { left: `${s.l}%`, top: `${s.t}%`, width: `${s.w}%`, height: `${s.h}%`, transform: `rotate(${s.r}deg)`, zIndex: i + 1, boxShadow: "0 4px 12px rgba(10,30,50,0.16)" };
               return (
                 <button key={x.item.id} onClick={() => jump(x.item.id)} aria-label={`${x.item.category}: jump to its options`}
                   className="absolute bg-white p-1.5 pb-0 flex flex-col text-left" style={style}>
@@ -196,7 +196,7 @@ export default function LookStudio(p: LookStudioProps) {
 
             <div className="relative">
               {p.reanalyzing && (
-                <div className="absolute inset-0 z-10 flex items-start justify-center pt-16 backdrop-blur-sm" style={{ background: "rgba(246,241,233,0.7)" }}>
+                <div className="absolute inset-0 z-10 flex items-start justify-center pt-16 backdrop-blur-sm" style={{ background: "rgba(255,255,255,0.75)" }}>
                   <span className="flex items-center gap-2 text-sm" style={{ color: V2.muted }}><Loader2 className="w-5 h-5 animate-spin" />Updating matches…</span>
                 </div>
               )}

@@ -17,7 +17,7 @@ export function Logo() {
   return (
     <Link to="/" className="flex items-center gap-2.5 min-h-[44px]" style={{ color: "#1A1A1A" }} aria-label="MatchMyStyle home">
       <span className="w-9 h-9 rounded-full border-2 flex items-center justify-center text-[13px] font-semibold tracking-[-1px]"
-        style={{ borderColor: "#1A1A1A", background: "linear-gradient(135deg, #F5EDE4 0%, #E8DFD5 100%)" }}>MM</span>
+        style={{ borderColor: V2.ink, background: V2.sand, color: V2.ink }}>MM</span>
       <span className="text-[17px] font-semibold tracking-[-0.3px]">MatchMyStyle</span>
     </Link>
   );

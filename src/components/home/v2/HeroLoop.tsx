@@ -52,7 +52,7 @@ export default function HeroLoop() {
           <div className={screen(0)} aria-hidden={step !== 0}>
             <span className={`${tiny} text-center`} style={{ color: ED.muted }}>Match a look</span>
             <span className="text-[20px] lg:text-[24px] text-center leading-none" style={{ fontFamily: ED.serif }}>
-              Add a <span className="italic" style={{ color: ED.wine }}>photo</span>
+              Add a <span className="italic" style={{ color: ED.accent }}>photo</span>
             </span>
             <div className="flex-1 min-h-0 overflow-hidden">
               <img src={OUTFIT} alt="" className="w-full h-full object-cover" />
@@ -72,7 +72,7 @@ export default function HeroLoop() {
               <img src={OUTFIT} alt="" className="w-7 h-9 lg:w-8 lg:h-10 object-cover" />
               <div className="flex flex-col gap-0.5">
                 <span className="text-[17px] lg:text-[20px] leading-none" style={{ fontFamily: ED.serif }}>Your look</span>
-                <span className={tiny} style={{ color: ED.wine }}>Off-Duty Muse</span>
+                <span className={tiny} style={{ color: ED.accent }}>Off-Duty Muse</span>
               </div>
             </div>
             <div className="flex-1 min-h-0">
@@ -84,7 +84,7 @@ export default function HeroLoop() {
           {/* 3. Your price */}
           <div className={screen(2)} aria-hidden={step !== 2}>
             <div className="flex items-center gap-2.5 pb-2.5 border-b" style={{ borderColor: ED.ink }}>
-              <span className="text-[10px] lg:text-[11px] font-semibold" style={{ color: ED.wine, ...tabular }}>4</span>
+              <span className="text-[10px] lg:text-[11px] font-semibold" style={{ color: ED.accent, ...tabular }}>4</span>
               <div className="flex flex-col">
                 <span className={tiny} style={{ color: ED.muted }}>Trousers</span>
                 <span className="text-[11px] lg:text-[13px] font-semibold">Straight Leg Jeans</span>
@@ -118,7 +118,7 @@ export default function HeroLoop() {
                 </div>
               ))}
             </div>
-            <span className={`h-[30px] lg:h-9 shrink-0 text-white text-[9px] lg:text-[10px] flex items-center justify-center ${caps}`} style={{ background: ED.wine }}>
+            <span className={`h-[30px] lg:h-9 shrink-0 text-white text-[9px] lg:text-[10px] flex items-center justify-center ${caps}`} style={{ background: ED.fill }}>
               Shop all 6 · {TOTALS.mid}
             </span>
           </div>

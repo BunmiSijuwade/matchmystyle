@@ -22,7 +22,7 @@ const HOW = [
 function HowStep({ n, title, text }: { n: number; title: string; text: string }) {
   return (
     <li className="flex gap-4 lg:gap-5 py-3 lg:py-[18px] border-b" style={{ borderColor: ED.hair }}>
-      <span className="text-[11px] lg:text-[12px] font-semibold tracking-[0.1em] pt-[3px]" style={{ color: ED.wine, fontVariantNumeric: "tabular-nums" }}>
+      <span className="text-[11px] lg:text-[12px] font-semibold tracking-[0.1em] pt-[3px]" style={{ color: ED.accent, fontVariantNumeric: "tabular-nums" }}>
         {String(n).padStart(2, "0")}
       </span>
       <span className="flex flex-col gap-0.5 lg:gap-1">
@@ -69,7 +69,7 @@ export default function HomeV2() {
         <p className={`hidden lg:block m-0 text-[12px] ${caps}`} style={{ color: ED.muted }}>One real match · Size {MATCH_SIZE} · Mid</p>
         <div className="flex flex-col gap-5 mb-5 lg:mb-0">
           <h1 className="m-0 text-[44px] sm:text-[56px] lg:text-[42px] xl:text-[52px] leading-[1.04] tracking-[-1px] font-medium" style={{ fontFamily: ED.serif }}>
-            See a look you love? <span className="block italic pl-[0.05em]" style={{ color: ED.wine }}>Shop it in your size.</span>
+            See a look you love? <span className="block italic pl-[0.05em]" style={{ color: ED.accent }}>Shop it in your size.</span>
           </h1>
           <p className="m-0 text-[16px] lg:text-[18px] leading-relaxed max-w-[460px]" style={{ color: ED.body }}>
             Drop in any outfit. We find every piece in your size, at the price you want, new or vintage.
@@ -81,15 +81,15 @@ export default function HomeV2() {
               placeholder="Describe a look, or add a photo" enterKeyHint="go"
               aria-invalid={linkNote || undefined} aria-describedby={linkNote ? "home-composer-note" : undefined}
               className="h-[52px] border px-4 text-[16px] bg-white focus:outline-none focus:ring-2"
-              style={{ borderColor: linkNote ? ED.wine : ED.ink }} />
+              style={{ borderColor: linkNote ? ED.error : ED.ink }} />
             <div className="grid grid-cols-2 gap-2 lg:gap-2.5">
               <Link to="/analyzer" className={`h-[52px] border flex items-center justify-center gap-2 text-[12px] lg:text-[13px] ${caps}`} style={{ borderColor: ED.ink, color: ED.ink }}>
                 <Camera className="w-[18px] h-[18px]" strokeWidth={1.5} aria-hidden="true" />Add photo
               </Link>
-              <button type="submit" className={`h-[52px] text-white text-[12px] lg:text-[13px] ${caps}`} style={{ background: ED.wine }}>Match it</button>
+              <button type="submit" className={`h-[52px] text-white text-[12px] lg:text-[13px] ${caps}`} style={{ background: ED.fill }}>Match it</button>
             </div>
             {linkNote ? (
-              <p id="home-composer-note" role="alert" className="m-0 text-[13px] font-semibold" style={{ color: ED.wine }}>
+              <p id="home-composer-note" role="alert" className="m-0 text-[13px] font-semibold" style={{ color: ED.error }}>
                 Links can't be matched. Save or screenshot the photo, then tap Add photo.
               </p>
             ) : (
@@ -117,7 +117,7 @@ export default function HomeV2() {
           <div>
             <p className={`m-0 mb-2 lg:mb-2.5 text-[11px] lg:text-[12px] ${caps}`} style={{ color: ED.muted }}>See it work</p>
             <h2 id="how-heading" className="m-0 mb-0 lg:mb-8 text-[32px] lg:text-[52px] leading-[1.03] font-normal" style={{ fontFamily: ED.serif }}>
-              From one photo to <span className="italic" style={{ color: ED.wine }}>six pieces.</span>
+              From one photo to <span className="italic" style={{ color: ED.accent }}>six pieces.</span>
             </h2>
             <ol className="hidden lg:block list-none m-0 p-0 border-t max-w-[520px]" style={{ borderColor: ED.ink }}>
               {HOW.map((h, i) => <HowStep key={h.title} n={i + 1} {...h} />)}
@@ -157,7 +157,7 @@ export default function HomeV2() {
           style={{ borderColor: ED.ink }}>
           <span className="text-[14px] font-semibold">Free to try. No account needed.</span>
           <Link to="/analyzer" tabIndex={composerVisible ? -1 : undefined}
-            className={`min-h-[44px] px-5 flex items-center text-white text-[12px] whitespace-nowrap ${caps}`} style={{ background: ED.wine }}>
+            className={`min-h-[44px] px-5 flex items-center text-white text-[12px] whitespace-nowrap ${caps}`} style={{ background: ED.fill }}>
             Match a look
           </Link>
         </div>

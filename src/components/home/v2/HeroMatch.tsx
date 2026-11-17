@@ -31,7 +31,7 @@ export default function HeroMatch() {
           {PIECES.map((p, i) => (
             <li key={p.name} className="flex items-center gap-2.5 py-2 border-b text-[14px] lg:text-[13px]"
               style={{ borderColor: i === PIECES.length - 1 ? ED.ink : ED.hair }}>
-              <span className="w-3 text-[11px] font-semibold" style={{ color: ED.wine, ...tabular }}>{i + 1}</span>
+              <span className="w-3 text-[11px] font-semibold" style={{ color: ED.accent, ...tabular }}>{i + 1}</span>
               <img src={`${PIECE_IMG}/${p.img}`} alt="" className="w-[30px] h-9 object-cover" />
               <span className="flex-1 min-w-0">{p.name}</span>
               <span style={tabular}>{p.price}</span>

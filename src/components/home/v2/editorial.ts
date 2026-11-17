@@ -1,5 +1,6 @@
-// Home page look (Nov 15, 2026): white page, black hairlines, square corners, Bodoni headlines, one wine accent.
-// Body text stays in the site's Manrope. The serif loads only on Home.
+// Home page look (Nov 17, 2026): white page, navy ink and hairlines, square corners, Newsreader serif headlines,
+// navy buttons and a deep gold accent (matches src/lib/redesign.ts). Body text stays in the site's Manrope.
+// The serif loads only on Home.
 
 const FONT_ID = "mms-home-serif";
 
@@ -8,20 +9,22 @@ export function loadHomeSerif() {
   const link = document.createElement("link");
   link.id = FONT_ID;
   link.rel = "stylesheet";
-  link.href = "https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400;1,6..96,500&display=swap";
+  link.href = "https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&display=swap";
   document.head.appendChild(link);
 }
 
-/** Text pairs pass WCAG AA on white. */
+/** Text pairs pass WCAG AA on white: ink 16.9:1, muted/body 7.3:1, accent 5.8:1, error 5.4:1. */
 export const ED = {
   page: "#FFFFFF",
-  band: "#F7F5F2",
-  ink: "#1A1A1A",
-  muted: "#5C5C5C",
-  body: "#4A4A4A",
-  hair: "#DADADA",
-  wine: "#6E1F2B",
-  serif: '"Bodoni Moda", Georgia, serif',
+  band: "#EEEBE4",
+  ink: "#0A1E32",
+  muted: "#4A5866",
+  body: "#4A5866",
+  hair: "#D5D2CB",
+  fill: "#0A1E32",
+  accent: "#75633F",
+  error: "#D11A2E",
+  serif: 'Newsreader, Georgia, serif',
 } as const;
 
 export const caps = "uppercase tracking-[0.14em]";

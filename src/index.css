@@ -226,43 +226,51 @@
 /* let the look sidebar stick: overflow-x hidden on html/body breaks position: sticky (Concierge page only) */
 html:has(.theme-concierge), body:has(.theme-concierge) { overflow-x: clip; }
 
-/* Redesign theme (behind ?redesign=1, see src/lib/redesign.ts). Remaps the shared tokens to cream / ink /
-   clay rose / rosewood, and restyles the Concierge's mono-* layer, without changing any page logic. */
+/* Redesign theme (default, see src/lib/redesign.ts). Remaps the shared tokens to white / navy / sand with a deep
+   gold text accent, and restyles the Concierge's mono-* layer, without changing any page logic. */
 .theme-v2 {
-  --background: 36 42% 94%;
-  --foreground: 26 15% 9%;
-  --card: 39 100% 99%;
-  --card-foreground: 26 15% 9%;
-  --popover: 39 100% 99%;
-  --popover-foreground: 26 15% 9%;
-  --primary: 0 37% 45%;
+  --background: 0 0% 100%;
+  --foreground: 210 67% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 210 67% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 210 67% 12%;
+  --primary: 210 67% 12%;
   --primary-foreground: 0 0% 100%;
-  --muted: 35 38% 89%;
-  --muted-foreground: 27 11% 33%;
-  --accent: 35 38% 89%;
-  --accent-foreground: 26 15% 9%;
-  --border: 34 29% 85%;
-  --input: 34 29% 85%;
-  --ring: 26 15% 9%;
-  background: #F6F1E9;
-  color: #1B1714;
+  --muted: 43 23% 91%;
+  --muted-foreground: 210 16% 35%;
+  --accent: 43 23% 91%;
+  --accent-foreground: 210 67% 12%;
+  --border: 42 11% 82%;
+  --input: 42 11% 82%;
+  --ring: 210 67% 12%;
+  --secondary: 43 23% 91%;
+  --secondary-foreground: 210 67% 12%;
+  --destructive: 354 78% 46%;
+  --border-medium: 210 16% 35%;
+  background: #FFFFFF;
+  color: #0A1E32;
 }
+/* Extended-width headlines. font-stretch only changes fonts with a width axis (Archivo), so headings still set
+   in Manrope are unaffected. Kept at 115% (not the full 125%) so long headlines fit at 390px. */
+.theme-v2 h1, .theme-v2 h2, .theme-v2 .mono-display { font-stretch: 115%; }
+.theme-v2 h1, .theme-v2 h2, .theme-v2 h3 { color: #0A1E32; }
 .theme-concierge.theme-v2 {
-  --concierge-bg: #F6F1E9;
-  --concierge-ink: #1B1714;
-  --concierge-accent: #A85454;
+  --concierge-bg: #FFFFFF;
+  --concierge-ink: #0A1E32;
+  --concierge-accent: #0A1E32;
   --concierge-accent-ink: #FFFFFF;
-  --concierge-panel: #EDE4D7;
-  --concierge-soft-ink: #5E544C;
-  --concierge-font-display: 'Bricolage Grotesque', 'Manrope', sans-serif;
-  --concierge-border: 1px solid #CFC3B4;
-  --concierge-border-dashed: 1px dashed #CFC3B4;
+  --concierge-panel: #EEEBE4;
+  --concierge-soft-ink: #4A5866;
+  --concierge-font-display: 'Archivo', 'Manrope', sans-serif;
+  --concierge-border: 1px solid #D5D2CB;
+  --concierge-border-dashed: 1px dashed #D5D2CB;
 }
-.theme-v2 .mono-display { font-weight: 800; letter-spacing: -1px; }
-.theme-v2 .mono-display em { font-style: normal; color: #9E4848; }
-.theme-v2 .mono-accent-text { color: #9E4848; }
-.theme-v2 .mono-ink-bg { background: #1B1714; color: #F6F1E9; }
-.theme-v2 .mono-outline:hover, .theme-v2 .mono-outline:focus-visible, .theme-v2 .mono-outline:focus-within { border-color: #1B1714; }
-.theme-v2 .look-polaroid__label { font-family: 'Bricolage Grotesque', 'Manrope', sans-serif; font-style: normal; font-weight: 700; color: #1B1714; }
-.theme-v2 .look-polaroid__price { color: #1B1714; font-weight: 700; }
-.theme-v2 .look-polaroid--empty { background: #EDE4D7; border-color: #CFC3B4; }
+.theme-v2 .mono-display { font-weight: 800; letter-spacing: -0.5px; }
+.theme-v2 .mono-display em { font-style: normal; color: #75633F; }
+.theme-v2 .mono-accent-text { color: #75633F; }
+.theme-v2 .mono-ink-bg { background: #0A1E32; color: #FFFFFF; }
+.theme-v2 .mono-outline:hover, .theme-v2 .mono-outline:focus-visible, .theme-v2 .mono-outline:focus-within { border-color: #0A1E32; }
+.theme-v2 .look-polaroid__label { font-family: 'Archivo', 'Manrope', sans-serif; font-stretch: 112%; font-style: normal; font-weight: 700; color: #0A1E32; }
+.theme-v2 .look-polaroid__price { color: #0A1E32; font-weight: 700; }
+.theme-v2 .look-polaroid--empty { background: #EEEBE4; border-color: #D5D2CB; }

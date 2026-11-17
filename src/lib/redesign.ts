@@ -16,30 +16,37 @@ export function isRedesign(search: string = typeof window !== "undefined" ? wind
   }
 }
 
-/** Loads the redesign's display font once, only for people who have the redesign on. */
+/** Loads the redesign's fonts (Archivo for headlines, Newsreader for serif accents) once, only for people who have the redesign on. */
 export function loadRedesignFont() {
   if (typeof document === "undefined" || document.getElementById(FONT_ID)) return;
   const link = document.createElement("link");
   link.id = FONT_ID;
   link.rel = "stylesheet";
-  link.href = "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap";
+  link.href = "https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..600&display=swap";
   document.head.appendChild(link);
 }
 
-/** Redesign colors (clay rose fills, rosewood text accents). Text pairs pass WCAG AA on the cream ground. */
+/** Redesign colors (Nov 17, 2026): navy and white with a little gold; red is a small accent only, never a
+ * surface for text (white on #FA283C is 3.9:1). Text pairs pass WCAG AA: ink 16.9:1 and muted 7.3:1 on white,
+ * accent gold 5.8:1 on white and 4.9:1 on sand, redInk 5.4:1 on white. Headlines use Archivo at an extended
+ * width (font-stretch in index.css), standing in for Akzidenz-Grotesk Extended. */
 export const V2 = {
-  paper: "#F6F1E9",
-  card: "#FFFDF9",
-  ink: "#1B1714",
-  muted: "#5E544C",
-  line: "#E3D9CC",
-  sand: "#EDE4D7",
-  fill: "#A85454",
-  accent: "#9E4848",
-  blush: "#F6D9C9",
+  paper: "#FFFFFF",
+  card: "#FFFFFF",
+  ink: "#0A1E32",
+  muted: "#4A5866",
+  line: "#D5D2CB",
+  sand: "#EEEBE4",
+  fill: "#0A1E32",
+  accent: "#75633F",
+  gold: "#857151",
+  red: "#FA283C",
+  redInk: "#D11A2E",
+  blush: "#E8EDF2",
   vintage: "#157A3B",
   okBg: "#DCEBDD",
   okText: "#0F5E2C",
-  warnText: "#4A1C1C",
-  display: '"Bricolage Grotesque", Manrope, sans-serif',
+  warnText: "#0A1E32",
+  display: 'Archivo, Manrope, sans-serif',
+  serif: 'Newsreader, Georgia, serif',
 } as const;
