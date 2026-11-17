@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useCallback } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { Camera, X, Loader2, AlertCircle } from "lucide-react";
+import { Camera, X, Loader2, AlertCircle, ArrowRight } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import GradientButton from "@/components/GradientButton";
 import { useToast } from "@/hooks/use-toast";
@@ -199,7 +199,7 @@ const Analyzer = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-background${redesign ? " theme-v2 pb-20 md:pb-0" : ""}`}>
+    <div className={`min-h-screen bg-background${redesign ? " theme-v2 mms-square pb-20 md:pb-0" : ""}`}>
       {redesign ? <><TopNav active="match" /><TabBar active="match" /></> : <Navbar />}
       <Toaster />
       <div className={`container max-w-6xl mx-auto px-4 sm:px-6 pb-16 ${redesign ? "pt-8 sm:pt-10" : "pt-24 sm:pt-28"}`}>
@@ -214,11 +214,19 @@ const Analyzer = () => {
         ) : (<>
         {/* Header */}
         <div className="mb-8 sm:mb-10 max-w-[720px] mx-auto lg:mx-0">
-          <p className="text-[12px] font-bold tracking-[1px] uppercase text-muted-foreground mb-3">Outfit analyzer</p>
-          <h1 className="text-[38px] sm:text-5xl lg:text-[56px] leading-[1.04] tracking-[-1.4px] mb-3" style={{ fontFamily: V2.display, fontWeight: 800 }}>
-            Find clothes from <span className="text-primary">a picture</span>
+          {redesign ? (
+            <p className="flex items-center gap-3 mb-3">
+              <span aria-hidden="true" className="block w-7 h-[3px]" style={{ background: V2.red }} />
+              <span className="text-[12px] font-semibold uppercase tracking-[0.16em]" style={{ color: V2.accent }}>Step 1 of 4 · Upload</span>
+            </p>
+          ) : (
+            <p className="text-[12px] font-bold tracking-[1px] uppercase text-muted-foreground mb-3">Outfit analyzer</p>
+          )}
+          <h1 className={`text-[38px] sm:text-5xl lg:text-[56px] leading-[1.04] mb-3 ${redesign ? "uppercase tracking-[-0.5px]" : "tracking-[-1.4px]"}`} style={{ fontFamily: V2.display, fontWeight: 800 }}>
+            Find clothes from <span className={redesign ? "" : "text-primary"}>a picture</span>
           </h1>
-          <p className="text-muted-foreground text-base sm:text-lg leading-[1.6]">
+          <p className={redesign ? "text-[19px] sm:text-[21px] leading-[1.45] italic" : "text-muted-foreground text-base sm:text-lg leading-[1.6]"}
+            style={redesign ? { fontFamily: V2.serif, color: V2.muted } : undefined}>
             Upload a photo of an outfit you love. We spot each piece and find similar ones you can shop, in your size.
           </p>
         </div>
@@ -312,8 +320,9 @@ const Analyzer = () => {
               </div>
             )}
 
-            {/* Look preferences */}
-            <div className="space-y-4 bg-card border border-border rounded-xl p-4">
+            {/* Look preferences (old design only: the redesign asks for sizes on the review step and the
+                price tier is a tab on Your look) */}
+            {!redesign && <div className="space-y-4 bg-card border border-border rounded-xl p-4">
               {/* Redesign asks for sizes once, on the review step (per kind of piece), so not here. */}
               {!redesign && <div className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
@@ -335,11 +344,18 @@ const Analyzer = () => {
                 </div>
                 <p className="text-xs text-muted-foreground">You can compare all three after</p>
               </div>
-            </div>
+            </div>}
 
             {/* Analyze button */}
             {hasInput && (
               <div className="space-y-3">
+                {redesign ? (
+                  <button type="button" onClick={handleAnalyze} disabled={analyzing}
+                    className="w-full min-h-[60px] text-white text-[15px] font-bold uppercase tracking-[0.12em] inline-flex items-center justify-center gap-2.5 disabled:opacity-60"
+                    style={{ background: V2.fill, fontStretch: "115%" }}>
+                    {analyzing ? <><Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />Reading your photo…</> : <>Find the pieces<ArrowRight className="w-[18px] h-[18px]" aria-hidden="true" /></>}
+                  </button>
+                ) : (
                 <GradientButton
                   onClick={handleAnalyze}
                   size="lg"
@@ -358,6 +374,7 @@ const Analyzer = () => {
                     </>
                   )}
                 </GradientButton>
+                )}
                 {analyzing && (
                   <p className="text-center text-sm text-muted-foreground animate-pulse">
                     AI is identifying items in your photo...

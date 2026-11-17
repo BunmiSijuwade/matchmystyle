@@ -248,8 +248,8 @@ const Results = () => {
   const askField = (
     <>
       <input value={ask} onChange={(e) => setAsk(e.target.value)} maxLength={120} placeholder="change anything, or say it" aria-label="Change anything about this look"
-        className="flex-1 min-w-0 min-h-[48px] rounded-full border border-border bg-card px-5 text-[16px] sm:text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
-      <button type="submit" aria-label="Send" disabled={!ask.trim()} className="w-12 h-12 rounded-full bg-foreground text-background flex items-center justify-center disabled:opacity-40 flex-shrink-0">
+        className={`flex-1 min-w-0 min-h-[48px] ${redesign ? "border-[1.5px] border-muted-foreground bg-white" : "rounded-full border border-border bg-card"} px-5 text-[16px] sm:text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring`} />
+      <button type="submit" aria-label="Send" disabled={!ask.trim()} className={`w-12 h-12 ${redesign ? "" : "rounded-full"} bg-foreground text-background flex items-center justify-center disabled:opacity-40 flex-shrink-0`}>
         <ArrowUp className="w-5 h-5" />
       </button>
     </>

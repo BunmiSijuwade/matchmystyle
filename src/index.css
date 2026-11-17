@@ -255,6 +255,12 @@ html:has(.theme-concierge), body:has(.theme-concierge) { overflow-x: clip; }
    in Manrope are unaffected. Kept at 115% (not the full 125%) so long headlines fit at 390px. */
 .theme-v2 h1, .theme-v2 h2, .theme-v2 .mono-display { font-stretch: 115%; }
 .theme-v2 h1, .theme-v2 h2, .theme-v2 h3 { color: #0A1E32; }
+/* Square corners on redesigned pages that still use shared rounded classes (the Analyzer). Only boxes and buttons
+   are squared; small round icons and dots stay round. */
+.theme-v2.mms-square :is(.rounded, .rounded-md, .rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl),
+.theme-v2.mms-square :is(button, a, input, select, textarea).rounded-full { border-radius: 0; }
+.theme-v2.mms-square [class*="rounded-["]:not(span) { border-radius: 0; }
+.theme-v2.mms-square h2 { text-transform: uppercase; font-stretch: 115%; }
 .theme-concierge.theme-v2 {
   --concierge-bg: #FFFFFF;
   --concierge-ink: #0A1E32;

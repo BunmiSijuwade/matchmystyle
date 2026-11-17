@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getAesthetic } from "@/data/aesthetics";
 import type { AestheticResult } from "@/contexts/AnalysisContext";
+import { isRedesign, V2 } from "@/lib/redesign";
 
 const SERIF = '"Instrument Serif", Georgia, serif';
 const INK = "#1A1A1A";
@@ -89,6 +90,9 @@ export default function ShopAesthetic({ aesthetics }: { aesthetics: AestheticRes
   const gender = "women's";
 
   if (!pInfo) return null;
+  // Redesign: navy / white / sand, square corners, Newsreader serif (src/lib/redesign.ts).
+  const rd = isRedesign();
+  const T = rd ? { SERIF: V2.serif, INK: V2.ink, CREAM: V2.sand, MUTED: V2.muted, BORDER: V2.line } : { SERIF, INK, CREAM, MUTED, BORDER };
   const info = tabs[active] ?? pInfo;
   const tab = state[info.slug] ?? { status: "idle", items: [] };
 
@@ -153,14 +157,14 @@ export default function ShopAesthetic({ aesthetics }: { aesthetics: AestheticRes
   };
 
   return (
-    <section aria-label="Shop the aesthetic" className="rounded-2xl p-5 sm:p-8" style={{ background: CREAM, border: `1px solid ${BORDER}`, color: INK }}>
-      <h2 className="text-[28px] sm:text-[32px] leading-tight" style={{ fontFamily: SERIF, fontWeight: 400 }}>
+    <section aria-label="Shop the aesthetic" className={`${rd ? "" : "rounded-2xl"} p-5 sm:p-8`} style={{ background: T.CREAM, border: `1px solid ${T.BORDER}`, color: T.INK }}>
+      <h2 className="text-[28px] sm:text-[32px] leading-tight" style={{ fontFamily: T.SERIF, fontWeight: 400 }}>
         Love this look? Shop more {info.name}
         {size ? " in your size" : ""}
       </h2>
 
       {tabs.length > 1 && (
-        <div role="tablist" aria-label="Aesthetics" className="mt-4 flex gap-6" style={{ borderBottom: `1px solid ${BORDER}` }}>
+        <div role="tablist" aria-label="Aesthetics" className="mt-4 flex gap-6" style={{ borderBottom: `1px solid ${T.BORDER}` }}>
           {tabs.map((t, i) => (
             <button
               key={t.slug}
@@ -170,8 +174,8 @@ export default function ShopAesthetic({ aesthetics }: { aesthetics: AestheticRes
               onClick={() => setActive(i)}
               className="min-h-[44px] text-sm font-medium transition-colors duration-300"
               style={{
-                color: i === active ? INK : MUTED,
-                borderBottom: `2px solid ${i === active ? INK : "transparent"}`,
+                color: i === active ? T.INK : T.MUTED,
+                borderBottom: `2px solid ${i === active ? T.INK : "transparent"}`,
                 marginBottom: -1,
               }}
             >
@@ -181,14 +185,14 @@ export default function ShopAesthetic({ aesthetics }: { aesthetics: AestheticRes
         </div>
       )}
 
-      <p className="mt-4 text-sm truncate" style={{ color: MUTED }} title={info.about}>{info.about}</p>
+      <p className="mt-4 text-sm truncate" style={{ color: T.MUTED }} title={info.about}>{info.about}</p>
 
       {tab.status === "idle" && (
         <button
           type="button"
           onClick={() => load()}
-          className="mt-4 min-h-[44px] rounded-full px-6 text-sm font-medium"
-          style={{ background: INK, color: CREAM }}
+          className={`mt-4 min-h-[44px] px-6 text-sm font-medium ${rd ? "uppercase tracking-[0.1em] text-[13px] font-bold" : "rounded-full"}`}
+          style={{ background: T.INK, color: rd ? V2.paper : T.CREAM }}
         >
           Show me pieces
         </button>
@@ -198,9 +202,9 @@ export default function ShopAesthetic({ aesthetics }: { aesthetics: AestheticRes
         <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4" aria-busy="true">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="animate-pulse">
-              <div className="aspect-[3/4] rounded-lg" style={{ background: BORDER }} />
-              <div className="mt-2 h-3 w-1/2 rounded" style={{ background: BORDER }} />
-              <div className="mt-2 h-3 w-3/4 rounded" style={{ background: BORDER }} />
+              <div className="aspect-[3/4] rounded-lg" style={{ background: T.BORDER }} />
+              <div className="mt-2 h-3 w-1/2 rounded" style={{ background: T.BORDER }} />
+              <div className="mt-2 h-3 w-3/4 rounded" style={{ background: T.BORDER }} />
             </div>
           ))}
         </div>
@@ -208,12 +212,12 @@ export default function ShopAesthetic({ aesthetics }: { aesthetics: AestheticRes
 
       {tab.status === "error" && (
         <div className="mt-6">
-          <p className="text-sm" style={{ color: MUTED }}>We couldn't find pieces right now. Try again later.</p>
+          <p className="text-sm" style={{ color: T.MUTED }}>We couldn't find pieces right now. Try again later.</p>
           <button
             type="button"
             onClick={() => load(true)}
             className="mt-3 min-h-[44px] rounded-full px-6 text-sm font-medium"
-            style={{ border: `1px solid ${INK}`, color: INK }}
+            style={{ border: `1px solid ${T.INK}`, color: T.INK }}
           >
             Try again
           </button>
@@ -224,22 +228,22 @@ export default function ShopAesthetic({ aesthetics }: { aesthetics: AestheticRes
         <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
           {tab.items.map((p) => (
             <a key={p.key} href={p.productUrl} target="_blank" rel="noopener noreferrer" className="block min-h-[44px] group">
-              <div className="aspect-[3/4] overflow-hidden rounded-lg" style={{ border: `1px solid ${BORDER}` }}>
+              <div className="aspect-[3/4] overflow-hidden rounded-lg" style={{ border: `1px solid ${T.BORDER}` }}>
                 <img src={p.imageUrl} alt={p.title} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
               </div>
               {p.merchantName && (
-                <p className="mt-2 text-[10px] uppercase tracking-[1px] truncate" style={{ color: MUTED }}>{p.merchantName}</p>
+                <p className="mt-2 text-[10px] uppercase tracking-[1px] truncate" style={{ color: T.MUTED }}>{p.merchantName}</p>
               )}
               <p className="mt-1 text-sm leading-snug line-clamp-2">{p.title}</p>
               <p className="mt-1 text-sm font-medium">{formatPrice(p.price)}</p>
-              <p className="mt-1 text-[11px]" style={{ color: MUTED }}>{p.piece.charAt(0).toUpperCase() + p.piece.slice(1)}</p>
+              <p className="mt-1 text-[11px]" style={{ color: T.MUTED }}>{p.piece.charAt(0).toUpperCase() + p.piece.slice(1)}</p>
             </a>
           ))}
         </div>
       )}
 
       {!size && tab.status === "done" && (
-        <Link to="/profile" className="mt-5 inline-flex min-h-[44px] items-center text-sm underline underline-offset-4" style={{ color: INK }}>
+        <Link to="/profile" className="mt-5 inline-flex min-h-[44px] items-center text-sm underline underline-offset-4" style={{ color: T.INK }}>
           Add your measurements for pieces in your size
         </Link>
       )}
